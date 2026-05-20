@@ -254,7 +254,7 @@ import Peer from 'peerjs';
                 animations: {
                     idle: 'public/animations/Fighting Idle.fbx',
                     standingPose: 'public/animations/Male Standing Pose (1).fbx',
-                    intro: 'public/animations/Jumping Down.fbx',
+                    intro: 'public/animations/Front Twist Flip.fbx',
                     taunt: 'public/animations/Standing Taunt Chest Thump.fbx',
                     victory: 'public/animations/Silly Dancing.fbx'
                 }
@@ -266,7 +266,7 @@ import Peer from 'peerjs';
                 animations: {
                     idle: 'public/animations/Bouncing Fight Idle.fbx',
                     standingPose: 'public/animations/Female Standing Pose (1).fbx',
-                    intro: 'public/animations/Jumping Down.fbx',
+                    intro: 'public/animations/Backflip.fbx',
                     taunt: 'public/animations/Threatening.fbx',
                     victory: 'public/animations/Booty Hip Hop Dance.fbx'
                 }
