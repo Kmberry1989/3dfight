@@ -760,10 +760,8 @@ import Peer from 'peerjs';
             if (gameMode === 'single') {
                 document.getElementById('p2-select-panel').style.display = 'none';
                 document.getElementById('p1-select-panel').style.marginLeft = '0';
-                document.getElementById('select-center-banner').style.display = 'none';
             } else {
                 document.getElementById('p2-select-panel').style.display = 'flex';
-                document.getElementById('select-center-banner').style.display = 'flex';
             }
 
             removeFighterList(players);
@@ -1168,15 +1166,12 @@ import Peer from 'peerjs';
                 const box = new THREE.Box3().setFromObject(model);
                 const size = new THREE.Vector3();
                 box.getSize(size);
-                console.log(`Fighter model [${charId}] raw size: X=${size.x.toFixed(3)}, Y=${size.y.toFixed(3)}, Z=${size.z.toFixed(3)}`);
                 
                 const trueHeight = Math.max(size.x, size.y, size.z);
-                console.log(`Fighter model [${charId}] detected true height: ${trueHeight.toFixed(3)}`);
                 
                 let scaleFactor = 1.0;
                 if (isFinite(trueHeight) && trueHeight > 0.01) {
                     scaleFactor = 2.0 / trueHeight;
-                    console.log(`Fighter model [${charId}] scaled by ${scaleFactor.toFixed(4)}`);
                 } else {
                     console.warn(`Fighter model [${charId}] invalid trueHeight. Defaulting to scale 1.0.`);
                 }
@@ -1222,7 +1217,6 @@ import Peer from 'peerjs';
 
                 if (isFinite(groundReferenceY)) {
                     model.position.y -= groundReferenceY;
-                    console.log(`Fighter model [${charId}] grounded from ${isFinite(lowestFootY) ? 'foot bones' : 'bounding box'}: Y offset = ${model.position.y.toFixed(3)}`);
                 } else {
                     console.warn(`Fighter model [${charId}] invalid ground reference. Defaulting Y offset to 0.`);
                     model.position.y = 0;
@@ -2260,38 +2254,20 @@ import Peer from 'peerjs';
             // Add camera screenshake displacement
             updateCameraShake(frameDt);
 
-            // Periodic diagnostic logging (every ~3 seconds)
-            if (!window.diagTimer) window.diagTimer = 0;
-            window.diagTimer++;
-            if (window.diagTimer % 180 === 0 && players.length === 2) {
-                players.forEach(p => {
-                    const worldPos = new THREE.Vector3();
-                    p.mesh.getWorldPosition(worldPos);
-                    
-                    const currentBox = new THREE.Box3().setFromObject(p.mesh);
-                    
-                    let meshCount = 0;
-                    let visibleMeshCount = 0;
-                    p.mesh.traverse(child => {
-                        if (child.isMesh) {
-                            meshCount++;
-                            if (child.visible) visibleMeshCount++;
-                        }
-                    });
-                    console.log(`P${p.id} [${p.charId}]: Pos=(${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)})`);
-                    console.log(`  Box Min: (${currentBox.min.x.toFixed(2)}, ${currentBox.min.y.toFixed(2)}, ${currentBox.min.z.toFixed(2)})`);
-                    console.log(`  Box Max: (${currentBox.max.x.toFixed(2)}, ${currentBox.max.y.toFixed(2)}, ${currentBox.max.z.toFixed(2)})`);
-                });
-            }
+            // Periodic diagnostic logging removed
 
             renderer.render(scene, camera);
         }
 
         // --- 15. RESIZE VIEWPORT ADAPTER ---
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const isPortrait = window.innerHeight > window.innerWidth;
+            const w = isPortrait ? window.innerHeight : window.innerWidth;
+            const h = isPortrait ? window.innerWidth : window.innerHeight;
+            
+            camera.aspect = w / h;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(w, h);
         });
 
         // Initialize Render Frame tick

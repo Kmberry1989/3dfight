@@ -1,4 +1,4 @@
-# 3DFight (Chrono-Strike)
+# 3DFight (FAMILY FIGHTER)
 
 A browser-based 3D fighting game prototype built with **Three.js** and **PeerJS**. 
 

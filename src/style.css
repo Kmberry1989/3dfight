@@ -21,6 +21,8 @@
             background-color: var(--dark-bg);
             font-family: 'Outfit', sans-serif;
             color: #fff;
+            touch-action: none;
+            -webkit-user-select: none;
         }
 
         canvas {
@@ -893,4 +895,17 @@
         }
         .options-row input[type="range"] {
             width: 60%;
+        }
+
+        @media screen and (orientation: portrait) {
+            body {
+                transform: rotate(-90deg);
+                transform-origin: left top;
+                width: 100vh;
+                height: 100vw;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                overflow: hidden;
+            }
         }

@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chrono-Strike: 3D Cyber Fighter</title>
-    
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>FAMILY FIGHTER: 3D Cyber Fighter</title>
+
     <!-- Outfit Google Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
-    
+
+
 </head>
+
 <body>
 
     <!-- 0. MAIN MENU -->
     <div id="main-menu" class="ui-screen" style="display: flex;">
         <div class="menu-box">
-            <h2>CHRONO-STRIKE</h2>
+            <h2>FAMILY FIGHTER</h2>
             <button class="menu-btn" onclick="startGameMode('single')">Single Player</button>
             <button class="menu-btn" onclick="startGameMode('local')">Local Multiplayer</button>
             <button class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
@@ -34,7 +37,8 @@
             <div style="margin: 10px 0; font-size: 14px; color: #888;">OR</div>
             <input type="text" id="lobby-joincode" class="menu-input" placeholder="Enter Join Code">
             <button class="menu-btn" onclick="joinGame()">Join Game</button>
-            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;" onclick="closeLobby()">Back</button>
+            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;"
+                onclick="closeLobby()">Back</button>
             <div id="lobby-status" style="margin-top: 15px; font-size: 14px; color: #ffea00;"></div>
         </div>
     </div>
@@ -49,7 +53,8 @@
             </div>
             <div class="options-row">
                 <span>Music Volume</span>
-                <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5" onchange="updateAudioOptions()">
+                <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5"
+                    onchange="updateAudioOptions()">
             </div>
             <button class="menu-btn" style="margin-top: 20px;" onclick="closeOptions()">Back</button>
         </div>
@@ -67,7 +72,7 @@
     <!-- 1. LOADING SCREEN -->
     <div id="loader-screen" class="ui-screen">
         <div class="loader-box">
-            <div class="loader-title">CHRONO-STRIKE</div>
+            <div class="loader-title">FAMILY FIGHTER</div>
             <div class="loader-status" id="load-status-title">Mounting Cybernetic Grid...</div>
             <div class="progress-bar-container">
                 <div id="progress-bar"></div>
@@ -84,21 +89,17 @@
                 <h1>Select Fighter</h1>
             </div>
             <div class="select-header-copy">
-                <div class="select-marquee">Live Cabinet Preview</div>
-                <p>Tap a portrait to preview that fighter's taunt. Lock both sides, then launch the bout.</p>
+                <div class="select-marquee">FAMILY FIGHTER</div>
+                <p>Choose your character, then READY up!</p>
             </div>
         </div>
 
-        <div class="select-center-banner" id="select-center-banner">
-            <div class="select-stage-rule">Quarterfinal Match</div>
-            <div class="select-versus">VS</div>
-            <div class="select-stage-copy">Center stage stays clear so both fighters read like cabinet hero renders instead of background props.</div>
-        </div>
+
 
         <div class="selection-container">
             <!-- PLAYER 1 PANEL -->
             <div class="player-select-panel p1-active" id="p1-select-panel">
-                <div class="panel-title">Player 1 (Blue)</div>
+                <div class="panel-title">Player 1 </div>
                 <div class="character-grid">
                     <div class="character-card selected" data-char="kyle" onclick="selectCharacter(1, 'kyle')">
                         <div class="character-name">Kyle</div>
@@ -123,13 +124,16 @@
                     </div>
                 </div>
                 <div class="preview-name" id="p1-preview-name">Kyle</div>
-                <div class="locked-status" id="p1-locked-status" style="display:none; color: #00f0ff; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px;">Locked In</div>
-                <button id="p1-lock-btn" class="lock-btn" onclick="lockInPlayer(1)" style="margin-top: 15px; padding: 10px 20px; background: rgba(0,240,255,0.2); border: 1px solid #00f0ff; color: #fff; cursor: pointer;">Ready</button>
+                <div class="locked-status" id="p1-locked-status"
+                    style="display:none; color: #00f0ff; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px;">
+                    Locked In</div>
+                <button id="p1-lock-btn" class="lock-btn" onclick="lockInPlayer(1)"
+                    style="margin-top: 15px; padding: 10px 20px; background: rgba(0,240,255,0.2); border: 1px solid #00f0ff; color: #fff; cursor: pointer;">Ready</button>
             </div>
 
             <!-- PLAYER 2 PANEL -->
             <div class="player-select-panel p2-active" id="p2-select-panel">
-                <div class="panel-title">Player 2 (Red)</div>
+                <div class="panel-title">Player 2 </div>
                 <div class="character-grid">
                     <div class="character-card" data-char="kyle" onclick="selectCharacter(2, 'kyle')">
                         <div class="character-name">Kyle</div>
@@ -154,15 +158,20 @@
                     </div>
                 </div>
                 <div class="preview-name" id="p2-preview-name">Jonah</div>
-                <div class="locked-status" id="p2-locked-status" style="display:none; color: #ff007f; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px;">Locked In</div>
-                <button id="p2-lock-btn" class="lock-btn" onclick="lockInPlayer(2)" style="margin-top: 15px; padding: 10px 20px; background: rgba(255,0,127,0.2); border: 1px solid #ff007f; color: #fff; cursor: pointer;">Ready</button>
+                <div class="locked-status" id="p2-locked-status"
+                    style="display:none; color: #ff007f; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px;">
+                    Locked In</div>
+                <button id="p2-lock-btn" class="lock-btn" onclick="lockInPlayer(2)"
+                    style="margin-top: 15px; padding: 10px 20px; background: rgba(255,0,127,0.2); border: 1px solid #ff007f; color: #fff; cursor: pointer;">Ready</button>
             </div>
         </div>
 
         <div class="select-footer">
             <div class="select-footer-copy">
-                <strong id="select-rules-title">Tournament Rules</strong>
-                <span id="select-rules-desc">Best-of-one, character intros on, taunt confirm enabled, heavy finishers close the chain.</span>
+                <strong id="select-rules-title">Single Player</strong>
+                <span id="select-rules-desc">Best of three rounds, climb the ladder to the top place in tournament mode!
+
+                </span>
             </div>
             <!-- Global fight button removed in favor of player-specific ready buttons -->
         </div>
@@ -192,14 +201,14 @@
     <!-- 4. CONTROLS CHEATSHEET -->
     <div id="instructions">
         <div class="inst-group p1-inst">
-            <strong>Player 1 (Blue)</strong>
+            <strong>Player 1 </strong>
             <span>A / D: Move Left / Right</span>
             <span>S: Block High (Absorption)</span>
             <span>Space: Punch Chain (Light > Medium > Heavy)</span>
             <span>Left Shift: Kick Chain (Light > Medium > Heavy)</span>
         </div>
         <div class="inst-group p2-inst">
-            <strong>Player 2 (Red)</strong>
+            <strong>Player 2 </strong>
             <span>Left / Right: Move Left / Right</span>
             <span>Down Arrow: Block High (Absorption)</span>
             <span>P: Punch Chain (Light > Medium > Heavy)</span>
@@ -217,8 +226,10 @@
             </div>
             <div class="touch-action-cluster">
                 <div class="touch-column">
-                    <button class="touch-btn p1 wide" data-key="Space" data-buffer="punch" data-player="1">Punch</button>
-                    <button class="touch-btn p1 wide" data-key="ShiftLeft" data-buffer="kick" data-player="1">Kick</button>
+                    <button class="touch-btn p1 wide" data-key="Space" data-buffer="punch"
+                        data-player="1">Punch</button>
+                    <button class="touch-btn p1 wide" data-key="ShiftLeft" data-buffer="kick"
+                        data-player="1">Kick</button>
                 </div>
             </div>
         </div>
@@ -257,6 +268,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-      <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>

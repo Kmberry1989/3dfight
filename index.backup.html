@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chrono-Strike: 3D Cyber Fighter</title>
-    
+    <title>FAMILY FIGHTER: 3D Cyber Fighter</title>
+
     <!-- Outfit Google Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --neon-blue: #00f0ff;
@@ -25,7 +26,8 @@
             user-select: none;
         }
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -58,7 +60,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle, rgba(20,15,50,0.5) 0%, rgba(5,5,15,0.9) 100%);
+            background: radial-gradient(circle, rgba(20, 15, 50, 0.5) 0%, rgba(5, 5, 15, 0.9) 100%);
             transition: opacity 0.5s ease;
         }
 
@@ -97,11 +99,11 @@
         .progress-bar-container {
             width: 100%;
             height: 10px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 5px;
             overflow: hidden;
             margin: 15px 0;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         #progress-bar {
@@ -133,13 +135,11 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: repeating-linear-gradient(
-                180deg,
-                rgba(255,255,255,0.04) 0px,
-                rgba(255,255,255,0.04) 1px,
-                transparent 1px,
-                transparent 6px
-            );
+            background: repeating-linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.04) 0px,
+                    rgba(255, 255, 255, 0.04) 1px,
+                    transparent 1px,
+                    transparent 6px);
             opacity: 0.25;
             pointer-events: none;
         }
@@ -148,9 +148,9 @@
             content: "";
             position: absolute;
             inset: 14px;
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,0.03),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.03),
                 0 0 30px rgba(0, 0, 0, 0.45);
             pointer-events: none;
         }
@@ -159,7 +159,7 @@
             width: min(1160px, 96vw);
             margin: 0 auto;
             padding: 16px 20px 14px;
-            border: 1px solid rgba(255,255,255,0.12);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 18px;
             background: linear-gradient(135deg, rgba(6, 10, 30, 0.9), rgba(22, 14, 52, 0.72));
             backdrop-filter: blur(12px);
@@ -185,7 +185,7 @@
 
         .select-header p {
             font-size: 14px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(255, 255, 255, 0.7);
             margin: 4px 0 0 0;
             max-width: 420px;
             line-height: 1.45;
@@ -204,7 +204,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: rgba(255,255,255,0.62);
+            color: rgba(255, 255, 255, 0.62);
         }
 
         .select-center-banner {
@@ -264,7 +264,7 @@
             display: flex;
             flex-direction: column;
             align-items: stretch;
-            box-shadow: 0 16px 34px rgba(0,0,0,0.58);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.58);
             position: relative;
             overflow: hidden;
             pointer-events: auto;
@@ -274,7 +274,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 28%);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 28%);
             pointer-events: none;
         }
 
@@ -315,8 +315,13 @@
             opacity: 0.7;
         }
 
-        .p1-active .panel-title { color: var(--neon-blue); }
-        .p2-active .panel-title { color: var(--neon-red); }
+        .p1-active .panel-title {
+            color: var(--neon-blue);
+        }
+
+        .p2-active .panel-title {
+            color: var(--neon-red);
+        }
 
         .character-grid {
             display: grid;
@@ -358,6 +363,7 @@
             border-color: var(--neon-blue);
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
         }
+
         .p2-active .character-card.selected {
             background: rgba(255, 0, 127, 0.15);
             border-color: var(--neon-red);
@@ -371,14 +377,14 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             min-height: 40px;
-            text-shadow: 0 0 12px rgba(255,255,255,0.16);
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.16);
         }
 
         .select-footer {
             width: min(1160px, 96vw);
             margin: 0 auto;
             padding: 12px 16px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 18px;
             background: linear-gradient(135deg, rgba(6, 10, 30, 0.92), rgba(16, 10, 40, 0.84));
             backdrop-filter: blur(12px);
@@ -400,12 +406,12 @@
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: rgba(255,255,255,0.84);
+            color: rgba(255, 255, 255, 0.84);
         }
 
         .select-footer-copy span {
             font-size: 13px;
-            color: rgba(255,255,255,0.62);
+            color: rgba(255, 255, 255, 0.62);
         }
 
         #fight-btn {
@@ -421,7 +427,7 @@
             cursor: pointer;
             box-shadow:
                 0 0 25px rgba(189, 0, 255, 0.4),
-                0 10px 18px rgba(0,0,0,0.36);
+                0 10px 18px rgba(0, 0, 0, 0.36);
             transition: all 0.3s ease;
             min-width: 220px;
         }
@@ -496,14 +502,14 @@
             width: 58px;
             height: 58px;
             border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.28);
-            background: rgba(255,255,255,0.09);
-            color: rgba(255,255,255,0.82);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(255, 255, 255, 0.09);
+            color: rgba(255, 255, 255, 0.82);
             font: 700 12px 'Outfit', sans-serif;
             letter-spacing: 1px;
             text-transform: uppercase;
             backdrop-filter: blur(12px);
-            box-shadow: 0 10px 18px rgba(0,0,0,0.22);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
             pointer-events: auto;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
@@ -526,7 +532,7 @@
 
         .touch-btn.pressed {
             transform: scale(0.96);
-            background: rgba(255,255,255,0.18);
+            background: rgba(255, 255, 255, 0.18);
         }
 
         .touch-label {
@@ -536,7 +542,7 @@
             font-weight: 700;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.56);
+            color: rgba(255, 255, 255, 0.56);
         }
 
         .touch-side.left .touch-label {
@@ -563,7 +569,8 @@
             }
         }
 
-        @media (max-width: 960px), (pointer: coarse) and (orientation: landscape) {
+        @media (max-width: 960px),
+        (pointer: coarse) and (orientation: landscape) {
             #selector-screen {
                 padding: 14px 14px 18px;
             }
@@ -653,11 +660,16 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 6px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
         }
 
-        .p1-hud .hud-name { color: var(--neon-blue); }
-        .p2-hud .hud-name { color: var(--neon-red); }
+        .p1-hud .hud-name {
+            color: var(--neon-blue);
+        }
+
+        .p2-hud .hud-name {
+            color: var(--neon-red);
+        }
 
         .health-bar-outer {
             width: 100%;
@@ -666,12 +678,17 @@
             border: 2px solid #fff;
             border-radius: 6px;
             padding: 2px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             position: relative;
         }
 
-        .p1-hud .health-bar-outer { border-color: rgba(0, 240, 255, 0.5); }
-        .p2-hud .health-bar-outer { border-color: rgba(255, 0, 127, 0.5); }
+        .p1-hud .health-bar-outer {
+            border-color: rgba(0, 240, 255, 0.5);
+        }
+
+        .p2-hud .health-bar-outer {
+            border-color: rgba(255, 0, 127, 0.5);
+        }
 
         .health-bar-inner {
             width: 100%;
@@ -703,14 +720,14 @@
             height: 90px;
             border-radius: 50%;
             backdrop-filter: blur(10px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
         #timer {
             font-size: 38px;
             font-weight: 800;
             color: #fff;
-            text-shadow: 0 0 10px rgba(255,255,255,0.4);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
         }
 
         /* --- CONTROL INSTRUCTIONS --- */
@@ -728,7 +745,7 @@
             display: flex;
             gap: 40px;
             font-size: 13px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             pointer-events: none;
             display: none;
         }
@@ -745,8 +762,13 @@
             text-transform: uppercase;
         }
 
-        .p1-inst strong { color: var(--neon-blue); }
-        .p2-inst strong { color: var(--neon-red); }
+        .p1-inst strong {
+            color: var(--neon-blue);
+        }
+
+        .p2-inst strong {
+            color: var(--neon-red);
+        }
 
         /* --- DYNAMIC ANNOUNCEMENT TEXT --- */
         #announcement {
@@ -790,8 +812,13 @@
         }
 
         @keyframes boxGlow {
-            0% { box-shadow: 0 0 30px rgba(189,0,255,0.3); }
-            100% { box-shadow: 0 0 50px rgba(189,0,255,0.6); }
+            0% {
+                box-shadow: 0 0 30px rgba(189, 0, 255, 0.3);
+            }
+
+            100% {
+                box-shadow: 0 0 50px rgba(189, 0, 255, 0.6);
+            }
         }
 
         #winner-title {
@@ -800,11 +827,18 @@
             margin-bottom: 30px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        .win-p1 { color: var(--neon-blue); text-shadow: 0 0 15px rgba(0, 240, 255, 0.5) !important; }
-        .win-p2 { color: var(--neon-red); text-shadow: 0 0 15px rgba(255, 0, 127, 0.5) !important; }
+        .win-p1 {
+            color: var(--neon-blue);
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.5) !important;
+        }
+
+        .win-p2 {
+            color: var(--neon-red);
+            text-shadow: 0 0 15px rgba(255, 0, 127, 0.5) !important;
+        }
 
         .btn-group {
             display: flex;
@@ -860,14 +894,19 @@
             font-weight: 600;
             z-index: 100;
             display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
+
         /* --- NEW MENUS --- */
-        #main-menu, #lobby-screen, #options-menu, #pause-screen {
+        #main-menu,
+        #lobby-screen,
+        #options-menu,
+        #pause-screen {
             background: rgba(5, 5, 15, 0.85);
             display: none;
             backdrop-filter: blur(10px);
         }
+
         .menu-box {
             background: var(--glass-bg);
             border: 2px solid var(--neon-blue);
@@ -881,6 +920,7 @@
             gap: 15px;
             pointer-events: auto;
         }
+
         .menu-box h2 {
             margin: 0 0 20px 0;
             font-size: 32px;
@@ -889,6 +929,7 @@
             color: var(--neon-blue);
             text-shadow: 0 0 10px var(--neon-blue);
         }
+
         .menu-btn {
             padding: 15px;
             font-size: 18px;
@@ -902,38 +943,45 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+
         .menu-btn:hover {
             background: var(--neon-blue);
             color: #000;
             box-shadow: 0 0 15px var(--neon-blue);
         }
+
         .menu-input {
             padding: 12px;
             font-size: 16px;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: #fff;
             border-radius: 8px;
             text-align: center;
             font-family: 'Outfit', sans-serif;
             margin-bottom: 10px;
         }
+
         .options-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
         }
+
         .options-row input[type="range"] {
             width: 60%;
         }
     </style>
 </head>
+
 <body>
 
     <!-- Debug Console Overlay -->
-    <div id="debug-console" style="position: absolute; bottom: 10px; left: 10px; width: 340px; max-height: 200px; overflow-y: auto; background: rgba(12, 11, 31, 0.95); color: #00ffaa; font-family: 'Outfit', monospace; font-size: 11px; padding: 10px; z-index: 99999; border-radius: 8px; border: 1.5px dashed #00ffaa; pointer-events: none; text-shadow: 0 0 2px #00ffaa; box-shadow: 0 4px 20px rgba(0,255,170,0.15); display: block;">
-        <div style="font-weight: bold; border-bottom: 1px solid #00ffaa; margin-bottom: 6px; padding-bottom: 4px; display: flex; justify-content: space-between;">
+    <div id="debug-console"
+        style="position: absolute; bottom: 10px; left: 10px; width: 340px; max-height: 200px; overflow-y: auto; background: rgba(12, 11, 31, 0.95); color: #00ffaa; font-family: 'Outfit', monospace; font-size: 11px; padding: 10px; z-index: 99999; border-radius: 8px; border: 1.5px dashed #00ffaa; pointer-events: none; text-shadow: 0 0 2px #00ffaa; box-shadow: 0 4px 20px rgba(0,255,170,0.15); display: block;">
+        <div
+            style="font-weight: bold; border-bottom: 1px solid #00ffaa; margin-bottom: 6px; padding-bottom: 4px; display: flex; justify-content: space-between;">
             <span>⚡ SYSTEM DIAGNOSTIC PANEL</span>
             <span style="color: #ff007f;">ACTIVE</span>
         </div>
@@ -947,7 +995,7 @@
     <!-- 0. MAIN MENU -->
     <div id="main-menu" class="ui-screen" style="display: flex;">
         <div class="menu-box">
-            <h2>CHRONO-STRIKE</h2>
+            <h2>FAMILY FIGHTER</h2>
             <button class="menu-btn" onclick="startGameMode('single')">Single Player</button>
             <button class="menu-btn" onclick="startGameMode('local')">Local Multiplayer</button>
             <button class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
@@ -964,7 +1012,8 @@
             <div style="margin: 10px 0; font-size: 14px; color: #888;">OR</div>
             <input type="text" id="lobby-joincode" class="menu-input" placeholder="Enter Join Code">
             <button class="menu-btn" onclick="joinGame()">Join Game</button>
-            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;" onclick="closeLobby()">Back</button>
+            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;"
+                onclick="closeLobby()">Back</button>
             <div id="lobby-status" style="margin-top: 15px; font-size: 14px; color: #ffea00;"></div>
         </div>
     </div>
@@ -979,7 +1028,8 @@
             </div>
             <div class="options-row">
                 <span>Music Volume</span>
-                <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5" onchange="updateAudioOptions()">
+                <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5"
+                    onchange="updateAudioOptions()">
             </div>
             <button class="menu-btn" style="margin-top: 20px;" onclick="closeOptions()">Back</button>
         </div>
@@ -997,7 +1047,7 @@
     <!-- 1. LOADING SCREEN -->
     <div id="loader-screen" class="ui-screen">
         <div class="loader-box">
-            <div class="loader-title">CHRONO-STRIKE</div>
+            <div class="loader-title">FAMILY FIGHTER</div>
             <div class="loader-status" id="load-status-title">Mounting Cybernetic Grid...</div>
             <div class="progress-bar-container">
                 <div id="progress-bar"></div>
@@ -1014,21 +1064,22 @@
                 <h1>Select Fighter</h1>
             </div>
             <div class="select-header-copy">
-                <div class="select-marquee">Live Cabinet Preview</div>
-                <p>Tap a portrait to preview that fighter's taunt. Lock both sides, then launch the bout.</p>
+                <div class="select-marquee">FAMILY FIGHTER</div>
+                <p>Choose your character, then READY up!</p>
             </div>
         </div>
 
         <div class="select-center-banner">
             <div class="select-stage-rule">Quarterfinal Match</div>
             <div class="select-versus">VS</div>
-            <div class="select-stage-copy">Center stage stays clear so both fighters read like cabinet hero renders instead of background props.</div>
+            <div class="select-stage-copy">Center stage stays clear so both fighters read like cabinet hero renders
+                instead of background props.</div>
         </div>
 
         <div class="selection-container">
             <!-- PLAYER 1 PANEL -->
             <div class="player-select-panel p1-active" id="p1-select-panel">
-                <div class="panel-title">Player 1 (Blue)</div>
+                <div class="panel-title">Player 1 </div>
                 <div class="character-grid">
                     <div class="character-card selected" data-char="kyle" onclick="selectCharacter(1, 'kyle')">
                         <div class="character-name">Kyle</div>
@@ -1051,7 +1102,7 @@
 
             <!-- PLAYER 2 PANEL -->
             <div class="player-select-panel p2-active" id="p2-select-panel">
-                <div class="panel-title">Player 2 (Red)</div>
+                <div class="panel-title">Player 2 </div>
                 <div class="character-grid">
                     <div class="character-card" data-char="kyle" onclick="selectCharacter(2, 'kyle')">
                         <div class="character-name">Kyle</div>
@@ -1075,8 +1126,9 @@
 
         <div class="select-footer">
             <div class="select-footer-copy">
-                <strong>Tournament Rules</strong>
-                <span>Best-of-one, character intros on, taunt confirm enabled, heavy finishers close the chain.</span>
+                <strong>Single Player</strong>
+                <span>Best of three rounds, climb the ladder to the top place in tournament mode! taunt confirm enabled,
+                    heavy finishers </span>
             </div>
             <button id="fight-btn" onclick="startFight()">Fight!</button>
         </div>
@@ -1106,14 +1158,14 @@
     <!-- 4. CONTROLS CHEATSHEET -->
     <div id="instructions">
         <div class="inst-group p1-inst">
-            <strong>Player 1 (Blue)</strong>
+            <strong>Player 1 </strong>
             <span>A / D: Move Left / Right</span>
             <span>S: Block High (Absorption)</span>
             <span>Space: Punch Chain (Light > Medium > Heavy)</span>
             <span>Left Shift: Kick Chain (Light > Medium > Heavy)</span>
         </div>
         <div class="inst-group p2-inst">
-            <strong>Player 2 (Red)</strong>
+            <strong>Player 2 </strong>
             <span>Left / Right: Move Left / Right</span>
             <span>Down Arrow: Block High (Absorption)</span>
             <span>P: Punch Chain (Light > Medium > Heavy)</span>
@@ -1131,8 +1183,10 @@
             </div>
             <div class="touch-action-cluster">
                 <div class="touch-column">
-                    <button class="touch-btn p1 wide" data-key="Space" data-buffer="punch" data-player="1">Punch</button>
-                    <button class="touch-btn p1 wide" data-key="ShiftLeft" data-buffer="kick" data-player="1">Kick</button>
+                    <button class="touch-btn p1 wide" data-key="Space" data-buffer="punch"
+                        data-player="1">Punch</button>
+                    <button class="touch-btn p1 wide" data-key="ShiftLeft" data-buffer="kick"
+                        data-player="1">Kick</button>
                 </div>
             </div>
         </div>
@@ -1173,7 +1227,7 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
         // --- 0. DIAGNOSTIC REDIRECTION ---
-        (function() {
+        (function () {
             const consoleBox = document.getElementById('debug-console');
             const logFn = console.log;
             const warnFn = console.warn;
@@ -1189,26 +1243,26 @@
                 consoleBox.scrollTop = consoleBox.scrollHeight;
             }
 
-            console.log = function(...args) {
+            console.log = function (...args) {
                 logFn.apply(console, args);
                 appendLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), '#00ffaa');
             };
-            console.warn = function(...args) {
+            console.warn = function (...args) {
                 warnFn.apply(console, args);
                 appendLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), '#ffea00');
             };
-            console.error = function(...args) {
+            console.error = function (...args) {
                 errFn.apply(console, args);
                 appendLog(args.map(a => typeof a === 'object' ? (a.message || JSON.stringify(a)) : a).join(' '), '#ff0055');
             };
 
-            window.addEventListener('error', function(event) {
+            window.addEventListener('error', function (event) {
                 appendLog(`Uncaught: ${event.message} (${event.filename.split('/').pop()}:${event.lineno})`, '#ff0055');
             });
-            window.addEventListener('unhandledrejection', function(event) {
+            window.addEventListener('unhandledrejection', function (event) {
                 appendLog(`Promise Reject: ${event.reason}`, '#ff0055');
             });
-            
+
             console.log("Diagnostic system mounted. Engine starting...");
         })();
 
@@ -1252,7 +1306,7 @@
             playHit() {
                 this.init();
                 const now = this.ctx.currentTime;
-                
+
                 // Distorted sub-bass thump
                 const subOsc = this.ctx.createOscillator();
                 const subGain = this.ctx.createGain();
@@ -1275,7 +1329,7 @@
                 }
                 const noise = this.ctx.createBufferSource();
                 noise.buffer = buffer;
-                
+
                 const filter = this.ctx.createBiquadFilter();
                 filter.type = 'bandpass';
                 filter.frequency.value = 600;
@@ -1678,7 +1732,7 @@
             });
             if (isHost) {
                 setTimeout(() => {
-                    conn.send({type: 'start'});
+                    conn.send({ type: 'start' });
                     gameMode = 'online';
                     document.getElementById('lobby-screen').style.display = 'none';
                     showCharacterSelect();
@@ -1751,7 +1805,7 @@
         // --- 3. ASSET LOAD PIPELINE ---
         async function loadAssets() {
             const fbxLoader = new THREE.FBXLoader();
-            
+
             const charKeys = Object.keys(CHARACTERS);
             const animationManifest = buildAnimationManifest();
             const animKeys = Object.keys(animationManifest);
@@ -1769,7 +1823,7 @@
             // Load all animations
             const animPromises = animKeys.map(key => {
                 return new Promise((resolve) => {
-                    fbxLoader.load(animationManifest[key], 
+                    fbxLoader.load(animationManifest[key],
                         (fbx) => {
                             if (fbx.animations && fbx.animations.length > 0) {
                                 loadedAnims[key] = fbx.animations[0];
@@ -1947,8 +2001,8 @@
 
         // Grid platform floor
         const floorGeo = new THREE.BoxGeometry(22, 0.5, 7);
-        const floorMat = new THREE.MeshStandardMaterial({ 
-            color: 0x111026, 
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x111026,
             roughness: 0.15,
             metalness: 0.8
         });
@@ -1970,10 +2024,10 @@
 
         // --- 6. PARTICLE PHYSICS SPARK FACTORY ---
         const particles = [];
-        
+
         function spawnParticles(position, colorHex, count = 15, isShield = false) {
             const particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
-            
+
             for (let i = 0; i < count; i++) {
                 const mat = new THREE.MeshBasicMaterial({
                     color: colorHex,
@@ -1982,7 +2036,7 @@
                 });
                 const mesh = new THREE.Mesh(particleGeo, mat);
                 mesh.position.copy(position);
-                
+
                 // Random spherical distribution
                 let velocity;
                 if (isShield) {
@@ -2017,16 +2071,16 @@
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 p.mesh.position.addScaledVector(p.velocity, dt);
-                
+
                 // Gravity on sparks, float on shield
                 if (!p.isShield) {
                     p.velocity.y -= 9.8 * dt;
                 }
-                
+
                 p.life -= p.decay * dt;
                 p.mesh.material.opacity = p.life;
                 p.mesh.scale.setScalar(p.life);
-                
+
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     p.mesh.geometry.dispose();
@@ -2049,27 +2103,27 @@
             const sourceLookup = new Map();
             const cloneLookup = new Map();
             const clone = source.clone();
-            
+
             parallelTraverse(source, clone, function (sourceNode, clonedNode) {
                 sourceLookup.set(clonedNode, sourceNode);
                 cloneLookup.set(sourceNode, clonedNode);
             });
-            
+
             clone.traverse(function (node) {
                 if (!node.isSkinnedMesh) return;
                 const clonedMesh = node;
                 const sourceMesh = sourceLookup.get(node);
                 const sourceBones = sourceMesh.skeleton.bones;
-                
+
                 clonedMesh.skeleton = sourceMesh.skeleton.clone();
                 clonedMesh.bindMatrix.copy(sourceMesh.bindMatrix);
                 clonedMesh.skeleton.bones = sourceBones.map(function (bone) {
                     return cloneLookup.get(bone);
                 });
-                
+
                 clonedMesh.bind(clonedMesh.skeleton, clonedMesh.bindMatrix);
             });
-            
+
             return clone;
         }
 
@@ -2219,21 +2273,21 @@
 
         function createPlayerMesh(charId, isPlayer1) {
             const container = new THREE.Group();
-            
+
             // Check if we need to use box fallback for this specific character
             const useBoxFallback = isFallbackMode || !loadedModels[charId];
-            
+
             if (useBoxFallback) {
                 // Stylized Box Mesh Fallback
                 const baseColor = CHARACTERS[charId].color;
-                const torsoMat = new THREE.MeshStandardMaterial({ 
-                    color: baseColor, 
-                    roughness: 0.1, 
+                const torsoMat = new THREE.MeshStandardMaterial({
+                    color: baseColor,
+                    roughness: 0.1,
                     metalness: 0.9,
                     emissive: baseColor,
                     emissiveIntensity: 0.25
                 });
-                
+
                 // Torso
                 const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), torsoMat);
                 torso.position.y = 1.1;
@@ -2264,7 +2318,7 @@
                 // Source character FBX shares the same Mixamo rig as the animation FBXs.
                 const originalModel = loadedModels[charId];
                 const model = cloneSkinnedMesh(originalModel);
-                
+
                 // Enable shadows and tweak materials safely
                 model.traverse(child => {
                     if (child.isMesh) {
@@ -2296,10 +2350,10 @@
                 const size = new THREE.Vector3();
                 box.getSize(size);
                 console.log(`Fighter model [${charId}] raw size: X=${size.x.toFixed(3)}, Y=${size.y.toFixed(3)}, Z=${size.z.toFixed(3)}`);
-                
+
                 const trueHeight = Math.max(size.x, size.y, size.z);
                 console.log(`Fighter model [${charId}] detected true height: ${trueHeight.toFixed(3)}`);
-                
+
                 let scaleFactor = 1.0;
                 if (isFinite(trueHeight) && trueHeight > 0.01) {
                     scaleFactor = 2.0 / trueHeight;
@@ -2361,7 +2415,7 @@
 
         function spawnFighter(charId, startX, isPlayer1) {
             const setup = createPlayerMesh(charId, isPlayer1);
-            
+
             const player = {
                 id: isPlayer1 ? 1 : 2,
                 charId: charId,
@@ -2373,7 +2427,7 @@
                 health: 100,
                 velocity: 0,
                 direction: isPlayer1 ? 1 : -1,
-                
+
                 // Combat state machine
                 currentState: 'idle',
                 isAttacking: false,
@@ -2392,14 +2446,14 @@
                 reactionDirection: 0,
                 introMotion: null,
                 attackLimbKeywords: [], // Tracking bone keywords for active attack (hand/foot)
-                
+
                 // Dynamic collision calculations
                 fistPos: new THREE.Vector3(),
                 torsoPos: new THREE.Vector3(),
-                
+
                 fadeTo(animName, duration = 0.15, timeScale = 1.0) {
                     if (isFallbackMode || !this.actions[animName]) return;
-                    
+
                     const nextAction = this.actions[animName];
                     const currentAction = this.actions[this.currentState];
 
@@ -2408,13 +2462,13 @@
                     nextAction.reset();
                     nextAction.setEffectiveWeight(1.0);
                     nextAction.setEffectiveTimeScale(timeScale);
-                    
+
                     if (currentAction) {
                         currentAction.crossFadeTo(nextAction, duration, true);
                     } else {
                         nextAction.play();
                     }
-                    
+
                     nextAction.play();
                     this.currentState = animName;
                 }
@@ -2422,7 +2476,7 @@
 
             // Ground positioning
             player.mesh.position.set(startX, 0, 0);
-            
+
             // Set Initial Facing Direction
             player.mesh.rotation.y = isPlayer1 ? Math.PI / 2 : -Math.PI / 2;
 
@@ -2448,7 +2502,7 @@
         let aiCurrentAction = 'idle';
         let aiHitCount = 0;
 
-        window.addEventListener('keydown', (e) => { 
+        window.addEventListener('keydown', (e) => {
             if (e.code) keys[e.code] = true;
 
             let bufferHit = null;
@@ -2472,9 +2526,9 @@
                 e.preventDefault();
             }
         });
-        window.addEventListener('keyup', (e) => { 
-            if (e.code) keys[e.code] = false; 
-            
+        window.addEventListener('keyup', (e) => {
+            if (e.code) keys[e.code] = false;
+
             if (gameMode === 'online') {
                 if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'ShiftLeft')) {
                     sendNetworkInput('keyup', e.code);
@@ -2718,11 +2772,11 @@
             let foundBone = null;
             player.mesh.traverse(child => {
                 if (foundBone) return;
-                
+
                 // Match bone (skinned) or dummy attachments (fallback mode)
                 const name = child.name.toLowerCase();
                 const matchesKeyword = keywords.some(kw => name.includes(kw));
-                
+
                 if (child.isBone && matchesKeyword) {
                     foundBone = child;
                 } else if (isFallbackMode && child.name && matchesKeyword) {
@@ -2745,7 +2799,7 @@
         // --- 11. COMBAT COLLISION CHECKS ---
         function checkHits(attacker, defender) {
             if (attacker.hasDealtDamage || !attacker.isAttacking || defender.isDead || !attacker.currentAttack) return;
-            
+
             const clipDuration = getClipDuration(attacker, attacker.currentAttack.animation);
             const animPercent = attacker.actionTimer / clipDuration;
             const [hitStart, hitEnd] = attacker.currentAttack.hitWindow;
@@ -2762,12 +2816,12 @@
 
                 if (dx < 0.8 && dy < 1.0) {
                     attacker.hasDealtDamage = true;
-                    
+
                     if (defender.isBlocking) {
                         // MITIGATED BLOCK
                         defender.health = Math.max(0, defender.health - attacker.currentAttack.blockDamage);
                         updateHealthBars();
-                        
+
                         spawnParticles(limbPos, 0x00f0ff, 12, true); // Blue shield arcs
                         AudioSynth.playBlock();
 
@@ -2777,11 +2831,11 @@
                         // UNPROTECTED DIRECT HIT
                         defender.health = Math.max(0, defender.health - attacker.currentAttack.damage);
                         updateHealthBars();
-                        
+
                         spawnParticles(limbPos, 0xff0055, 20, false); // Orange/Red sparks burst
                         AudioSynth.playHit();
                         triggerScreenShake();
-                        
+
                         // Trigger hit reaction
                         if (defender.health <= 0) {
                             triggerDeath(defender);
@@ -2840,7 +2894,7 @@
                 const dy = (Math.random() - 0.5) * shakeIntensity;
                 camera.position.x += dx;
                 camera.position.y += dy;
-                
+
                 shakeTime -= dt;
                 shakeIntensity = THREE.MathUtils.lerp(shakeIntensity, 0, 0.1);
             }
@@ -2954,7 +3008,7 @@
                     announce.textContent = "FIGHT!";
                     announce.classList.add('active');
                     AudioSynth.playSwing();
-                    
+
                     scheduleEvent(() => {
                         announce.classList.remove('active');
                         setCameraMode('fight', { shotDurationMs: 2600 });
@@ -3052,7 +3106,7 @@
             document.getElementById('p2-name-display').textContent = p2.name;
 
             updateHealthBars();
-            
+
             // Trigger 3,2,1 Countdown sequence
             gameActive = false;
             roundTime = 99;
@@ -3067,7 +3121,7 @@
                 if (!gameActive) return;
                 roundTime--;
                 document.getElementById('timer').textContent = roundTime;
-                
+
                 if (roundTime <= 0) {
                     clearInterval(timerInterval);
                     // Evaluate Draw or Higher Health Winner
@@ -3115,7 +3169,7 @@
                     winnerText.textContent = "DRAW SEQUENCE";
                     winnerText.className = "";
                 } else {
-                    winnerText.textContent = `${players[winnerNum-1].name} WINS`;
+                    winnerText.textContent = `${players[winnerNum - 1].name} WINS`;
                     winnerText.className = winnerNum === 1 ? 'win-p1' : 'win-p2';
                     AudioSynth.playWin();
                 }
@@ -3144,7 +3198,7 @@
             if (gamePaused) return;
 
             const dt = clock.getDelta();
-            
+
             // Limit delta time spike on browser tab blur
             const frameDt = Math.min(dt, 0.1);
 
@@ -3171,7 +3225,7 @@
                     } else {
                         if (keys['KeyA']) p1.velocity = -2.0;
                         if (keys['KeyD']) p1.velocity = 2.0;
-                        
+
                         if (p1.velocity !== 0) {
                             p1.fadeTo(getLocomotionAnimation(p1, p2), 0.12);
                         } else {
@@ -3188,7 +3242,7 @@
                         // AI Logic
                         if (performance.now() > aiNextActionTime) {
                             const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
-                            
+
                             // Retreat logic: if hit count is high, sometimes back away
                             if (aiHitCount >= 3 && Math.random() < 0.5) {
                                 aiHitCount = 0; // reset
@@ -3238,7 +3292,7 @@
                         } else {
                             if (keys['ArrowLeft']) p2.velocity = -2.0;
                             if (keys['ArrowRight']) p2.velocity = 2.0;
-                            
+
                             if (p2.velocity !== 0) {
                                 p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
                             } else {
@@ -3278,7 +3332,7 @@
                             resetCombo(p);
                         }
                     }
-                    
+
                     if (p.isAttacking) {
                         p.actionTimer += frameDt;
                         const clipDur = getClipDuration(p, p.currentAttack ? p.currentAttack.animation : p.currentState);
@@ -3317,7 +3371,7 @@
 
                     if (p.isHit) {
                         p.actionTimer += frameDt;
-                        
+
                         let clipDur = 0.5;
                         const reactionKey = p.currentState;
                         if (!isFallbackMode && p.actions[reactionKey]) {
@@ -3357,9 +3411,9 @@
                 players.forEach(p => {
                     const worldPos = new THREE.Vector3();
                     p.mesh.getWorldPosition(worldPos);
-                    
+
                     const currentBox = new THREE.Box3().setFromObject(p.mesh);
-                    
+
                     let meshCount = 0;
                     let visibleMeshCount = 0;
                     p.mesh.traverse(child => {
@@ -3388,4 +3442,5 @@
         animate();
     </script>
 </body>
+
 </html>
