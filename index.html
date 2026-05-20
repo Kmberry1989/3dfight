@@ -219,16 +219,7 @@
         }
 
         .select-stage-rule {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(8, 11, 28, 0.62);
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.72);
+            display: none;
         }
 
         .select-versus {
@@ -245,11 +236,7 @@
         }
 
         .select-stage-copy {
-            margin-top: 12px;
-            font-size: 14px;
-            line-height: 1.5;
-            color: rgba(255,255,255,0.78);
-            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            display: none;
         }
 
         .selection-container {
@@ -267,13 +254,13 @@
         }
 
         .player-select-panel {
-            width: min(34vw, 390px);
+            width: min(25vw, 290px);
             min-height: 295px;
-            background: linear-gradient(180deg, rgba(10, 15, 34, 0.84), rgba(8, 7, 24, 0.96));
+            background: linear-gradient(180deg, rgba(10, 15, 34, 0.4), rgba(8, 7, 24, 0.6));
             border: 2px solid var(--glass-border);
             border-radius: 24px;
             padding: 18px 18px 16px;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(5px);
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -875,6 +862,71 @@
             display: none;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
+        /* --- NEW MENUS --- */
+        #main-menu, #lobby-screen, #options-menu, #pause-screen {
+            background: rgba(5, 5, 15, 0.85);
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+        .menu-box {
+            background: var(--glass-bg);
+            border: 2px solid var(--neon-blue);
+            border-radius: 24px;
+            padding: 40px;
+            width: 450px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .menu-box h2 {
+            margin: 0 0 20px 0;
+            font-size: 32px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+        .menu-btn {
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: #fff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .menu-input {
+            padding: 12px;
+            font-size: 16px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 10px;
+        }
+        .options-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .options-row input[type="range"] {
+            width: 60%;
+        }
     </style>
 </head>
 <body>
@@ -890,6 +942,56 @@
     <!-- Fallback Banner -->
     <div id="fallback-banner">
         ⚠️ Character GLB or FBX animations failed to load. Running in Stylized Retro-Box Fallback Mode.
+    </div>
+
+    <!-- 0. MAIN MENU -->
+    <div id="main-menu" class="ui-screen" style="display: flex;">
+        <div class="menu-box">
+            <h2>CHRONO-STRIKE</h2>
+            <button class="menu-btn" onclick="startGameMode('single')">Single Player</button>
+            <button class="menu-btn" onclick="startGameMode('local')">Local Multiplayer</button>
+            <button class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
+            <button class="menu-btn" onclick="openOptions()">Options</button>
+        </div>
+    </div>
+
+    <!-- 0.1 LOBBY SCREEN -->
+    <div id="lobby-screen" class="ui-screen">
+        <div class="menu-box">
+            <h2>Online Lobby</h2>
+            <input type="text" id="lobby-username" class="menu-input" placeholder="Enter Username" value="Player">
+            <button class="menu-btn" onclick="hostGame()">Host Game (Generate Code)</button>
+            <div style="margin: 10px 0; font-size: 14px; color: #888;">OR</div>
+            <input type="text" id="lobby-joincode" class="menu-input" placeholder="Enter Join Code">
+            <button class="menu-btn" onclick="joinGame()">Join Game</button>
+            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;" onclick="closeLobby()">Back</button>
+            <div id="lobby-status" style="margin-top: 15px; font-size: 14px; color: #ffea00;"></div>
+        </div>
+    </div>
+
+    <!-- 0.2 OPTIONS MENU -->
+    <div id="options-menu" class="ui-screen">
+        <div class="menu-box">
+            <h2>Options</h2>
+            <div class="options-row">
+                <span>SFX Volume</span>
+                <input type="range" id="sfx-vol" min="0" max="1" step="0.1" value="0.5" onchange="updateAudioOptions()">
+            </div>
+            <div class="options-row">
+                <span>Music Volume</span>
+                <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5" onchange="updateAudioOptions()">
+            </div>
+            <button class="menu-btn" style="margin-top: 20px;" onclick="closeOptions()">Back</button>
+        </div>
+    </div>
+
+    <!-- 0.3 PAUSE SCREEN -->
+    <div id="pause-screen" class="ui-screen" style="z-index: 999;">
+        <div class="menu-box">
+            <h2>PAUSED</h2>
+            <button class="menu-btn" onclick="togglePause()">Resume</button>
+            <button class="menu-btn" style="border-color: #ff007f;" onclick="quitToMainMenu()">Quit to Menu</button>
+        </div>
     </div>
 
     <!-- 1. LOADING SCREEN -->
@@ -1068,7 +1170,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
-
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
         // --- 0. DIAGNOSTIC REDIRECTION ---
         (function() {
@@ -1125,8 +1227,8 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(440, now);
                 osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                gain.gain.setValueAtTime(0.15 * sfxVolume, now);
+                gain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.15);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(now);
@@ -1140,8 +1242,8 @@
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(250, now);
                 osc.frequency.exponentialRampToValueAtTime(60, now + 0.2);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                gain.gain.setValueAtTime(0.3 * sfxVolume, now);
+                gain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.25);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(now);
@@ -1157,8 +1259,8 @@
                 subOsc.type = 'sawtooth';
                 subOsc.frequency.setValueAtTime(120, now);
                 subOsc.frequency.linearRampToValueAtTime(40, now + 0.15);
-                subGain.gain.setValueAtTime(0.4, now);
-                subGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                subGain.gain.setValueAtTime(0.4 * sfxVolume, now);
+                subGain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.2);
                 subOsc.connect(subGain);
                 subGain.connect(this.ctx.destination);
                 subOsc.start(now);
@@ -1180,8 +1282,8 @@
                 filter.Q.value = 3.0;
 
                 const noiseGain = this.ctx.createGain();
-                noiseGain.gain.setValueAtTime(0.5, now);
-                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                noiseGain.gain.setValueAtTime(0.5 * sfxVolume, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.1);
 
                 noise.connect(filter);
                 filter.connect(noiseGain);
@@ -1197,8 +1299,8 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(1800, now);
                 osc.frequency.linearRampToValueAtTime(1400, now + 0.08);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
+                gain.gain.setValueAtTime(0.2 * sfxVolume, now);
+                gain.gain.exponentialRampToValueAtTime(0.005 * sfxVolume, now + 0.1);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(now);
@@ -1213,8 +1315,8 @@
                     const gain = this.ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-                    gain.gain.setValueAtTime(0.15, now + idx * 0.08);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.6);
+                    gain.gain.setValueAtTime(0.15 * sfxVolume, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001 * sfxVolume, now + idx * 0.08 + 0.6);
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
                     osc.start(now + idx * 0.08);
@@ -1493,6 +1595,155 @@
         const loadStatusTitle = document.getElementById('load-status-title');
         const loadStatusDetail = document.getElementById('load-status-detail');
 
+        let gameMode = 'local'; // 'single', 'local', 'online'
+        let gamePaused = false;
+        let peer = null;
+        let conn = null;
+        let isHost = false;
+        let sfxVolume = 0.5;
+        let musicVolume = 0.5;
+        let bgMusic = new Audio('public/stages/generic_template/generic-loop.ogg');
+        bgMusic.loop = true;
+
+        function showMainMenu() {
+            document.getElementById('selector-screen').classList.add('hidden');
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+        }
+
+        function startGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('main-menu').style.display = 'none';
+            showCharacterSelect();
+        }
+
+        function openLobby() {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'flex';
+            if (!peer) {
+                document.getElementById('lobby-status').textContent = 'Connecting to signaling server...';
+                peer = new Peer();
+                peer.on('open', id => {
+                    document.getElementById('lobby-status').textContent = 'Connected. Ready to host or join.';
+                });
+                peer.on('connection', c => {
+                    conn = c;
+                    setupConnection();
+                });
+                peer.on('error', err => {
+                    document.getElementById('lobby-status').textContent = 'Error: ' + err.message;
+                });
+            }
+        }
+
+        function hostGame() {
+            if (!peer) return;
+            isHost = true;
+            document.getElementById('lobby-joincode').value = peer.id;
+            document.getElementById('lobby-status').textContent = 'Waiting for peer... Share your code: ' + peer.id;
+        }
+
+        function joinGame() {
+            if (!peer) return;
+            const code = document.getElementById('lobby-joincode').value;
+            if (!code) return;
+            isHost = false;
+            document.getElementById('lobby-status').textContent = 'Joining ' + code + '...';
+            conn = peer.connect(code);
+            conn.on('open', () => {
+                setupConnection();
+            });
+        }
+
+        function setupConnection() {
+            document.getElementById('lobby-status').textContent = 'Peer connected! Starting...';
+            conn.on('data', data => {
+                if (data.type === 'start') {
+                    gameMode = 'online';
+                    document.getElementById('lobby-screen').style.display = 'none';
+                    showCharacterSelect();
+                } else if (data.type === 'input' && gameActive) {
+                    const remotePlayerId = isHost ? 2 : 1;
+                    if (data.action === 'keydown') {
+                        keys[data.key] = true;
+                        if (data.buffer) bufferAttackInput(remotePlayerId, data.buffer);
+                    } else if (data.action === 'keyup') {
+                        keys[data.key] = false;
+                    }
+                } else if (data.type === 'select') {
+                    selectCharacter(data.player, data.charId, true);
+                } else if (data.type === 'fight') {
+                    startFight(true);
+                }
+            });
+            if (isHost) {
+                setTimeout(() => {
+                    conn.send({type: 'start'});
+                    gameMode = 'online';
+                    document.getElementById('lobby-screen').style.display = 'none';
+                    showCharacterSelect();
+                }, 1000);
+            }
+        }
+
+        function sendNetworkInput(action, key, buffer = null) {
+            if (gameMode === 'online' && conn && conn.open) {
+                conn.send({ type: 'input', action, key, buffer });
+            }
+        }
+
+        function closeLobby() {
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+        }
+
+        function openOptions() {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('options-menu').style.display = 'flex';
+        }
+
+        function closeOptions() {
+            document.getElementById('options-menu').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+        }
+
+        function updateAudioOptions() {
+            sfxVolume = parseFloat(document.getElementById('sfx-vol').value);
+            musicVolume = parseFloat(document.getElementById('music-vol').value);
+            bgMusic.volume = musicVolume;
+        }
+
+        function togglePause() {
+            if (!gameActive && !gamePaused) return;
+            gamePaused = !gamePaused;
+            document.getElementById('pause-screen').style.display = gamePaused ? 'flex' : 'none';
+            if (!gamePaused && timerInterval === null && gameActive) {
+                startTimer();
+            } else if (gamePaused) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function quitToMainMenu() {
+            gamePaused = false;
+            gameActive = false;
+            clearInterval(timerInterval);
+            document.getElementById('pause-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('gameover-screen').style.display = 'none';
+            removeFighterList(players);
+            removeFighterList(previewFighters);
+            showMainMenu();
+            bgMusic.pause();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && (gameActive || gamePaused)) {
+                togglePause();
+            }
+        });
+
         let isFallbackMode = false;
         const loadedModels = {};
         const loadedAnims = {};
@@ -1573,7 +1824,7 @@
             loaderScreen.style.opacity = '0';
             setTimeout(() => {
                 loaderScreen.style.display = 'none';
-                showCharacterSelect();
+                showMainMenu();
             }, 500);
         }
 
@@ -1833,7 +2084,7 @@
             shotDurationMs: 2200
         };
 
-        const INTRO_DROP_HEIGHT = 2.75;
+        const INTRO_DROP_HEIGHT = 0;
         const INTRO_STAGGER_MS = 240;
         const TAUNT_BUFFER_MS = 220;
 
@@ -2193,14 +2444,27 @@
             attackInputBuffer[playerId] = attackType;
         }
 
+        let aiNextActionTime = 0;
+        let aiCurrentAction = 'idle';
+        let aiHitCount = 0;
+
         window.addEventListener('keydown', (e) => { 
             if (e.code) keys[e.code] = true;
 
+            let bufferHit = null;
             if (!e.repeat) {
-                if (e.code === 'Space') bufferAttackInput(1, 'punch');
-                if (e.code === 'ShiftLeft') bufferAttackInput(1, 'kick');
-                if (e.code === 'KeyP') bufferAttackInput(2, 'punch');
-                if (e.code === 'KeyO') bufferAttackInput(2, 'kick');
+                if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
+                if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
+                if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
+                if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
+            }
+
+            if (gameMode === 'online') {
+                if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+                    sendNetworkInput('keydown', e.code, bufferHit);
+                } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+                    sendNetworkInput('keydown', e.code, bufferHit);
+                }
             }
 
             // Prevent scrolling on Space / Arrows
@@ -2210,6 +2474,14 @@
         });
         window.addEventListener('keyup', (e) => { 
             if (e.code) keys[e.code] = false; 
+            
+            if (gameMode === 'online') {
+                if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+                    sendNetworkInput('keyup', e.code);
+                } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+                    sendNetworkInput('keyup', e.code);
+                }
+            }
         });
 
         function resetCombo(player) {
@@ -2734,13 +3006,13 @@
                 playPreferredAction(player, 'standingPose', 'idle', 0.05);
             });
 
-            const p1IntroDurationMs = Math.min(getActionDurationMs(p1, 'intro', 1600), 2500);
+            const p1IntroDurationMs = getActionDurationMs(p1, 'intro', 2500);
             setCameraMode('intro', { focusPlayerId: p1.id, shotDurationMs: p1IntroDurationMs });
             startIntroMotion(p1);
 
             scheduleEvent(() => {
                 playPreferredAction(p1, 'standingPose', 'idle', 0.08);
-                const p2IntroDurationMs = Math.min(getActionDurationMs(p2, 'intro', 1600), 2500);
+                const p2IntroDurationMs = getActionDurationMs(p2, 'intro', 2500);
                 setCameraMode('intro', { focusPlayerId: p2.id, shotDurationMs: p2IntroDurationMs });
                 startIntroMotion(p2);
 
@@ -2755,6 +3027,7 @@
             AudioSynth.playSelect();
             clearScheduledEvents();
             if (timerInterval) clearInterval(timerInterval);
+            bgMusic.play().catch(e => console.warn('Audio play failed', e));
 
             document.getElementById('announcement').classList.remove('active');
             document.getElementById('gameover-screen').style.display = 'none';
@@ -2868,6 +3141,8 @@
         function animate() {
             requestAnimationFrame(animate);
 
+            if (gamePaused) return;
+
             const dt = clock.getDelta();
             
             // Limit delta time spike on browser tab blur
@@ -2894,8 +3169,8 @@
                         resetCombo(p1);
                         p1.fadeTo('block', 0.1);
                     } else {
-                        if (keys['KeyA']) p1.velocity = -4.5;
-                        if (keys['KeyD']) p1.velocity = 4.5;
+                        if (keys['KeyA']) p1.velocity = -2.0;
+                        if (keys['KeyD']) p1.velocity = 2.0;
                         
                         if (p1.velocity !== 0) {
                             p1.fadeTo(getLocomotionAnimation(p1, p2), 0.12);
@@ -2909,18 +3184,66 @@
                 p2.velocity = 0;
                 p2.isBlocking = false;
                 if (!p2.isAttacking && !p2.isHit && !p2.isDead) {
-                    if (keys['ArrowDown']) {
-                        p2.isBlocking = true;
-                        resetCombo(p2);
-                        p2.fadeTo('block', 0.1);
-                    } else {
-                        if (keys['ArrowLeft']) p2.velocity = -4.5;
-                        if (keys['ArrowRight']) p2.velocity = 4.5;
-                        
-                        if (p2.velocity !== 0) {
-                            p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
+                    if (gameMode === 'single') {
+                        // AI Logic
+                        if (performance.now() > aiNextActionTime) {
+                            const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
+                            
+                            // Retreat logic: if hit count is high, sometimes back away
+                            if (aiHitCount >= 3 && Math.random() < 0.5) {
+                                aiHitCount = 0; // reset
+                                aiCurrentAction = 'backward';
+                                aiNextActionTime = performance.now() + 800; // step backward for 0.8s
+                            } else if (dist > 1.8) {
+                                aiCurrentAction = 'forward';
+                                aiNextActionTime = performance.now() + 300 + Math.random() * 400; // move for 0.3-0.7s
+                            } else {
+                                // in range, maybe attack or block
+                                if (Math.random() < 0.7) {
+                                    const attackType = Math.random() < 0.5 ? 'punch' : 'kick';
+                                    bufferAttackInput(2, attackType);
+                                    aiCurrentAction = 'idle';
+                                    aiNextActionTime = performance.now() + 600 + Math.random() * 600; // delay next action
+                                } else {
+                                    aiCurrentAction = 'block';
+                                    aiNextActionTime = performance.now() + 500 + Math.random() * 500;
+                                }
+                            }
+                        }
+
+                        if (aiCurrentAction === 'block') {
+                            p2.isBlocking = true;
+                        } else if (aiCurrentAction === 'forward') {
+                            p2.velocity = p2.direction * 2.0;
+                        } else if (aiCurrentAction === 'backward') {
+                            p2.velocity = p2.direction * -2.0;
+                        }
+
+                        if (p2.isBlocking) {
+                            resetCombo(p2);
+                            p2.fadeTo('block', 0.1);
                         } else {
-                            p2.fadeTo('idle', 0.15);
+                            if (p2.velocity !== 0) {
+                                p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
+                            } else {
+                                p2.fadeTo('idle', 0.15);
+                            }
+                        }
+                    } else {
+                        // Local or Online Mode
+                        if (keys['ArrowDown']) {
+                            p2.isBlocking = true;
+                            resetCombo(p2);
+                            p2.fadeTo('block', 0.1);
+                        } else {
+                            if (keys['ArrowLeft']) p2.velocity = -2.0;
+                            if (keys['ArrowRight']) p2.velocity = 2.0;
+                            
+                            if (p2.velocity !== 0) {
+                                p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
+                            } else {
+                                p2.fadeTo('idle', 0.15);
+                            }
                         }
                     }
                 }

@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor & IDE
+.vscode/
+.idea/
+.gemini/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Node (in case of future package management)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Logs & Temp
+*.log
+tmp/
+temp/
+
+# Environment Variables
+.env
+.env.local
