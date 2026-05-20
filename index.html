@@ -62,13 +62,229 @@
             z-index: 10;
         }
     </style>
-    <!-- Clean, direct CDN connection to bypass CORS network filters -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Direct open-source jsDelivr CDN bypass to avoid cdnjs Cloudflare CORS locks -->
+    <script src="https://jsdelivr.net"></script>
 </head>
 <body>
 
     <div id="ui">
         <div class="health-bar-container">
+            <div id="p1-bar" class="health-bar"></div>
+        </div>
+        <div class="health-bar-container">
+            <div id="p2-bar" class="health-bar"></div>
+        </div>
+    </div>
+
+    <div id="announcement">HIT!</div>
+
+    <div id="instructions">
+        <strong>Player 1 (Blue):</strong> A / D to Move | Space to Punch <br>
+        <strong>Player 2 (Red):</strong> Left / Right Arrows to Move | P to Punch
+    </div>
+
+    <script>
+        // --- 1. HOOK FAILSAFE VALIDATOR ---
+        if (typeof THREE === 'undefined') {
+            document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:20%;'>Error: Three.js library failed to stream from CDN. Check network proxy filters.</h2>";
+            throw new Error("Three.js package missing.");
+        }
+
+        // --- 2. LAYOUT STRUCTURAL INITS ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 4, 12);
+        camera.lookAt(0, 1.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 3. SCENE MATRICES & LIGHTS ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 15, 5);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const floorGeo = new THREE.BoxGeometry(20, 0.5, 6);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.4 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.y = -0.25;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const grid = new THREE.GridHelper(20, 10, 0x00adb5, 0x393e46);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // --- 4. MODEL GENERATOR FACTORY ---
+        function createFighter(color, startX) {
+            const group = new THREE.Group();
+            group.position.set(startX, 0, 0);
+
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2 });
+
+            const torsoGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
+            const torso = new THREE.Mesh(torsoGeo, mat);
+            torso.position.y = 1.1;
+            torso.castShadow = true;
+            group.add(torso);
+
+            const headGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            const head = new THREE.Mesh(headGeo, mat);
+            head.position.y = 1.9;
+            head.castShadow = true;
+            group.add(head);
+
+            const leftFistPivot = new THREE.Group();
+            leftFistPivot.position.set(-0.5, 1.2, 0.2);
+            const rightFistPivot = new THREE.Group();
+            rightFistPivot.position.set(0.5, 1.2, 0.2);
+            group.add(leftFistPivot, rightFistPivot);
+
+            const fistGeo = new THREE.BoxGeometry(0.2, 0.2, 0.4);
+            const fistMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            
+            const leftFist = new THREE.Mesh(fistGeo, fistMat);
+            leftFist.position.z = 0.2;
+            leftFistPivot.add(leftFist);
+
+            const rightFist = new THREE.Mesh(fistGeo, fistMat);
+            rightFist.position.z = 0.2;
+            rightFistPivot.add(rightFist);
+
+            scene.add(group);
+
+            return {
+                mesh: group,
+                rightFist: rightFist, 
+                leftFistPivot: leftFistPivot,
+                rightFistPivot: rightFistPivot,
+                health: 100,
+                isAttacking: false,
+                attackTimer: 0,
+                velocity: 0,
+                direction: startX < 0 ? 1 : -1,
+                boundingBox: new THREE.Box3(),
+                fistBox: new THREE.Box3()
+            };
+        }
+
+        const p1 = createFighter(0x00adb5, -3);
+        const p2 = createFighter(0xff2e63, 3);
+
+        p1.mesh.rotation.y = Math.PI / 2;
+        p2.mesh.rotation.y = -Math.PI / 2;
+
+        // --- 5. KEYBOARD MAP STRUCTS ---
+        const keys = {};
+        window.addEventListener('keydown', (e) => { if(e.code) keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { if(e.code) keys[e.code] = false; });
+
+        // --- 6. CALCULATE REBOUND INTERSECTIONS ---
+        const clock = new THREE.Clock();
+        const hitText = document.getElementById('announcement');
+
+        function triggerPunch(player) {
+            if (player.isAttacking) return;
+            player.isAttacking = true;
+            player.attackTimer = 0;
+        }
+
+        function checkCollision(attacker, defender, barId) {
+            attacker.fistBox.setFromObject(attacker.rightFist);
+            defender.boundingBox.setFromObject(defender.mesh);
+
+            if (attacker.fistBox.intersectsBox(defender.boundingBox)) {
+                defender.health = Math.max(0, defender.health - 10);
+                document.getElementById(barId).style.width = defender.health + '%';
+                
+                hitText.style.display = 'block';
+                setTimeout(() => { hitText.style.display = 'none'; }, 150);
+
+                defender.mesh.position.x += attacker.direction * 0.4;
+                return true;
+            }
+            return false;
+        }
+
+        // --- 7. RECURSIVE TICK LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            p1.velocity = 0;
+            if (keys['KeyA']) p1.velocity = -3;
+            if (keys['KeyD']) p1.velocity = 3;
+            if (keys['Space']) triggerPunch(p1);
+
+            p2.velocity = 0;
+            if (keys['ArrowLeft']) p2.velocity = -3;
+            if (keys['ArrowRight']) p2.velocity = 3;
+            if (keys['KeyP']) triggerPunch(p2);
+
+            p1.mesh.position.x = Math.max(-9, Math.min(9, p1.mesh.position.x + p1.velocity * dt));
+            p2.mesh.position.x = Math.max(-9, Math.min(9, p2.mesh.position.x + p2.velocity * dt));
+
+            if (p1.mesh.position.x < p2.mesh.position.x) {
+                p1.mesh.rotation.y = Math.PI / 2;  p1.direction = 1;
+                p2.mesh.rotation.y = -Math.PI / 2; p2.direction = -1;
+            } else {
+                p1.mesh.rotation.y = -Math.PI / 2; p1.direction = -1;
+                p2.mesh.rotation.y = Math.PI / 2;  p2.direction = 1;
+            }
+
+            if (p1.isAttacking) {
+                p1.attackTimer += dt * 8; 
+                p1.rightFistPivot.position.z = Math.sin(p1.attackTimer * Math.PI) * 0.8;
+
+                if (p1.attackTimer >= 0.4 && p1.attackTimer <= 0.6) {
+                    checkCollision(p1, p2, 'p2-bar');
+                }
+
+                if (p1.attackTimer >= 1.0) {
+                    p1.isAttacking = false;
+                    p1.rightFistPivot.position.z = 0;
+                }
+            }
+
+            if (p2.isAttacking) {
+                p2.attackTimer += dt * 8;
+                p2.rightFistPivot.position.z = Math.sin(p2.attackTimer * Math.PI) * 0.8;
+
+                if (p2.attackTimer >= 0.4 && p2.attackTimer <= 0.6) {
+                    checkCollision(p2, p1, 'p1-bar');
+                }
+
+                if (p2.attackTimer >= 1.0) {
+                    p2.isAttacking = false;
+                    p2.rightFistPivot.position.z = 0;
+                }
+            }
+
+            const midPointX = (p1.mesh.position.x + p2.mesh.position.x) / 2;
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, midPointX, 0.05);
+
+            renderer.render(scene, camera);
+        }
+
+        // --- 8. RE-ADJUST VIEWPORTS ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
             <div id="p1-bar" class="health-bar"></div>
         </div>
         <div class="health-bar-container">
