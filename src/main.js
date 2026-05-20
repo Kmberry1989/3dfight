@@ -246,6 +246,30 @@ import Peer from 'peerjs';
                     stepForwardLong: 'public/animations/donald/Donald Long Step Forward.fbx',
                     stepBackward: 'public/animations/donald/Donald Step Backward.fbx'
                 }
+            },
+            eric: {
+                name: 'Eric',
+                path: 'public/characters/eric.fbx',
+                color: 0xff8c00,
+                animations: {
+                    idle: 'public/animations/Fighting Idle.fbx',
+                    standingPose: 'public/animations/Male Standing Pose (1).fbx',
+                    intro: 'public/animations/Jumping Down.fbx',
+                    taunt: 'public/animations/Standing Taunt Chest Thump.fbx',
+                    victory: 'public/animations/Silly Dancing.fbx'
+                }
+            },
+            kristen: {
+                name: 'Kristen',
+                path: 'public/characters/kristen.fbx',
+                color: 0x00ffcc,
+                animations: {
+                    idle: 'public/animations/Bouncing Fight Idle.fbx',
+                    standingPose: 'public/animations/Female Standing Pose (1).fbx',
+                    intro: 'public/animations/Jumping Down.fbx',
+                    taunt: 'public/animations/Threatening.fbx',
+                    victory: 'public/animations/Booty Hip Hop Dance.fbx'
+                }
             }
         };
 
