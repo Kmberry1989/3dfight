@@ -4,47 +4,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Peer from 'peerjs';
 
-// --- 0. DIAGNOSTIC REDIRECTION ---
-        (function() {
-            const consoleBox = document.getElementById('debug-console');
-            const logFn = console.log;
-            const warnFn = console.warn;
-            const errFn = console.error;
-
-            function appendLog(text, color = '#00ffaa') {
-                if (!consoleBox) return;
-                const line = document.createElement('div');
-                line.style.color = color;
-                line.style.marginBottom = '3px';
-                line.textContent = `> ${text}`;
-                consoleBox.appendChild(line);
-                consoleBox.scrollTop = consoleBox.scrollHeight;
-            }
-
-            console.log = function(...args) {
-                logFn.apply(console, args);
-                appendLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), '#00ffaa');
-            };
-            console.warn = function(...args) {
-                warnFn.apply(console, args);
-                appendLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), '#ffea00');
-            };
-            console.error = function(...args) {
-                errFn.apply(console, args);
-                appendLog(args.map(a => typeof a === 'object' ? (a.message || JSON.stringify(a)) : a).join(' '), '#ff0055');
-            };
-
-            window.addEventListener('error', function(event) {
-                appendLog(`Uncaught: ${event.message} (${event.filename.split('/').pop()}:${event.lineno})`, '#ff0055');
-            });
-            window.addEventListener('unhandledrejection', function(event) {
-                appendLog(`Promise Reject: ${event.reason}`, '#ff0055');
-            });
-            
-            console.log("Diagnostic system mounted. Engine starting...");
-        })();
-
-        // --- 1. WEB AUDIO SYNTHESIZER ---
+// --- 1. WEB AUDIO SYNTHESIZER ---
         const AudioSynth = {
             ctx: null,
             init() {
@@ -159,116 +119,116 @@ import Peer from 'peerjs';
 
         // --- 2. ASSET MANIFESTS ---
         const SHARED_ANIMATIONS = {
-            stepForwardShort: 'public/animations/Short Step Forward.fbx',
-            stepForwardLong: 'public/animations/Long Step Forward.fbx',
-            stepBackward: 'public/animations/Step Backward.fbx',
-            punchLight: 'public/animations/Punch light.fbx',
-            punchMedium: 'public/animations/Punch medium.fbx',
-            punchHeavy: 'public/animations/Punch heavy.fbx',
-            kickLight: 'public/animations/Kicking light.fbx',
-            kickMedium: 'public/animations/Kick medium.fbx',
-            kickHeavy: 'public/animations/Kick heavy.fbx',
-            block: 'public/animations/Blocking.fbx',
-            hitHighLight: 'public/animations/Reaction highlight.fbx',
-            hitHighMedium: 'public/animations/Reaction highmedium.fbx',
-            hitHighHeavy: 'public/animations/Reaction highheavy.fbx',
-            hitMidLight: 'public/animations/Reaction midlight.fbx',
-            hitMidMedium: 'public/animations/Reaction midmedium.fbx',
-            hitMidHeavy: 'public/animations/Reaction midheavy.fbx',
-            hitLowLight: 'public/animations/Reaction lowlight.fbx',
-            hitLowMedium: 'public/animations/Reaction lowmedium.fbx',
-            hitLowHeavy: 'public/animations/Reaction lowheavy.fbx',
-            deathFall: 'public/animations/Falling Backwards.fbx',
-            deathFlyBack: 'public/animations/Flying Back Death.fbx',
-            deathKnockout: 'public/animations/Knocked Out.fbx'
+            stepForwardShort: '/animations/Short Step Forward.fbx',
+            stepForwardLong: '/animations/Long Step Forward.fbx',
+            stepBackward: '/animations/Step Backward.fbx',
+            punchLight: '/animations/Punch light.fbx',
+            punchMedium: '/animations/Punch medium.fbx',
+            punchHeavy: '/animations/Punch heavy.fbx',
+            kickLight: '/animations/Kicking light.fbx',
+            kickMedium: '/animations/Kick medium.fbx',
+            kickHeavy: '/animations/Kick heavy.fbx',
+            block: '/animations/Blocking.fbx',
+            hitHighLight: '/animations/Reaction highlight.fbx',
+            hitHighMedium: '/animations/Reaction highmedium.fbx',
+            hitHighHeavy: '/animations/Reaction highheavy.fbx',
+            hitMidLight: '/animations/Reaction midlight.fbx',
+            hitMidMedium: '/animations/Reaction midmedium.fbx',
+            hitMidHeavy: '/animations/Reaction midheavy.fbx',
+            hitLowLight: '/animations/Reaction lowlight.fbx',
+            hitLowMedium: '/animations/Reaction lowmedium.fbx',
+            hitLowHeavy: '/animations/Reaction lowheavy.fbx',
+            deathFall: '/animations/Falling Backwards.fbx',
+            deathFlyBack: '/animations/Flying Back Death.fbx',
+            deathKnockout: '/animations/Knocked Out.fbx'
         };
 
         const CHARACTERS = {
             kyle: {
                 name: 'Kyle',
-                path: 'public/characters/kyle.fbx',
+                path: '/characters/kyle.fbx',
                 color: 0x00f0ff,
                 animations: {
-                    idle: 'public/animations/kyle/Kyle Idle.fbx',
-                    standingPose: 'public/animations/kyle/Kyle Standing Pose.fbx',
-                    intro: 'public/animations/kyle/Kyle Jumping Down.fbx',
-                    taunt: 'public/animations/kyle/Kyle Taunt.fbx',
-                    victory: 'public/animations/kyle/Kyle Win.fbx'
+                    idle: '/animations/kyle/Kyle Idle.fbx',
+                    standingPose: '/animations/kyle/Kyle Standing Pose.fbx',
+                    intro: '/animations/kyle/Kyle Jumping Down.fbx',
+                    taunt: '/animations/kyle/Kyle Taunt.fbx',
+                    victory: '/animations/kyle/Kyle Win.fbx'
                 }
             },
             jonah: {
                 name: 'Jonah',
-                path: 'public/characters/jonah.fbx',
+                path: '/characters/jonah.fbx',
                 color: 0xff2e63,
                 animations: {
-                    idle: 'public/animations/jonah/Jonah Idle.fbx',
-                    standingPose: 'public/animations/jonah/Jonah Standing Pose.fbx',
-                    intro: 'public/animations/jonah/Jonah Jumping Down.fbx',
-                    taunt: 'public/animations/jonah/Jonah Taunt.fbx',
-                    victory: 'public/animations/jonah/Jonah Win.fbx'
+                    idle: '/animations/jonah/Jonah Idle.fbx',
+                    standingPose: '/animations/jonah/Jonah Standing Pose.fbx',
+                    intro: '/animations/jonah/Jonah Jumping Down.fbx',
+                    taunt: '/animations/jonah/Jonah Taunt.fbx',
+                    victory: '/animations/jonah/Jonah Win.fbx'
                 }
             },
             rochelle: {
                 name: 'Rochelle',
-                path: 'public/characters/rochelle.fbx',
+                path: '/characters/rochelle.fbx',
                 color: 0x00ff87,
                 animations: {
-                    idle: 'public/animations/rochelle/Rochelle Idle.fbx',
-                    standingPose: 'public/animations/rochelle/Rochelle Standing Pose.fbx',
-                    intro: 'public/animations/rochelle/Rochelle Jumping Down.fbx',
-                    taunt: 'public/animations/rochelle/Rochelle Taunt.fbx',
-                    victory: 'public/animations/rochelle/Rochelle Win.fbx'
+                    idle: '/animations/rochelle/Rochelle Idle.fbx',
+                    standingPose: '/animations/rochelle/Rochelle Standing Pose.fbx',
+                    intro: '/animations/rochelle/Rochelle Jumping Down.fbx',
+                    taunt: '/animations/rochelle/Rochelle Taunt.fbx',
+                    victory: '/animations/rochelle/Rochelle Win.fbx'
                 }
             },
             vickie: {
                 name: 'Vickie',
-                path: 'public/characters/vickie.fbx',
+                path: '/characters/vickie.fbx',
                 color: 0xff00ff,
                 animations: {
-                    idle: 'public/animations/vickie/Vickie Idle.fbx',
-                    standingPose: 'public/animations/vickie/Vickie Standing Pose.fbx',
-                    intro: 'public/animations/vickie/Vickie Jumping Down.fbx',
-                    taunt: 'public/animations/vickie/Vickie Taunt.fbx',
-                    victory: 'public/animations/vickie/Vickie Win.fbx'
+                    idle: '/animations/vickie/Vickie Idle.fbx',
+                    standingPose: '/animations/vickie/Vickie Standing Pose.fbx',
+                    intro: '/animations/vickie/Vickie Jumping Down.fbx',
+                    taunt: '/animations/vickie/Vickie Taunt.fbx',
+                    victory: '/animations/vickie/Vickie Win.fbx'
                 }
             },
             donald: {
                 name: 'Donald',
-                path: 'public/characters/donald.fbx',
+                path: '/characters/donald.fbx',
                 color: 0xffd44d,
                 animations: {
-                    idle: 'public/animations/donald/Donald Idle.fbx',
-                    standingPose: 'public/animations/donald/Donald Standing Pose.fbx',
-                    intro: 'public/animations/donald/Donald Jumping Down.fbx',
-                    taunt: 'public/animations/donald/Donald Taunt.fbx',
-                    victory: 'public/animations/donald/Donald Win.fbx',
-                    stepForwardShort: 'public/animations/donald/Donald Short Step Forward.fbx',
-                    stepForwardLong: 'public/animations/donald/Donald Long Step Forward.fbx',
-                    stepBackward: 'public/animations/donald/Donald Step Backward.fbx'
+                    idle: '/animations/donald/Donald Idle.fbx',
+                    standingPose: '/animations/donald/Donald Standing Pose.fbx',
+                    intro: '/animations/donald/Donald Jumping Down.fbx',
+                    taunt: '/animations/donald/Donald Taunt.fbx',
+                    victory: '/animations/donald/Donald Win.fbx',
+                    stepForwardShort: '/animations/donald/Donald Short Step Forward.fbx',
+                    stepForwardLong: '/animations/donald/Donald Long Step Forward.fbx',
+                    stepBackward: '/animations/donald/Donald Step Backward.fbx'
                 }
             },
             eric: {
                 name: 'Eric',
-                path: 'public/characters/eric.fbx',
+                path: '/characters/eric.fbx',
                 color: 0xff8c00,
                 animations: {
-                    idle: 'public/animations/Fighting Idle.fbx',
-                    standingPose: 'public/animations/Male Standing Pose (1).fbx',
-                    intro: 'public/animations/Front Twist Flip.fbx',
-                    taunt: 'public/animations/Standing Taunt Chest Thump.fbx',
-                    victory: 'public/animations/Silly Dancing.fbx'
+                    idle: '/animations/Fighting Idle.fbx',
+                    standingPose: '/animations/Male Standing Pose (1).fbx',
+                    intro: '/animations/Front Twist Flip.fbx',
+                    taunt: '/animations/Standing Taunt Chest Thump.fbx',
+                    victory: '/animations/Silly Dancing.fbx'
                 }
             },
             kristen: {
                 name: 'Kristen',
-                path: 'public/characters/kristen.fbx',
+                path: '/characters/kristen.fbx',
                 color: 0x00ffcc,
                 animations: {
-                    idle: 'public/animations/Bouncing Fight Idle.fbx',
-                    standingPose: 'public/animations/Female Standing Pose (1).fbx',
-                    intro: 'public/animations/Backflip.fbx',
-                    taunt: 'public/animations/Threatening.fbx',
-                    victory: 'public/animations/Booty Hip Hop Dance.fbx'
+                    idle: '/animations/Bouncing Fight Idle.fbx',
+                    standingPose: '/animations/Female Standing Pose (1).fbx',
+                    intro: '/animations/Backflip.fbx',
+                    taunt: '/animations/Threatening.fbx',
+                    victory: '/animations/Booty Hip Hop Dance.fbx'
                 }
             }
         };
@@ -458,7 +418,7 @@ import Peer from 'peerjs';
         let isHost = false;
         let sfxVolume = 0.5;
         let musicVolume = 0.5;
-        let bgMusic = new Audio('public/stages/generic_template/generic-loop.ogg');
+        let bgMusic = new Audio('/stages/generic_template/generic-loop.ogg');
         bgMusic.loop = true;
 
         function showMainMenu() {
@@ -677,7 +637,6 @@ import Peer from 'peerjs';
             if (!hasAnimations || !hasCharacters) {
                 console.warn("Missing Mixamo assets. Entering Retro Box Fallback Mode.");
                 isFallbackMode = true;
-                document.getElementById('fallback-banner').style.display = 'block';
             }
 
             // Move to Character Select

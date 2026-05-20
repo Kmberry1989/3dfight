@@ -606,10 +606,6 @@
             display: none !important;
         }
 
-        body.touch-landscape #debug-console {
-            display: none !important;
-        }
-
         /* --- GAME HUD --- */
         #hud {
             position: absolute;
@@ -833,22 +829,6 @@
             box-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
         }
 
-        /* Fallback Alert Banner */
-        #fallback-banner {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(255, 152, 0, 0.85);
-            color: black;
-            text-align: center;
-            padding: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            z-index: 100;
-            display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
         /* --- NEW MENUS --- */
         #main-menu, #lobby-screen, #options-menu, #pause-screen {
             background: rgba(5, 5, 15, 0.85);
