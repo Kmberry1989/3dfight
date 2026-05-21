@@ -34,4 +34,4 @@ Replace the massive `<script>` block with a single module import:
 
 ## 5. Testing and Building
 - Use `npm run dev` to start the local development server and test that all modules are interacting correctly.
-- Once verified, run `npm run build`. Vite will compress, optimize, and bundle your code into a highly efficient `dist/` folder ready for deployment.
+- Once verified, run `npm run build`. Vite will compress, optimize, and bundle your code into a highly efficient `dist/` folder READY for deployment.

@@ -306,7 +306,7 @@
         }
 
         .panel-title::after {
-            content: "Ready";
+            content: "READY";
             font-size: 11px;
             letter-spacing: 1.5px;
             padding: 5px 8px;
@@ -1678,7 +1678,7 @@
                 document.getElementById('lobby-status').textContent = 'Connecting to signaling server...';
                 peer = new Peer();
                 peer.on('open', id => {
-                    document.getElementById('lobby-status').textContent = 'Connected. Ready to host or join.';
+                    document.getElementById('lobby-status').textContent = 'Connected. READY to host or join.';
                 });
                 peer.on('connection', c => {
                     conn = c;

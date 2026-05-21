@@ -109,39 +109,26 @@
 
         /* --- CHARACTER SELECT SCREEN --- */
         #selector-screen {
+            background: transparent;
+        }
+        #selector-screen {
             justify-content: space-between;
             padding: 22px 24px 24px;
-            background:
-                radial-gradient(circle at 50% 35%, rgba(0, 240, 255, 0.14), transparent 30%),
-                radial-gradient(circle at 50% 62%, rgba(255, 0, 127, 0.10), transparent 28%),
-                linear-gradient(180deg, rgba(9, 8, 22, 0.58), rgba(3, 3, 10, 0.92));
+            background: transparent;
             overflow: hidden;
+            pointer-events: none;
+        }
+
+        #selector-screen > * {
+            pointer-events: auto;
         }
 
         #selector-screen::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: repeating-linear-gradient(
-                180deg,
-                rgba(255,255,255,0.04) 0px,
-                rgba(255,255,255,0.04) 1px,
-                transparent 1px,
-                transparent 6px
-            );
-            opacity: 0.25;
-            pointer-events: none;
+            display: none;
         }
 
         #selector-screen::after {
-            content: "";
-            position: absolute;
-            inset: 14px;
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,0.03),
-                0 0 30px rgba(0, 0, 0, 0.45);
-            pointer-events: none;
+            display: none;
         }
 
         .select-header {
@@ -295,7 +282,7 @@
         }
 
         .panel-title::after {
-            content: "Ready";
+            content: "READY";
             font-size: 11px;
             letter-spacing: 1.5px;
             padding: 5px 8px;
