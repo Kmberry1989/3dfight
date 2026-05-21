@@ -730,14 +730,16 @@ function refreshCharacterSelectPreviews() {
     setPresentationRotation(p1Preview, 'select');
     p1Preview.mesh.position.y = 0.58;
     p1Preview.mesh.position.z = 3.0; // Bring to foreground
-    playPreferredAction(p1Preview, 'standingPose', 'idle', 0.01);
+    playPreferredAction(p1Preview, 'idle', 'standingPose', 0.01);
     previewFighters.push(p1Preview);
+    startPreviewTauntCycle(p1Preview);
 
     setPresentationRotation(p2Preview, 'select');
     p2Preview.mesh.position.y = 0.58;
     p2Preview.mesh.position.z = 3.0;
-    playPreferredAction(p2Preview, 'standingPose', 'idle', 0.01);
+    playPreferredAction(p2Preview, 'idle', 'standingPose', 0.01);
     previewFighters.push(p2Preview);
+    startPreviewTauntCycle(p2Preview);
     
     setCameraMode('select', { shotDurationMs: 2000 });
 }
@@ -1011,6 +1013,46 @@ function setPresentationRotation(actor, phase = 'select') {
     actor.mesh.rotation.y = actor.id === 1 ? baseRotation : -baseRotation;
 }
 
+/**
+ * Starts a periodic taunt cycle on a preview fighter during the character select screen.
+ * Plays 'idle' by default; every 5–7 seconds plays 'taunt', then returns to 'idle'
+ * once the taunt clip finishes. Stores the interval on fighter._tauntInterval so it
+ * can be cancelled by removeFighterList.
+ */
+function startPreviewTauntCycle(fighter) {
+    if (!fighter) return;
+
+    const scheduleNextTaunt = () => {
+        // Random delay between 5 and 7 seconds
+        const delay = 5000 + Math.random() * 2000;
+        fighter._tauntInterval = setTimeout(() => {
+            // Guard: fighter may have been removed from scene
+            if (!fighter.mesh || !fighter.actions) return;
+
+            const tauntAction = fighter.actions['taunt'];
+            if (tauntAction) {
+                // Play taunt once (not looping)
+                tauntAction.setLoop(THREE.LoopOnce, 1);
+                tauntAction.clampWhenFinished = true;
+                playPreferredAction(fighter, 'taunt', 'idle', 0.15);
+
+                // Return to idle after taunt duration (with a small buffer)
+                const tauntDuration = tauntAction.getClip().duration / (getActionTimeScale(fighter, 'taunt') || 1);
+                fighter._returnToIdleTimeout = setTimeout(() => {
+                    if (!fighter.mesh || !fighter.actions) return;
+                    playPreferredAction(fighter, 'idle', 'standingPose', 0.25);
+                    scheduleNextTaunt();
+                }, (tauntDuration + 0.3) * 1000);
+            } else {
+                // No taunt available — just schedule again
+                scheduleNextTaunt();
+            }
+        }, delay);
+    };
+
+    scheduleNextTaunt();
+}
+
 function updateViewportState() {
     const isTouchDevice =
         (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
@@ -1099,6 +1141,15 @@ function removeFighterList(list) {
     list.forEach((fighter) => {
         if (fighter && fighter.mesh) {
             scene.remove(fighter.mesh);
+        }
+        // Clear any periodic taunt timer
+        if (fighter && fighter._tauntInterval) {
+            clearTimeout(fighter._tauntInterval);
+            fighter._tauntInterval = null;
+        }
+        if (fighter && fighter._returnToIdleTimeout) {
+            clearTimeout(fighter._returnToIdleTimeout);
+            fighter._returnToIdleTimeout = null;
         }
     });
     list.length = 0;
@@ -2348,9 +2399,7 @@ function animate() {
     });
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
-        if (cameraDirector.mode === 'select') {
-            fighter.mesh.rotation.y += frameDt * 0.4; // Slowly revolve in showcase
-        }
+        // No rotation update — characters hold their presentation angle
     });
 
     updateCameraDirector();
