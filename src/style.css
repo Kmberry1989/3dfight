@@ -119,7 +119,7 @@
             pointer-events: none;
         }
 
-        #selector-screen > * {
+        #selector-screen:not(.hidden) > * {
             pointer-events: auto;
         }
 
