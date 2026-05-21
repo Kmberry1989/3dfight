@@ -1012,20 +1012,53 @@ function setPresentationRotation(actor, phase = 'select') {
 }
 
 function updateViewportState() {
-    const touchLandscape =
-        (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window) &&
-        window.innerWidth > window.innerHeight;
+    const isTouchDevice =
+        (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
 
-    document.body.classList.toggle('touch-landscape', touchLandscape);
+    // If the device has touch capabilities, treat it as mobile/touch-landscape (which orientation rules force)
+    document.body.classList.toggle('touch-landscape', isTouchDevice);
 
-    const shouldShowTouchControls =
-        touchLandscape &&
+    const isGameplayActive =
         document.getElementById('selector-screen').classList.contains('hidden') &&
         document.getElementById('hud').style.display !== 'none';
+
+    const shouldShowTouchControls = isTouchDevice && isGameplayActive;
 
     const touchControls = document.getElementById('touch-controls');
     if (touchControls) {
         touchControls.classList.toggle('active', shouldShowTouchControls);
+        
+        // Toggle single player layout class
+        const isSinglePlayerLayout = (gameMode === 'single' || gameMode === 'online');
+        touchControls.classList.toggle('single-player-mode', isSinglePlayerLayout);
+    }
+
+    // Toggle specific side visibility based on current game mode and hosting role
+    const sideP1 = document.getElementById('touch-side-p1');
+    const sideP2 = document.getElementById('touch-side-p2');
+    if (sideP1 && sideP2) {
+        if (gameMode === 'single') {
+            sideP1.style.display = '';
+            sideP2.style.display = 'none';
+        } else if (gameMode === 'online') {
+            if (isHost) {
+                sideP1.style.display = '';
+                sideP2.style.display = 'none';
+            } else {
+                sideP1.style.display = 'none';
+                sideP2.style.display = '';
+            }
+        } else {
+            // Local multiplayer
+            sideP1.style.display = '';
+            sideP2.style.display = '';
+        }
+    }
+
+    // Toggle pause button visibility
+    const pauseBtn = document.getElementById('pause-btn');
+    if (pauseBtn) {
+        pauseBtn.style.display = isGameplayActive ? 'flex' : 'none';
     }
 }
 
@@ -1723,9 +1756,42 @@ function triggerDeath(player) {
     endRound(player.id === 1 ? 2 : 1);
 }
 
+function getHealthColor(health) {
+    let hue;
+    if (health > 50) {
+        // 50% to 100% health: yellow (60) to green (130)
+        const t = (health - 50) / 50;
+        hue = 60 + t * 70; // 60 to 130
+    } else {
+        // 0% to 50% health: red (0) to yellow (60)
+        const t = health / 50;
+        hue = t * 60; // 0 to 60
+    }
+    return {
+        bright: `hsl(${hue}, 100%, 50%)`,
+        dark: `hsl(${hue}, 100%, 22%)`
+    };
+}
+
 function updateHealthBars() {
-    document.getElementById('p1-bar').style.width = players[0].health + '%';
-    document.getElementById('p2-bar').style.width = players[1].health + '%';
+    const p1Bar = document.getElementById('p1-bar');
+    const p2Bar = document.getElementById('p2-bar');
+
+    if (p1Bar && players[0]) {
+        const h1 = Math.max(0, Math.min(100, players[0].health));
+        p1Bar.style.width = h1 + '%';
+        const color1 = getHealthColor(h1);
+        p1Bar.style.background = `linear-gradient(90deg, ${color1.dark}, ${color1.bright})`;
+        p1Bar.style.boxShadow = `0 0 10px ${color1.bright}`;
+    }
+
+    if (p2Bar && players[1]) {
+        const h2 = Math.max(0, Math.min(100, players[1].health));
+        p2Bar.style.width = h2 + '%';
+        const color2 = getHealthColor(h2);
+        p2Bar.style.background = `linear-gradient(270deg, ${color2.dark}, ${color2.bright})`;
+        p2Bar.style.boxShadow = `0 0 10px ${color2.bright}`;
+    }
 }
 
 // --- 12. CAMERA SCREEN SHAKE ---

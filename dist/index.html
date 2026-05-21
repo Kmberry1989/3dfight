@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FAMILY FIGHTER: 3D Cyber Fighter</title>
 
     <!-- Outfit Google Font -->
@@ -12,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 
-    <script type="module" crossorigin src="/assets/index-CuBc12Jp.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DSzWI2nr.css">
+  <script type="module" crossorigin src="/assets/index-5hH1shGd.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DBnnSNjT.css">
 </head>
 
 <body>
@@ -95,12 +96,7 @@
             </div>
         </div>
 
-        <div class="select-center-banner" id="select-center-banner">
-            <div class="select-stage-rule">Quarterfinal Match</div>
-            <div class="select-versus">VS</div>
-            <div class="select-stage-copy">Center stage stays clear so both fighters read like cabinet hero renders
-                instead of background props.</div>
-        </div>
+
 
         <div class="selection-container">
             <!-- PLAYER 1 PANEL -->
@@ -135,6 +131,10 @@
                     Locked In</div>
                 <button id="p1-lock-btn" class="lock-btn" onclick="lockInPlayer(1)"
                     style="margin-top: 15px; padding: 10px 20px; background: rgba(0,240,255,0.2); border: 1px solid #00f0ff; color: #fff; cursor: pointer;">READY</button>
+            </div>
+
+            <div class="select-center-banner">
+                <div class="select-versus">VS</div>
             </div>
 
             <!-- PLAYER 2 PANEL -->
@@ -194,6 +194,11 @@
 
         <div class="hud-center">
             <div id="timer">99</div>
+            <button id="pause-btn" class="pause-btn" onclick="togglePause()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+            </button>
         </div>
 
         <div class="hud-player p2-hud">
@@ -223,7 +228,7 @@
     </div>
 
     <div id="touch-controls">
-        <div class="touch-side left">
+        <div id="touch-side-p1" class="touch-side left">
             <div class="touch-label">Player 1</div>
             <div class="touch-move-cluster">
                 <button class="touch-btn p1" data-key="KeyA">Left</button>
@@ -239,7 +244,7 @@
                 </div>
             </div>
         </div>
-        <div class="touch-side right">
+        <div id="touch-side-p2" class="touch-side right">
             <div class="touch-label">Player 2</div>
             <div class="touch-move-cluster">
                 <button class="touch-btn p2" data-key="ArrowLeft">Left</button>

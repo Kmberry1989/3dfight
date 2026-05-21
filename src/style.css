@@ -430,7 +430,7 @@
 
         .touch-side {
             position: absolute;
-            bottom: 16px;
+            bottom: max(16px, env(safe-area-inset-bottom));
             display: flex;
             align-items: flex-end;
             gap: 14px;
@@ -438,12 +438,42 @@
         }
 
         .touch-side.left {
-            left: 14px;
+            left: max(14px, env(safe-area-inset-left));
         }
 
         .touch-side.right {
-            right: 14px;
+            right: max(14px, env(safe-area-inset-right));
             flex-direction: row-reverse;
+        }
+
+        /* Single Player / Online layout mode: movement on left, actions on right */
+        #touch-controls.single-player-mode .touch-side {
+            position: static;
+            display: contents;
+        }
+
+        #touch-controls.single-player-mode .touch-label {
+            display: none;
+        }
+
+        #touch-controls.single-player-mode #touch-side-p1 .touch-move-cluster,
+        #touch-controls.single-player-mode #touch-side-p2 .touch-move-cluster {
+            position: absolute;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            left: max(14px, env(safe-area-inset-left));
+            display: flex;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        #touch-controls.single-player-mode #touch-side-p1 .touch-action-cluster,
+        #touch-controls.single-player-mode #touch-side-p2 .touch-action-cluster {
+            position: absolute;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            right: max(14px, env(safe-area-inset-right));
+            display: flex;
+            gap: 10px;
+            pointer-events: none;
         }
 
         .touch-move-cluster,
@@ -676,6 +706,40 @@
             border-radius: 50%;
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: relative; /* Relative positioning for the child pause button */
+        }
+
+        .pause-btn {
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: #fff;
+            display: none; /* Controlled by JavaScript (flex when HUD is visible) */
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 10;
+        }
+
+        .pause-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-50%) scale(1.08);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .pause-btn:active {
+            transform: translateX(-50%) scale(0.92);
         }
 
         #timer {
