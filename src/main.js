@@ -31,9 +31,11 @@ const AudioSynth = {
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
+        const pitchMod = 0.85 + Math.random() * 0.3;
+
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(250, now);
-        osc.frequency.exponentialRampToValueAtTime(60, now + 0.2);
+        osc.frequency.setValueAtTime(250 * pitchMod, now);
+        osc.frequency.exponentialRampToValueAtTime(60 * pitchMod, now + 0.2);
         gain.gain.setValueAtTime(0.3 * sfxVolume, now);
         gain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.25);
         osc.connect(gain);
@@ -44,13 +46,13 @@ const AudioSynth = {
     playHit() {
         this.init();
         const now = this.ctx.currentTime;
+        const pitchMod = 0.8 + Math.random() * 0.4;
 
-        // Distorted sub-bass thump
         const subOsc = this.ctx.createOscillator();
         const subGain = this.ctx.createGain();
         subOsc.type = 'sawtooth';
-        subOsc.frequency.setValueAtTime(120, now);
-        subOsc.frequency.linearRampToValueAtTime(40, now + 0.15);
+        subOsc.frequency.setValueAtTime(120 * pitchMod, now);
+        subOsc.frequency.linearRampToValueAtTime(40 * pitchMod, now + 0.15);
         subGain.gain.setValueAtTime(0.4 * sfxVolume, now);
         subGain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.2);
         subOsc.connect(subGain);
@@ -58,7 +60,6 @@ const AudioSynth = {
         subOsc.start(now);
         subOsc.stop(now + 0.2);
 
-        // High frequencies impact noise
         const bufferSize = this.ctx.sampleRate * 0.1;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -70,7 +71,7 @@ const AudioSynth = {
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.frequency.value = 600;
+        filter.frequency.value = 600 * pitchMod;
         filter.Q.value = 3.0;
 
         const noiseGain = this.ctx.createGain();
@@ -140,7 +141,10 @@ const SHARED_ANIMATIONS = {
     hitLowHeavy: '/animations/Reaction lowheavy.fbx',
     deathFall: '/animations/Falling Backwards.fbx',
     deathFlyBack: '/animations/Flying Back Death.fbx',
-    deathKnockout: '/animations/Knocked Out.fbx'
+    deathKnockout: '/animations/Knocked Out.fbx',
+    stunned: '/animations/Stunned.fbx',
+    jumpUp: '/animations/Jumping.fbx',
+    jumpDown: '/animations/Jumping Down.fbx'
 };
 
 const CHARACTERS = {
@@ -407,13 +411,12 @@ function getCharacterActionManifest(charId) {
     return manifest;
 }
 
-// Loader statuses
 const loaderScreen = document.getElementById('loader-screen');
 const progressBar = document.getElementById('progress-bar');
 const loadStatusTitle = document.getElementById('load-status-title');
 const loadStatusDetail = document.getElementById('load-status-detail');
 
-let gameMode = 'local'; // 'single', 'local', 'online'
+let gameMode = 'local';
 let gamePaused = false;
 let peer = null;
 let conn = null;
@@ -422,6 +425,37 @@ let sfxVolume = 0.5;
 let musicVolume = 0.5;
 let bgMusic = new Audio('/stages/generic_template/generic-loop.ogg');
 bgMusic.loop = true;
+
+// GLOBAL TIME CONTROLS (JUICE)
+let globalTimeScale = 1.0;
+let slowMoTimer = 0;
+
+let comboUI = null;
+function createComboUI() {
+    comboUI = document.createElement('div');
+    comboUI.id = 'combo-counter';
+    document.body.appendChild(comboUI);
+}
+
+// --- DYNAMIC GUARD BAR INJECTION ---
+function injectGuardBars() {
+    const p1Hud = document.querySelector('.p1-hud');
+    const p2Hud = document.querySelector('.p2-hud');
+
+    if (p1Hud && !document.getElementById('p1-guard-bar')) {
+        const guardContainer1 = document.createElement('div');
+        guardContainer1.className = 'guard-bar-outer';
+        guardContainer1.innerHTML = '<div id="p1-guard-bar" class="guard-bar-inner"></div>';
+        p1Hud.appendChild(guardContainer1);
+    }
+
+    if (p2Hud && !document.getElementById('p2-guard-bar')) {
+        const guardContainer2 = document.createElement('div');
+        guardContainer2.className = 'guard-bar-outer';
+        guardContainer2.innerHTML = '<div id="p2-guard-bar" class="guard-bar-inner"></div>';
+        p2Hud.appendChild(guardContainer2);
+    }
+}
 
 function showMainMenu() {
     document.getElementById('selector-screen').classList.add('hidden');
@@ -554,15 +588,73 @@ function quitToMainMenu() {
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
     document.getElementById('gameover-screen').style.display = 'none';
+    if (comboUI) comboUI.classList.remove('show');
     removeFighterList(players);
     removeFighterList(previewFighters);
     showMainMenu();
     bgMusic.pause();
 }
 
+const DOUBLE_TAP_WINDOW = 250;
+const lastTaps = { KeyA: 0, KeyD: 0, ArrowLeft: 0, ArrowRight: 0 };
+
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape' && (gameActive || gamePaused)) {
         togglePause();
+    }
+
+    if (e.code) keys[e.code] = true;
+
+    // --- DOUBLE-TAP DASH LOGIC ---
+    if (!e.repeat && gameActive) {
+        const now = performance.now();
+        if (['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+            if (now - lastTaps[e.code] < DOUBLE_TAP_WINDOW) {
+                const player = (e.code === 'KeyA' || e.code === 'KeyD') ? players[0] : players[1];
+                if (player && !player.isAttacking && !player.isHit && !player.isDead && !player.isStunned && !player.isJumping && !player.isDashing) {
+                    player.isDashing = true;
+                    player.dashDir = (e.code === 'KeyA' || e.code === 'ArrowLeft') ? -1 : 1;
+                    player.dashTimer = 0.25;
+                    const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
+                    player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
+                    spawnParticles(player.mesh.position, 0xffffff, 8, true); // Minor dash burst
+                }
+            }
+            lastTaps[e.code] = now;
+        }
+    }
+
+    let bufferHit = null;
+    if (!e.repeat) {
+        if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
+        if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
+        if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
+        if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
+    }
+
+    if (gameMode === 'online') {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+            sendNetworkInput('keydown', e.code, bufferHit);
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+            sendNetworkInput('keydown', e.code, bufferHit);
+        }
+    }
+
+    // Prevent scrolling
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code) keys[e.code] = false;
+
+    if (gameMode === 'online') {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+            sendNetworkInput('keyup', e.code);
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+            sendNetworkInput('keyup', e.code);
+        }
     }
 });
 
@@ -595,7 +687,6 @@ async function loadAssets() {
                 (fbx) => {
                     if (fbx.animations && fbx.animations.length > 0) {
                         loadedAnims[key] = fbx.animations[0];
-                        // Give standard names
                         loadedAnims[key].name = key;
                     }
                     updateProgress(key, 'Animation loaded');
@@ -605,7 +696,7 @@ async function loadAssets() {
                 (err) => {
                     console.warn(`Could not load animation FBX: ${key}. Path: ${animationManifest[key]}. Falling back...`, err);
                     updateProgress(key, 'Animation failed');
-                    resolve(false); // Continue loading even if one fails
+                    resolve(false);
                 }
             );
         });
@@ -624,7 +715,7 @@ async function loadAssets() {
                 (err) => {
                     console.warn(`Could not load character FBX: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
                     updateProgress(CHARACTERS[key].name, 'Character failed');
-                    resolve(false); // Continue
+                    resolve(false);
                 }
             );
         });
@@ -632,7 +723,6 @@ async function loadAssets() {
 
     await Promise.all([...animPromises, ...charPromises]);
 
-    // Check if essential animations or characters failed to load
     const hasAnimations = Object.keys(loadedAnims).length > 0;
     const hasCharacters = Object.keys(loadedModels).length > 0;
 
@@ -641,7 +731,6 @@ async function loadAssets() {
         isFallbackMode = true;
     }
 
-    // Move to Character Select
     loaderScreen.style.opacity = '0';
     setTimeout(() => {
         loaderScreen.style.display = 'none';
@@ -649,9 +738,9 @@ async function loadAssets() {
     }, 500);
 }
 
-// Run loading
 window.addEventListener('DOMContentLoaded', () => {
     initTouchControls();
+    createComboUI();
     loadAssets();
 });
 
@@ -671,7 +760,6 @@ function selectCharacter(player, charId) {
     AudioSynth.playSelect();
     selections[player] = charId;
 
-    // Highlight in grid
     const panel = document.getElementById(`p${player}-select-panel`);
     panel.querySelectorAll('.character-card').forEach(card => {
         if (card.dataset.char === charId) {
@@ -681,14 +769,12 @@ function selectCharacter(player, charId) {
         }
     });
 
-    // Update preview name
     document.getElementById(`p${player}-preview-name`).textContent = CHARACTERS[charId].name;
     refreshCharacterSelectPreviews();
 
     const previewActor = previewFighters[player - 1];
     if (previewActor && previewActor.actions && previewActor.actions['taunt']) {
         const tauntAction = previewActor.actions['taunt'];
-        // Set taunt to ping-pong loop infinitely
         tauntAction.setLoop(THREE.LoopPingPong, Infinity);
         tauntAction.clampWhenFinished = false;
         playPreferredAction(previewActor, 'taunt', 'standingPose', 0.1);
@@ -719,7 +805,6 @@ function refreshCharacterSelectPreviews() {
 
     removeFighterList(previewFighters);
 
-    // In single player, auto-assign P2 to the current tournament opponent
     if (gameMode === 'single') {
         selections[2] = tournamentOpponents[currentTournamentRound];
     }
@@ -729,7 +814,7 @@ function refreshCharacterSelectPreviews() {
 
     setPresentationRotation(p1Preview, 'select');
     p1Preview.mesh.position.y = 0.58;
-    p1Preview.mesh.position.z = 3.0; // Bring to foreground
+    p1Preview.mesh.position.z = 3.0;
     playPreferredAction(p1Preview, 'idle', 'standingPose', 0.01);
     previewFighters.push(p1Preview);
     startPreviewTauntCycle(p1Preview);
@@ -740,7 +825,7 @@ function refreshCharacterSelectPreviews() {
     playPreferredAction(p2Preview, 'idle', 'standingPose', 0.01);
     previewFighters.push(p2Preview);
     startPreviewTauntCycle(p2Preview);
-    
+
     setCameraMode('select', { shotDurationMs: 2000 });
 }
 
@@ -750,6 +835,8 @@ function showCharacterSelect() {
     gameActive = false;
     p1Locked = false;
     p2Locked = false;
+    globalTimeScale = 1.0;
+    slowMoTimer = 0;
 
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('selector-screen').classList.remove('hidden');
@@ -760,7 +847,6 @@ function showCharacterSelect() {
     selectSpotlightP2.visible = true;
     actionSpotlight.visible = false;
 
-    // Reset UI lock state
     document.getElementById('p1-locked-status').style.display = 'none';
     document.getElementById('p1-lock-btn').style.display = 'block';
     document.getElementById('p2-locked-status').style.display = 'none';
@@ -795,11 +881,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-// --- LIGHTS & ARENA ENVIRONMENT ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
 scene.add(ambientLight);
 
-// Stage Spotlight following action
 const actionSpotlight = new THREE.SpotLight(0xa855f7, 2.5, 25, Math.PI / 4.5, 0.5, 1);
 actionSpotlight.position.set(0, 10, 0);
 actionSpotlight.castShadow = true;
@@ -808,7 +892,6 @@ actionSpotlight.shadow.mapSize.height = 1024;
 actionSpotlight.shadow.bias = -0.001;
 scene.add(actionSpotlight);
 
-// Character Select Spotlights
 const selectSpotlightP1 = new THREE.SpotLight(0xffffff, 4.0, 30, Math.PI / 4, 0.5, 1);
 selectSpotlightP1.position.set(-1.0, 6, 7);
 selectSpotlightP1.target.position.set(-1.0, 1.5, 3);
@@ -823,7 +906,6 @@ selectSpotlightP2.castShadow = true;
 scene.add(selectSpotlightP2);
 scene.add(selectSpotlightP2.target);
 
-// Side Rim Highlights (Cyberpunk neon accentuation)
 const blueRimLight = new THREE.DirectionalLight(0x00f0ff, 0.9);
 blueRimLight.position.set(-8, 5, -2);
 scene.add(blueRimLight);
@@ -832,7 +914,6 @@ const redRimLight = new THREE.DirectionalLight(0xff007f, 0.9);
 redRimLight.position.set(8, 5, -2);
 scene.add(redRimLight);
 
-// Grid platform floor
 const floorGeo = new THREE.BoxGeometry(22, 0.5, 7);
 const floorMat = new THREE.MeshStandardMaterial({
     color: 0x111026,
@@ -848,7 +929,6 @@ const gridHelper = new THREE.GridHelper(22, 22, 0xbd00ff, 0x1f1947);
 gridHelper.position.y = 0.01;
 scene.add(gridHelper);
 
-// Left/Right Stage Boundaries (for grid layout references)
 const wallGeo = new THREE.BoxGeometry(0.5, 1, 7);
 const wallMat = new THREE.MeshBasicMaterial({ color: 0xbd00ff, transparent: true, opacity: 0.1 });
 const leftWall = new THREE.Mesh(wallGeo, wallMat); leftWall.position.set(-10, 0.5, 0);
@@ -870,10 +950,8 @@ function spawnParticles(position, colorHex, count = 15, isShield = false) {
         const mesh = new THREE.Mesh(particleGeo, mat);
         mesh.position.copy(position);
 
-        // Random spherical distribution
         let velocity;
         if (isShield) {
-            // Shield rings spray out vertically
             const angle = Math.random() * Math.PI * 2;
             velocity = new THREE.Vector3(
                 Math.cos(angle) * (Math.random() * 2 + 1),
@@ -881,7 +959,6 @@ function spawnParticles(position, colorHex, count = 15, isShield = false) {
                 (Math.random() * 2 - 1) * 0.5
             );
         } else {
-            // Hit sparks spray outwards
             velocity = new THREE.Vector3(
                 (Math.random() * 2 - 1) * 3,
                 (Math.random() * 2 - 0.2) * 2.5,
@@ -905,7 +982,6 @@ function updateParticles(dt) {
         const p = particles[i];
         p.mesh.position.addScaledVector(p.velocity, dt);
 
-        // Gravity on sparks, float on shield
         if (!p.isShield) {
             p.velocity.y -= 9.8 * dt;
         }
@@ -924,7 +1000,6 @@ function updateParticles(dt) {
 }
 
 // --- 7. FIGHTER MODEL GENERATOR FACTORY ---
-// Helper to perform a deep clone of a skinned mesh, rebinding bones correctly (Three.js SkeletonUtils.clone port)
 function cloneSkinnedMesh(source) {
     function parallelTraverse(a, b, callback) {
         callback(a, b);
@@ -1013,30 +1088,20 @@ function setPresentationRotation(actor, phase = 'select') {
     actor.mesh.rotation.y = actor.id === 1 ? baseRotation : -baseRotation;
 }
 
-/**
- * Starts a periodic taunt cycle on a preview fighter during the character select screen.
- * Plays 'idle' by default; every 5–7 seconds plays 'taunt', then returns to 'idle'
- * once the taunt clip finishes. Stores the interval on fighter._tauntInterval so it
- * can be cancelled by removeFighterList.
- */
 function startPreviewTauntCycle(fighter) {
     if (!fighter) return;
 
     const scheduleNextTaunt = () => {
-        // Random delay between 5 and 7 seconds
         const delay = 5000 + Math.random() * 2000;
         fighter._tauntInterval = setTimeout(() => {
-            // Guard: fighter may have been removed from scene
             if (!fighter.mesh || !fighter.actions) return;
 
             const tauntAction = fighter.actions['taunt'];
             if (tauntAction) {
-                // Play taunt once (not looping)
                 tauntAction.setLoop(THREE.LoopOnce, 1);
                 tauntAction.clampWhenFinished = true;
                 playPreferredAction(fighter, 'taunt', 'idle', 0.15);
 
-                // Return to idle after taunt duration (with a small buffer)
                 const tauntDuration = tauntAction.getClip().duration / (getActionTimeScale(fighter, 'taunt') || 1);
                 fighter._returnToIdleTimeout = setTimeout(() => {
                     if (!fighter.mesh || !fighter.actions) return;
@@ -1044,7 +1109,6 @@ function startPreviewTauntCycle(fighter) {
                     scheduleNextTaunt();
                 }, (tauntDuration + 0.3) * 1000);
             } else {
-                // No taunt available — just schedule again
                 scheduleNextTaunt();
             }
         }, delay);
@@ -1057,7 +1121,6 @@ function updateViewportState() {
     const isTouchDevice =
         (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
 
-    // If the device has touch capabilities, treat it as mobile/touch-landscape (which orientation rules force)
     document.body.classList.toggle('touch-landscape', isTouchDevice);
 
     const isGameplayActive =
@@ -1069,13 +1132,11 @@ function updateViewportState() {
     const touchControls = document.getElementById('touch-controls');
     if (touchControls) {
         touchControls.classList.toggle('active', shouldShowTouchControls);
-        
-        // Toggle single player layout class
+
         const isSinglePlayerLayout = (gameMode === 'single' || gameMode === 'online');
         touchControls.classList.toggle('single-player-mode', isSinglePlayerLayout);
     }
 
-    // Toggle specific side visibility based on current game mode and hosting role
     const sideP1 = document.getElementById('touch-side-p1');
     const sideP2 = document.getElementById('touch-side-p2');
     if (sideP1 && sideP2) {
@@ -1091,13 +1152,11 @@ function updateViewportState() {
                 sideP2.style.display = '';
             }
         } else {
-            // Local multiplayer
             sideP1.style.display = '';
             sideP2.style.display = '';
         }
     }
 
-    // Toggle pause button visibility
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
         pauseBtn.style.display = isGameplayActive ? 'flex' : 'none';
@@ -1142,7 +1201,6 @@ function removeFighterList(list) {
         if (fighter && fighter.mesh) {
             scene.remove(fighter.mesh);
         }
-        // Clear any periodic taunt timer
         if (fighter && fighter._tauntInterval) {
             clearTimeout(fighter._tauntInterval);
             fighter._tauntInterval = null;
@@ -1189,11 +1247,9 @@ function getRandomDeathAction(actor) {
 function createPlayerMesh(charId, isPlayer1) {
     const container = new THREE.Group();
 
-    // Check if we need to use box fallback for this specific character
     const useBoxFallback = isFallbackMode || !loadedModels[charId];
 
     if (useBoxFallback) {
-        // Stylized Box Mesh Fallback
         const baseColor = CHARACTERS[charId].color;
         const torsoMat = new THREE.MeshStandardMaterial({
             color: baseColor,
@@ -1203,20 +1259,17 @@ function createPlayerMesh(charId, isPlayer1) {
             emissiveIntensity: 0.25
         });
 
-        // Torso
         const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), torsoMat);
         torso.position.y = 1.1;
         torso.castShadow = true;
         torso.receiveShadow = true;
         container.add(torso);
 
-        // Head
         const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), torsoMat);
         head.position.y = 1.9;
         head.castShadow = true;
         container.add(head);
 
-        // Hand/Foot attachments for simple hits tracking
         const dummyFist = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
         dummyFist.name = "RightHand";
         dummyFist.position.set(0.5, 1.2, 0.4);
@@ -1230,17 +1283,15 @@ function createPlayerMesh(charId, isPlayer1) {
         scene.add(container);
         return { model: container, mixer: null, actions: {} };
     } else {
-        // Source character FBX shares the same Mixamo rig as the animation FBXs.
         const originalModel = loadedModels[charId];
         const model = cloneSkinnedMesh(originalModel);
 
-        // Enable shadows and tweak materials safely
         model.traverse(child => {
             if (child.isMesh) {
                 child.visible = true;
                 child.castShadow = true;
                 child.receiveShadow = true;
-                child.frustumCulled = false; // Prevents disappearing when moving
+                child.frustumCulled = false;
 
                 const materials = Array.isArray(child.material) ? child.material : [child.material];
                 materials.forEach((mat) => {
@@ -1259,7 +1310,6 @@ function createPlayerMesh(charId, isPlayer1) {
             }
         });
 
-        // Auto-scale model dynamically with safety bounds
         model.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
@@ -1278,7 +1328,6 @@ function createPlayerMesh(charId, isPlayer1) {
         container.add(model);
         scene.add(container);
 
-        // Set up animation actions
         const mixer = new THREE.AnimationMixer(model);
         const actions = {};
         const actionManifest = getCharacterActionManifest(charId);
@@ -1293,8 +1342,13 @@ function createPlayerMesh(charId, isPlayer1) {
             const action = mixer.clipAction(clonedClip);
             actions[actionName] = action;
 
-            // Configure attack/action clips to play only once
             if (ATTACK_ACTION_KEYS.has(actionName) || HIT_REACTION_KEYS.has(actionName) || CINEMATIC_ACTION_KEYS.has(actionName) || DEATH_ACTION_KEYS.has(actionName)) {
+                action.setLoop(THREE.LoopOnce);
+                action.clampWhenFinished = true;
+            }
+
+            // Stunned naturally loops. Jumps play once.
+            if (actionName === 'jumpUp' || actionName === 'jumpDown') {
                 action.setLoop(THREE.LoopOnce);
                 action.clampWhenFinished = true;
             }
@@ -1305,9 +1359,6 @@ function createPlayerMesh(charId, isPlayer1) {
             mixer.update(0);
         }
 
-        // Ground fighters from the animated foot/toe bones instead of the overall mesh box.
-        // The FBX coats and helper geometry extend below the visible feet, which made the
-        // old Box3-based grounding leave the characters hovering above the stage.
         model.updateMatrixWorld(true);
         const box2 = new THREE.Box3().setFromObject(model);
         const lowestFootY = getLowestFootBoneY(model);
@@ -1336,15 +1387,23 @@ function spawnFighter(charId, startX, isPlayer1) {
         actions: setup.actions,
         color: CHARACTERS[charId].color,
         health: 100,
+        guardHealth: 100, // NEW: Stamina
         velocity: 0,
         direction: isPlayer1 ? 1 : -1,
 
-        // Combat state machine
         currentState: 'idle',
         isAttacking: false,
         isBlocking: false,
         isHit: false,
         isDead: false,
+        isStunned: false, // NEW: Guard Break State
+        stunTimer: 0,
+        isJumping: false, // NEW: Airborne State
+        velocityY: 0,
+        isDashing: false, // NEW: Double-Tap Dash State
+        dashTimer: 0,
+        dashDir: 0,
+
         actionTimer: 0,
         hasDealtDamage: false,
         comboCount: 0,
@@ -1356,9 +1415,8 @@ function spawnFighter(charId, startX, isPlayer1) {
         reactionDistance: 0,
         reactionDirection: 0,
         introMotion: null,
-        attackLimbKeywords: [], // Tracking bone keywords for active attack (hand/foot)
+        attackLimbKeywords: [],
 
-        // Dynamic collision calculations
         fistPos: new THREE.Vector3(),
         torsoPos: new THREE.Vector3(),
 
@@ -1385,14 +1443,10 @@ function spawnFighter(charId, startX, isPlayer1) {
         }
     };
 
-    // Ground positioning
     player.mesh.position.set(startX, 0, 0);
-
-    // Set Initial Facing Direction
     player.mesh.rotation.y = isPlayer1 ? Math.PI / 2 : -Math.PI / 2;
 
     if (isBossMatch && !isPlayer1) {
-        // Apply Boss Materials
         player.mesh.traverse(child => {
             if (child.isMesh) {
                 const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -1404,7 +1458,6 @@ function spawnFighter(charId, startX, isPlayer1) {
             }
         });
 
-        // Attach red point light to the Boss
         const bossLight = new THREE.PointLight(0xff0000, 2.0, 10);
         bossLight.position.set(0, 1.5, 0);
         player.mesh.add(bossLight);
@@ -1431,42 +1484,6 @@ function bufferAttackInput(playerId, attackType) {
 let aiNextActionTime = 0;
 let aiCurrentAction = 'idle';
 let aiHitCount = 0;
-
-window.addEventListener('keydown', (e) => {
-    if (e.code) keys[e.code] = true;
-
-    let bufferHit = null;
-    if (!e.repeat) {
-        if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
-        if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
-    }
-
-    if (gameMode === 'online') {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'ShiftLeft')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        }
-    }
-
-    // Prevent scrolling on Space / Arrows
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-        e.preventDefault();
-    }
-});
-window.addEventListener('keyup', (e) => {
-    if (e.code) keys[e.code] = false;
-
-    if (gameMode === 'online') {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'ShiftLeft')) {
-            sendNetworkInput('keyup', e.code);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
-            sendNetworkInput('keyup', e.code);
-        }
-    }
-});
 
 function resetCombo(player) {
     player.comboCount = 0;
@@ -1591,7 +1608,7 @@ function clampAttackTravelX(player, opponent, candidateX) {
 }
 
 function applyAttackTravel(player, opponent, animPercent) {
-    if (!player.currentAttack) return;
+    if (!player.currentAttack || player.isJumping) return; // Prevent horizontal glide if attacking while jumping
 
     const desiredTravel = getAttackTravelDistance(player.currentAttack, THREE.MathUtils.clamp(animPercent, 0, 1));
     const deltaTravel = desiredTravel - player.attackTravel;
@@ -1659,13 +1676,14 @@ function startAttack(player, attackDef) {
     player.reactionTravel = 0;
     player.reactionDistance = 0;
     player.reactionDirection = 0;
+    player.isDashing = false; // Attacking cancels dash
 
     player.fadeTo(attackDef.animation, attackDef.comboIndex === 0 ? 0.1 : 0.07);
     AudioSynth.playSwing();
 }
 
 function requestAttack(player, type) {
-    if (player.isHit || player.isDead) return true;
+    if (player.isHit || player.isDead || player.isStunned) return true;
     if (player.isBlocking && !player.isAttacking) return true;
 
     if (!player.isAttacking && player.comboTimer <= 0 && player.comboCount !== 0) {
@@ -1703,7 +1721,6 @@ function getLimbWorldPos(player, keywords) {
     player.mesh.traverse(child => {
         if (foundBone) return;
 
-        // Match bone (skinned) or dummy attachments (fallback mode)
         const name = child.name.toLowerCase();
         const matchesKeyword = keywords.some(kw => name.includes(kw));
 
@@ -1718,7 +1735,6 @@ function getLimbWorldPos(player, keywords) {
     if (foundBone) {
         foundBone.getWorldPosition(worldPos);
     } else {
-        // Hard fallback: Project relative coordinates based on facing direction
         player.mesh.getWorldPosition(worldPos);
         worldPos.x += player.direction * 0.9;
         worldPos.y += 1.2;
@@ -1727,6 +1743,46 @@ function getLimbWorldPos(player, keywords) {
 }
 
 // --- 11. COMBAT COLLISION CHECKS ---
+let hitStopTime = 0;
+let globalHitComboCount = 0;
+let comboResetTimeout = null;
+
+function flashFighter(player) {
+    player.mesh.traverse(child => {
+        if (child.isMesh && child.material) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach(mat => {
+                if (mat.emissive) {
+                    const originalEmissive = mat.emissive.getHex();
+                    mat.emissive.setHex(0xffffff);
+                    setTimeout(() => {
+                        if (mat) mat.emissive.setHex(originalEmissive);
+                    }, 120);
+                }
+            });
+        }
+    });
+}
+
+function updateComboUI() {
+    if (!comboUI) return;
+    if (globalHitComboCount >= 2) {
+        comboUI.textContent = `${globalHitComboCount} HITS!`;
+        comboUI.classList.add('show');
+        comboUI.style.animation = 'none';
+        comboUI.offsetHeight;
+        comboUI.style.animation = null;
+
+        clearTimeout(comboResetTimeout);
+        comboResetTimeout = setTimeout(() => {
+            comboUI.classList.remove('show');
+            globalHitComboCount = 0;
+        }, 1500);
+    } else {
+        comboUI.classList.remove('show');
+    }
+}
+
 function checkHits(attacker, defender) {
     if (attacker.hasDealtDamage || !attacker.isAttacking || defender.isDead || !attacker.currentAttack) return;
 
@@ -1734,15 +1790,13 @@ function checkHits(attacker, defender) {
     const animPercent = attacker.actionTimer / clipDuration;
     const [hitStart, hitEnd] = attacker.currentAttack.hitWindow;
 
-    // Attack triggers hit registration around the middle phase of the animation (0.35 to 0.65)
     if (animPercent >= hitStart && animPercent <= hitEnd) {
         const limbPos = getLimbWorldPos(attacker, attacker.attackLimbKeywords);
         const defenderPos = new THREE.Vector3();
         defender.mesh.getWorldPosition(defenderPos);
 
-        // Compute distance in 2D X-Y Plane
         const dx = Math.abs(limbPos.x - defenderPos.x);
-        const dy = Math.abs(limbPos.y - (defenderPos.y + 1.1)); // Compared against Torso Height (Y=1.1)
+        const dy = Math.abs(limbPos.y - (defenderPos.y + 1.1));
 
         const reachX = attacker.currentAttack.reachX || 0.8;
         const reachY = attacker.currentAttack.reachY || 1.0;
@@ -1751,27 +1805,57 @@ function checkHits(attacker, defender) {
             attacker.hasDealtDamage = true;
 
             if (defender.isBlocking) {
-                // MITIGATED BLOCK
-                defender.health = Math.max(0, defender.health - attacker.currentAttack.blockDamage);
+                // GUARD DAMAGE (STAMINA)
+                const damageToGuard = attacker.currentAttack.damage * 4.5; // Scale heavy hits to drain fast
+                defender.guardHealth -= damageToGuard;
+
+                if (defender.guardHealth <= 0) {
+                    // --- GUARD BREAK ACTIVATED ---
+                    defender.isBlocking = false;
+                    defender.isStunned = true;
+                    defender.stunTimer = 2.0; // Stunned for 2 seconds
+                    defender.guardHealth = 0; // Force empty
+
+                    resetCombo(defender);
+                    attackInputBuffer[defender.id] = null;
+                    defender.fadeTo('stunned', 0.1);
+
+                    hitStopTime = 0.15;
+                    spawnParticles(limbPos, 0xffffff, 35, false); // Glass Shatter Effect
+                    AudioSynth.playHit();
+                    triggerScreenShake(0.5, 0.3);
+
+                    defender.mesh.position.x += attacker.direction * 0.6; // Heavy pushback
+                } else {
+                    // Standard block Mitigated
+                    defender.health = Math.max(0, defender.health - attacker.currentAttack.blockDamage);
+                    hitStopTime = 0.05;
+                    spawnParticles(limbPos, 0x00f0ff, 12, true);
+                    AudioSynth.playBlock();
+                    defender.mesh.position.x += attacker.direction * attacker.currentAttack.blockKnockback;
+                }
                 updateHealthBars();
-
-                spawnParticles(limbPos, 0x00f0ff, 12, true); // Blue shield arcs
-                AudioSynth.playBlock();
-
-                // Slight knockback pushes player back
-                defender.mesh.position.x += attacker.direction * attacker.currentAttack.blockKnockback;
             } else {
                 // UNPROTECTED DIRECT HIT
                 defender.health = Math.max(0, defender.health - attacker.currentAttack.damage);
                 updateHealthBars();
 
-                spawnParticles(limbPos, 0xff0055, 20, false); // Orange/Red sparks burst
-                AudioSynth.playHit();
-                triggerScreenShake();
+                hitStopTime = attacker.currentAttack.strength === 'heavy' ? 0.12 : 0.08;
+                flashFighter(defender);
 
-                // Trigger hit reaction
+                globalHitComboCount++;
+                updateComboUI();
+
+                spawnParticles(limbPos, 0xff0055, 20, false);
+                AudioSynth.playHit();
+
+                triggerScreenShake(attacker.currentAttack.strength === 'heavy' ? 0.35 : 0.22, 0.25);
+
                 if (defender.health <= 0) {
                     triggerDeath(defender);
+                    globalTimeScale = 0.25;
+                    slowMoTimer = 0.5;
+                    triggerScreenShake(0.6, 0.4);
                 } else {
                     triggerHitReaction(defender, attacker.currentAttack, attacker.direction);
                 }
@@ -1788,6 +1872,11 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
     player.reactionTravel = 0;
     player.reactionDistance = attackDef ? (attackDef.reactionTravel || attackDef.knockback || 0) : 0;
     player.reactionDirection = incomingDirection;
+
+    // Clear stun and airborne flags if interrupted
+    player.isStunned = false;
+    player.isJumping = false;
+
     resetCombo(player);
     attackInputBuffer[player.id] = null;
     player.fadeTo(attackDef ? attackDef.reaction : 'hitMidMedium', 0.05);
@@ -1810,13 +1899,11 @@ function triggerDeath(player) {
 function getHealthColor(health) {
     let hue;
     if (health > 50) {
-        // 50% to 100% health: yellow (60) to green (130)
         const t = (health - 50) / 50;
-        hue = 60 + t * 70; // 60 to 130
+        hue = 60 + t * 70;
     } else {
-        // 0% to 50% health: red (0) to yellow (60)
         const t = health / 50;
-        hue = t * 60; // 0 to 60
+        hue = t * 60;
     }
     return {
         bright: `hsl(${hue}, 100%, 50%)`,
@@ -1827,6 +1914,8 @@ function getHealthColor(health) {
 function updateHealthBars() {
     const p1Bar = document.getElementById('p1-bar');
     const p2Bar = document.getElementById('p2-bar');
+    const p1Guard = document.getElementById('p1-guard-bar');
+    const p2Guard = document.getElementById('p2-guard-bar');
 
     if (p1Bar && players[0]) {
         const h1 = Math.max(0, Math.min(100, players[0].health));
@@ -1834,6 +1923,12 @@ function updateHealthBars() {
         const color1 = getHealthColor(h1);
         p1Bar.style.background = `linear-gradient(90deg, ${color1.dark}, ${color1.bright})`;
         p1Bar.style.boxShadow = `0 0 10px ${color1.bright}`;
+
+        if (p1Guard) {
+            const g1 = Math.max(0, Math.min(100, players[0].guardHealth));
+            p1Guard.style.width = g1 + '%';
+            p1Guard.style.backgroundColor = players[0].isStunned ? '#ff0000' : (g1 < 30 ? '#ff8800' : '#ffffff');
+        }
     }
 
     if (p2Bar && players[1]) {
@@ -1842,6 +1937,12 @@ function updateHealthBars() {
         const color2 = getHealthColor(h2);
         p2Bar.style.background = `linear-gradient(270deg, ${color2.dark}, ${color2.bright})`;
         p2Bar.style.boxShadow = `0 0 10px ${color2.bright}`;
+
+        if (p2Guard) {
+            const g2 = Math.max(0, Math.min(100, players[1].guardHealth));
+            p2Guard.style.width = g2 + '%';
+            p2Guard.style.backgroundColor = players[1].isStunned ? '#ff0000' : (g2 < 30 ? '#ff8800' : '#ffffff');
+        }
     }
 }
 
@@ -1919,8 +2020,8 @@ function updateCameraDirector() {
             lookTarget = new THREE.Vector3(winner.mesh.position.x, 1.45, 0);
         } else {
             targetCamX = midX;
-            targetCamY = THREE.MathUtils.clamp(2.5 + distance * 0.12, 3.2, 5.0);
-            targetCamZ = THREE.MathUtils.clamp(7.5 + distance * 0.45, 8.5, 14.0);
+            targetCamY = THREE.MathUtils.clamp(2.0 + distance * 0.15, 2.5, 4.0);
+            targetCamZ = THREE.MathUtils.clamp(5.5 + distance * 0.5, 6.0, 11.0);
             lookTarget = new THREE.Vector3(midX, 1.2, 0);
         }
 
@@ -1990,28 +2091,26 @@ function startCountdownSequence() {
 function startTauntPhaseSequence() {
     const p1 = players[0];
     const p2 = players[1];
-    
-    // Set camera to P1 and wait for travel
+
     setCameraMode('taunt', { focusPlayerId: p1.id, shotDurationMs: 1000 });
-    
+
     scheduleEvent(() => {
         const p1DurationMs = playTauntShot(p1);
-        
+
         scheduleEvent(() => {
             playPreferredAction(p1, 'idle', 'idle', 0.12);
-            // Set camera to P2 and wait for travel
             setCameraMode('taunt', { focusPlayerId: p2.id, shotDurationMs: 1000 });
-            
+
             scheduleEvent(() => {
                 const p2DurationMs = playTauntShot(p2);
-                
+
                 scheduleEvent(() => {
                     playPreferredAction(p2, 'idle', 'idle', 0.12);
                     startCountdownSequence();
                 }, p2DurationMs + TAUNT_BUFFER_MS);
-            }, 800); // Wait 800ms for camera to reach P2
+            }, 800);
         }, p1DurationMs + 120);
-    }, 800); // Wait 800ms for camera to reach P1
+    }, 800);
 }
 
 function playTauntShot(player) {
@@ -2039,7 +2138,7 @@ function playPreFightSequence() {
 
     const p1IntroDurationMs = getActionDurationMs(p1, 'intro', 2500);
     setCameraMode('intro', { focusPlayerId: p1.id, shotDurationMs: p1IntroDurationMs });
-    
+
     scheduleEvent(() => {
         startIntroMotion(p1);
 
@@ -2047,7 +2146,7 @@ function playPreFightSequence() {
             playPreferredAction(p1, 'standingPose', 'idle', 0.08);
             const p2IntroDurationMs = getActionDurationMs(p2, 'intro', 2500);
             setCameraMode('intro', { focusPlayerId: p2.id, shotDurationMs: p2IntroDurationMs });
-            
+
             scheduleEvent(() => {
                 startIntroMotion(p2);
 
@@ -2055,9 +2154,9 @@ function playPreFightSequence() {
                     playPreferredAction(p2, 'standingPose', 'idle', 0.08);
                     startTauntPhaseSequence();
                 }, p2IntroDurationMs + 120);
-            }, 800); // Wait 800ms for camera to reach P2
+            }, 800);
         }, p1IntroDurationMs + INTRO_STAGGER_MS);
-    }, 800); // Wait 800ms for camera to reach P1
+    }, 800);
 }
 
 window.startFight = function (isNetworkCommand = false) {
@@ -2089,24 +2188,24 @@ window.startFight = function (isNetworkCommand = false) {
     document.getElementById('instructions').style.display = 'flex';
     updateViewportState();
 
-    // Clean previous players if any
     removeFighterList(previewFighters);
     removeFighterList(players);
 
-    // Spawn selected fighters
     const p1 = spawnFighter(selections[1], -3.4, true);
     const p2 = spawnFighter(selections[2], 3.4, false);
     players.push(p1, p2);
     attackInputBuffer[1] = null;
     attackInputBuffer[2] = null;
 
-    // Display UI labels
     document.getElementById('p1-name-display').textContent = p1.name;
     document.getElementById('p2-name-display').textContent = p2.name;
 
+    injectGuardBars();
     updateHealthBars();
 
-    // Trigger 3,2,1 Countdown sequence
+    globalHitComboCount = 0;
+    updateComboUI();
+
     gameActive = false;
     selectSpotlightP1.visible = false;
     selectSpotlightP2.visible = false;
@@ -2126,7 +2225,6 @@ function startTimer() {
 
         if (roundTime <= 0) {
             clearInterval(timerInterval);
-            // Evaluate Draw or Higher Health Winner
             const p1Health = players[0].health;
             const p2Health = players[1].health;
             if (p1Health > p2Health) {
@@ -2134,7 +2232,7 @@ function startTimer() {
             } else if (p2Health > p1Health) {
                 endRound(2);
             } else {
-                endRound(0); // Draw
+                endRound(0);
             }
         }
     }, 1000);
@@ -2199,12 +2297,25 @@ function animate() {
 
     if (gamePaused) return;
 
-    const dt = clock.getDelta();
+    const rawDt = clock.getDelta();
+    const realDt = Math.min(rawDt, 0.1);
 
-    // Limit delta time spike on browser tab blur
-    const frameDt = Math.min(dt, 0.1);
+    if (hitStopTime > 0) {
+        hitStopTime -= realDt;
+        updateCameraShake(realDt);
+        renderer.render(scene, camera);
+        return;
+    }
 
-    // Update particle systems
+    if (slowMoTimer > 0) {
+        slowMoTimer -= realDt;
+        if (slowMoTimer <= 0) {
+            globalTimeScale = 1.0;
+        }
+    }
+
+    const frameDt = realDt * globalTimeScale;
+
     updateParticles(frameDt);
 
     players.forEach((player) => {
@@ -2215,51 +2326,66 @@ function animate() {
         const p1 = players[0];
         const p2 = players[1];
 
-        // --- locomotion Input Polls ---
-        // P1 Locomotion
+        // --- P1 LOCOMOTION & STATE ---
         p1.velocity = 0;
         p1.isBlocking = false;
-        if (!p1.isAttacking && !p1.isHit && !p1.isDead) {
-            if (keys['KeyS']) {
+        if (!p1.isAttacking && !p1.isHit && !p1.isDead && !p1.isStunned) {
+
+            // Trigger Jump
+            if (keys['KeyW'] && !p1.isJumping) {
+                p1.isJumping = true;
+                p1.velocityY = 7.5;
+                p1.fadeTo('jumpUp', 0.1);
+            }
+
+            if (keys['KeyS'] && !p1.isJumping && !p1.isDashing) {
                 p1.isBlocking = true;
                 resetCombo(p1);
                 p1.fadeTo('block', 0.1);
-            } else {
-                if (keys['KeyA']) p1.velocity = -2.0;
-                if (keys['KeyD']) p1.velocity = 2.0;
+            } else if (!p1.isDashing) {
+                // Horizontal tracking (allowed slightly in air for classic feel)
+                if (keys['KeyA']) p1.velocity = -2.5;
+                if (keys['KeyD']) p1.velocity = 2.5;
 
-                if (p1.velocity !== 0) {
-                    p1.fadeTo(getLocomotionAnimation(p1, p2), 0.12);
-                } else {
-                    p1.fadeTo('idle', 0.15);
+                if (!p1.isJumping) {
+                    if (p1.velocity !== 0) {
+                        p1.fadeTo(getLocomotionAnimation(p1, p2), 0.12);
+                    } else {
+                        p1.fadeTo('idle', 0.15);
+                    }
                 }
             }
         }
 
-        // P2 Locomotion
+        // --- DASH OVERRIDE P1 ---
+        if (p1.isDashing) {
+            p1.velocity = p1.dashDir * 8.0;
+            p1.dashTimer -= frameDt;
+            if (p1.dashTimer <= 0) p1.isDashing = false;
+        }
+
+        // --- P2 LOCOMOTION & STATE ---
         p2.velocity = 0;
         p2.isBlocking = false;
-        if (!p2.isAttacking && !p2.isHit && !p2.isDead) {
+        if (!p2.isAttacking && !p2.isHit && !p2.isDead && !p2.isStunned) {
             if (gameMode === 'single') {
-                // AI Logic
-                if (performance.now() > aiNextActionTime) {
+                // Primitive AI
+                if (performance.now() > aiNextActionTime && !p2.isJumping && !p2.isDashing) {
                     const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
 
-                    // Retreat logic: if hit count is high, sometimes back away
                     if (aiHitCount >= 3 && Math.random() < 0.5) {
-                        aiHitCount = 0; // reset
+                        aiHitCount = 0;
                         aiCurrentAction = 'backward';
-                        aiNextActionTime = performance.now() + 800; // step backward for 0.8s
+                        aiNextActionTime = performance.now() + 800;
                     } else if (dist > 1.8) {
                         aiCurrentAction = 'forward';
-                        aiNextActionTime = performance.now() + 300 + Math.random() * 400; // move for 0.3-0.7s
+                        aiNextActionTime = performance.now() + 300 + Math.random() * 400;
                     } else {
-                        // in range, maybe attack or block
                         if (Math.random() < 0.7) {
                             const attackType = Math.random() < 0.5 ? 'punch' : 'kick';
                             bufferAttackInput(2, attackType);
                             aiCurrentAction = 'idle';
-                            aiNextActionTime = performance.now() + 600 + Math.random() * 600; // delay next action
+                            aiNextActionTime = performance.now() + 600 + Math.random() * 600;
                         } else {
                             aiCurrentAction = 'block';
                             aiNextActionTime = performance.now() + 500 + Math.random() * 500;
@@ -2270,15 +2396,15 @@ function animate() {
                 if (aiCurrentAction === 'block') {
                     p2.isBlocking = true;
                 } else if (aiCurrentAction === 'forward') {
-                    p2.velocity = p2.direction * 2.0;
+                    p2.velocity = p2.direction * 2.5;
                 } else if (aiCurrentAction === 'backward') {
-                    p2.velocity = p2.direction * -2.0;
+                    p2.velocity = p2.direction * -2.5;
                 }
 
                 if (p2.isBlocking) {
                     resetCombo(p2);
                     p2.fadeTo('block', 0.1);
-                } else {
+                } else if (!p2.isJumping) {
                     if (p2.velocity !== 0) {
                         p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
                     } else {
@@ -2286,32 +2412,47 @@ function animate() {
                     }
                 }
             } else {
-                // Local or Online Mode
-                if (keys['ArrowDown']) {
+                // P2 Human 
+                if (keys['ArrowUp'] && !p2.isJumping) {
+                    p2.isJumping = true;
+                    p2.velocityY = 7.5;
+                    p2.fadeTo('jumpUp', 0.1);
+                }
+
+                if (keys['ArrowDown'] && !p2.isJumping && !p2.isDashing) {
                     p2.isBlocking = true;
                     resetCombo(p2);
                     p2.fadeTo('block', 0.1);
-                } else {
-                    if (keys['ArrowLeft']) p2.velocity = -2.0;
-                    if (keys['ArrowRight']) p2.velocity = 2.0;
+                } else if (!p2.isDashing) {
+                    if (keys['ArrowLeft']) p2.velocity = -2.5;
+                    if (keys['ArrowRight']) p2.velocity = 2.5;
 
-                    if (p2.velocity !== 0) {
-                        p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
-                    } else {
-                        p2.fadeTo('idle', 0.15);
+                    if (!p2.isJumping) {
+                        if (p2.velocity !== 0) {
+                            p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
+                        } else {
+                            p2.fadeTo('idle', 0.15);
+                        }
                     }
                 }
             }
         }
 
+        // --- DASH OVERRIDE P2 ---
+        if (p2.isDashing) {
+            p2.velocity = p2.dashDir * 8.0;
+            p2.dashTimer -= frameDt;
+            if (p2.dashTimer <= 0) p2.isDashing = false;
+        }
+
         processBufferedAttack(p1);
         processBufferedAttack(p2);
 
-        // Move and clamp inside boundaries
+        // Clamped Boundary Moving
         p1.mesh.position.x = Math.max(-9.5, Math.min(9.5, p1.mesh.position.x + p1.velocity * frameDt));
         p2.mesh.position.x = Math.max(-9.5, Math.min(9.5, p2.mesh.position.x + p2.velocity * frameDt));
 
-        // Dynamic facing tracking (turn to confront opponent)
+        // Face tracking logic
         if (p1.mesh.position.x < p2.mesh.position.x) {
             p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, Math.PI / 2, 0.15);
             p1.direction = 1;
@@ -2324,9 +2465,43 @@ function animate() {
             p2.direction = 1;
         }
 
-        // --- Combat Action Timers Update ---
+        // --- Combat Actions & Physics States ---
         players.forEach(p => {
             const opp = p.id === 1 ? p2 : p1;
+
+            // Guard Regen
+            if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
+                p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt); // Regen 15 per sec
+                updateHealthBars();
+            }
+
+            // Stun Recovery
+            if (p.isStunned) {
+                p.stunTimer -= frameDt;
+                if (p.stunTimer <= 0) {
+                    p.isStunned = false;
+                    p.guardHealth = 100;
+                    p.fadeTo('idle', 0.2);
+                }
+            }
+
+            // Jump Physics Loop
+            if (p.isJumping) {
+                p.velocityY -= 20.0 * frameDt; // Gravity Constant
+                p.mesh.position.y += p.velocityY * frameDt;
+
+                if (p.velocityY < 0 && p.currentState !== 'jumpDown' && !p.isAttacking && !p.isHit && !p.isStunned) {
+                    p.fadeTo('jumpDown', 0.2);
+                }
+
+                if (p.mesh.position.y <= 0) {
+                    p.mesh.position.y = 0;
+                    p.isJumping = false;
+                    p.velocityY = 0;
+                    if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
+                    spawnParticles(p.mesh.position, 0xaaaaaa, 10, true); // Landing dust
+                }
+            }
 
             if (!p.isAttacking && !p.isHit && !p.isDead && p.comboTimer > 0) {
                 p.comboTimer = Math.max(0, p.comboTimer - frameDt);
@@ -2367,7 +2542,7 @@ function animate() {
                         p.comboTimer = COMBO_RESET_DELAY;
                     }
 
-                    p.fadeTo('idle', 0.2);
+                    if (!p.isJumping) p.fadeTo('idle', 0.2);
                 }
             }
 
@@ -2387,32 +2562,25 @@ function animate() {
                     p.reactionTravel = 0;
                     p.reactionDistance = 0;
                     p.reactionDirection = 0;
-                    p.fadeTo('idle', 0.2);
+                    if (!p.isJumping) p.fadeTo('idle', 0.2);
                 }
             }
         });
     }
 
-    // Update animations skeleton mixers
     players.forEach(p => {
         if (p.mixer) p.mixer.update(frameDt);
     });
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
-        // No rotation update — characters hold their presentation angle
     });
 
     updateCameraDirector();
-
-    // Add camera screenshake displacement
-    updateCameraShake(frameDt);
-
-    // Periodic diagnostic logging removed
+    updateCameraShake(realDt);
 
     renderer.render(scene, camera);
 }
 
-// --- 15. RESIZE VIEWPORT ADAPTER ---
 window.addEventListener('resize', () => {
     const isPortrait = window.innerHeight > window.innerWidth;
     const w = isPortrait ? window.innerHeight : window.innerWidth;
@@ -2423,9 +2591,8 @@ window.addEventListener('resize', () => {
     renderer.setSize(w, h);
 });
 
-// Initialize Render Frame tick
 animate();
-// Expose UI functions to global window for index.html onclick handlers
+
 window.openLobby = openLobby;
 window.closeLobby = closeLobby;
 window.hostGame = hostGame;

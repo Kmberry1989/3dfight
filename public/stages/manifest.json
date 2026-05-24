@@ -1,0 +1,23 @@
+{
+    "id": "the_carousel",
+    "name": "Basic Arena",
+    "scene": "scene.glb",
+    "collision": "collision.glb",
+    "music": "the-carousel.ogg",
+    "spawnP1": [
+        -3.5,
+        0,
+        0
+    ],
+    "spawnP2": [
+        3.5,
+        0,
+        0
+    ],
+    "cameraFocus": [
+        0,
+        1.2,
+        0
+    ],
+    "notes": "A fairly standard family friendly location, what could possibly go wrong?"
+}
