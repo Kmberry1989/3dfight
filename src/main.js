@@ -423,7 +423,7 @@ let conn = null;
 let isHost = false;
 let sfxVolume = 0.5;
 let musicVolume = 0.5;
-let bgMusic = new Audio('/stages/generic_template/generic-loop.ogg');
+let bgMusic = new Audio('/stages/the_carousel/generic-loop.ogg');
 bgMusic.loop = true;
 
 // GLOBAL TIME CONTROLS (JUICE)
@@ -662,17 +662,23 @@ let isFallbackMode = false;
 const loadedModels = {};
 const loadedAnims = {};
 
+// --- STAGE PROPS ---
+let carouselRig = null;  // The spinning carousel_rig.glb object
+let stageSceneRoot = null; // The stage environment (scene.glb)
+
 // --- 3. ASSET LOAD PIPELINE ---
 async function loadAssets() {
     const fbxLoader = new FBXLoader();
+    const gltfLoader = new GLTFLoader();
 
     const charKeys = Object.keys(CHARACTERS);
     const animationManifest = buildAnimationManifest();
     const animKeys = Object.keys(animationManifest);
-    const totalFiles = charKeys.length + animKeys.length;
+    // +2 for the stage scene.glb and carousel_rig.glb
+    const totalFiles = charKeys.length + animKeys.length + 2;
     let loadedCount = 0;
 
-    const updateProgress = (itemName, statusText) => {
+    const updateProgress = (itemName) => {
         loadedCount++;
         const percentage = Math.min(100, Math.floor((loadedCount / totalFiles) * 100));
         progressBar.style.width = percentage + '%';
@@ -689,13 +695,13 @@ async function loadAssets() {
                         loadedAnims[key] = fbx.animations[0];
                         loadedAnims[key].name = key;
                     }
-                    updateProgress(key, 'Animation loaded');
+                    updateProgress(key);
                     resolve(true);
                 },
                 undefined,
                 (err) => {
                     console.warn(`Could not load animation FBX: ${key}. Path: ${animationManifest[key]}. Falling back...`, err);
-                    updateProgress(key, 'Animation failed');
+                    updateProgress(key);
                     resolve(false);
                 }
             );
@@ -708,20 +714,86 @@ async function loadAssets() {
             fbxLoader.load(CHARACTERS[key].path,
                 (fbx) => {
                     loadedModels[key] = fbx;
-                    updateProgress(CHARACTERS[key].name, 'Character loaded');
+                    updateProgress(CHARACTERS[key].name);
                     resolve(true);
                 },
                 undefined,
                 (err) => {
                     console.warn(`Could not load character FBX: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
-                    updateProgress(CHARACTERS[key].name, 'Character failed');
+                    updateProgress(CHARACTERS[key].name);
                     resolve(false);
                 }
             );
         });
     });
 
-    await Promise.all([...animPromises, ...charPromises]);
+    // Load the carousel stage environment (scene.glb)
+    const stagePromise = new Promise((resolve) => {
+        gltfLoader.load('/stages/the_carousel/scene.glb',
+            (gltf) => {
+                stageSceneRoot = gltf.scene;
+                stageSceneRoot.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        child.frustumCulled = false;
+                    }
+                });
+                // Position the stage environment behind and below the fight floor
+                stageSceneRoot.position.set(0, -0.25, -2);
+                scene.add(stageSceneRoot);
+                updateProgress('Stage Environment');
+                resolve(true);
+            },
+            undefined,
+            (err) => {
+                console.warn('Could not load stage scene.glb:', err);
+                updateProgress('Stage Environment');
+                resolve(false);
+            }
+        );
+    });
+
+    // Load the carousel rig (spinning background prop)
+    const carouselPromise = new Promise((resolve) => {
+        gltfLoader.load('/stages/the_carousel/carousel_rig.glb',
+            (gltf) => {
+                carouselRig = gltf.scene;
+                carouselRig.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                        child.frustumCulled = false;
+                    }
+                });
+
+                // Auto-scale carousel to be a dramatic background piece
+                const box = new THREE.Box3().setFromObject(carouselRig);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 18;
+                if (isFinite(maxDim) && maxDim > 0.001) {
+                    carouselRig.scale.setScalar(targetSize / maxDim);
+                }
+
+                // Place it behind the arena, high up so it looms over the stage
+                carouselRig.position.set(0, -1.5, -12);
+
+                scene.add(carouselRig);
+                updateProgress('Carousel Rig');
+                resolve(true);
+            },
+            undefined,
+            (err) => {
+                console.warn('Could not load carousel_rig.glb:', err);
+                updateProgress('Carousel Rig');
+                resolve(false);
+            }
+        );
+    });
+
+    await Promise.all([...animPromises, ...charPromises, stagePromise, carouselPromise]);
 
     const hasAnimations = Object.keys(loadedAnims).length > 0;
     const hasCharacters = Object.keys(loadedModels).length > 0;
@@ -2574,6 +2646,11 @@ function animate() {
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
     });
+
+    // Slowly spin the carousel rig in the background
+    if (carouselRig) {
+        carouselRig.rotation.y += 0.15 * realDt; // ~8.6°/sec — one full revolution every ~42s
+    }
 
     updateCameraDirector();
     updateCameraShake(realDt);

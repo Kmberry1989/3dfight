@@ -1,11 +1,23 @@
 {
-  "id": "generic_template",
-  "name": "Generic Template Stage",
+  "id": "the_carousel",
+  "name": "The Carousel",
   "scene": "scene.glb",
   "collision": "collision.glb",
-  "music": "generic-loop.ogg",
-  "spawnP1": [-3.5, 0, 0],
-  "spawnP2": [3.5, 0, 0],
-  "cameraFocus": [0, 1.2, 0],
-  "notes": "Generic template stage layout following asset pipeline guidelines"
+  "music": "the-carousel.ogg",
+  "spawnP1": [
+    -3.5,
+    0,
+    0
+  ],
+  "spawnP2": [
+    3.5,
+    0,
+    0
+  ],
+  "cameraFocus": [
+    0,
+    1.2,
+    0
+  ],
+  "notes": "I want to ride the horsey!"
 }
