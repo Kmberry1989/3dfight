@@ -767,18 +767,28 @@ async function loadAssets() {
                     }
                 });
 
-                // Auto-scale carousel to be a dramatic background piece
+                // Center the carousel's geometric origin so it spins cleanly
                 const box = new THREE.Box3().setFromObject(carouselRig);
-                const size = new THREE.Vector3();
-                box.getSize(size);
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const targetSize = 18;
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+                // Shift children so the rig pivots around its true center
+                carouselRig.children.forEach(child => {
+                    child.position.sub(center);
+                });
+
+                // Scale to fit nicely between players and the back wall
+                box.getSize(new THREE.Vector3());
+                const size2 = new THREE.Vector3();
+                box.getSize(size2);
+                const maxDim = Math.max(size2.x, size2.y, size2.z);
+                const targetSize = 8; // meters — fits between spawns (±3.5) and back wall
                 if (isFinite(maxDim) && maxDim > 0.001) {
                     carouselRig.scale.setScalar(targetSize / maxDim);
                 }
 
-                // Place it behind the arena, high up so it looms over the stage
-                carouselRig.position.set(0, -1.5, -12);
+                // Place between the stage back wall and the player spawn points (Z=0)
+                // Back wall is around Z=-5 to -7, spawns at Z=0
+                carouselRig.position.set(0, 0, -4);
 
                 scene.add(carouselRig);
                 updateProgress('Carousel Rig');

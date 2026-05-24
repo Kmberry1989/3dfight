@@ -419,12 +419,12 @@ canvas {
 }
 
 .preview-name {
-    margin-top: 16px;
-    font-size: 28px;
+    margin-top: 10px;
+    font-size: 22px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 2px;
-    min-height: 40px;
+    min-height: 32px;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.16);
 }
 
@@ -697,6 +697,104 @@ canvas {
         min-width: 180px;
         font-size: 20px;
         padding: 13px 28px;
+    }
+}
+
+/* --- PORTRAIT PHONE: vertical stacking layout --- */
+@media (max-width: 600px) and (orientation: portrait),
+(max-width: 480px) {
+    #selector-screen {
+        padding: 10px 10px 12px;
+        overflow-y: auto;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    /* Compact header */
+    .select-header {
+        width: 100%;
+        padding: 10px 14px 10px;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        border-radius: 14px;
+    }
+
+    .select-header h1 {
+        font-size: 24px;
+        letter-spacing: 2px;
+    }
+
+    .select-header p,
+    .select-header-copy {
+        display: none;
+    }
+
+    /* Stack panels vertically, full width */
+    .selection-container {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 10px;
+        padding: 0;
+        position: static;
+    }
+
+    /* Hide the big VS banner — it would overlap stacked panels */
+    .select-center-banner {
+        display: none;
+    }
+
+    .player-select-panel {
+        width: 100%;
+        min-height: unset;
+        padding: 12px 12px 14px;
+        border-radius: 16px;
+    }
+
+    /* 4 columns so all 7 characters fit without scrolling */
+    .character-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+
+    .character-name {
+        font-size: 8px;
+        padding: 3px 2px 4px;
+    }
+
+    .preview-name {
+        font-size: 16px;
+        margin-top: 8px;
+        min-height: unset;
+    }
+
+    /* READY button — big tap target, always in view */
+    .lock-btn {
+        width: 100%;
+        margin-top: 10px !important;
+        padding: 14px 20px !important;
+        font-size: 16px !important;
+        border-radius: 12px !important;
+        letter-spacing: 2px;
+        font-weight: 800;
+        touch-action: manipulation;
+    }
+
+    .locked-status {
+        font-size: 13px !important;
+        margin-top: 8px !important;
+    }
+
+    /* Footer — keep compact at bottom */
+    .select-footer {
+        width: 100%;
+        border-radius: 14px;
+        padding: 10px 14px;
+    }
+
+    .select-footer-copy span {
+        font-size: 11px;
     }
 }
 
