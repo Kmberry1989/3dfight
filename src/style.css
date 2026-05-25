@@ -596,41 +596,31 @@ canvas {
     pointer-events: none;
 }
 
+.touch-pair {
+    display: flex;
+    gap: 10px;
+    pointer-events: none;
+}
+
 .touch-btn {
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: rgba(255, 255, 255, 0.09);
-    color: rgba(255, 255, 255, 0.82);
-    font: 700 12px 'Outfit', sans-serif;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+    width: clamp(64px, 10vw, 88px);
+    aspect-ratio: 1;
+    border: 0;
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    padding: 0;
+    appearance: none;
     pointer-events: auto;
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
-}
-
-.touch-btn.wide {
-    width: 76px;
-    border-radius: 18px;
-}
-
-.touch-btn.p1 {
-    border-color: rgba(0, 240, 255, 0.36);
-    box-shadow: 0 0 18px rgba(0, 240, 255, 0.16);
-}
-
-.touch-btn.p2 {
-    border-color: rgba(255, 0, 127, 0.36);
-    box-shadow: 0 0 18px rgba(255, 0, 127, 0.16);
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.28));
 }
 
 .touch-btn.pressed {
-    transform: scale(0.96);
-    background: rgba(255, 255, 255, 0.18);
+    transform: scale(0.97);
+    filter: drop-shadow(0 7px 14px rgba(0, 0, 0, 0.32));
 }
 
 .touch-label {
@@ -645,6 +635,74 @@ canvas {
 
 .touch-side.left .touch-label {
     left: 6px;
+}
+
+.touch-icon-left {
+    background-image: url('/touch%20controls%20ui/uibuttonleft-.svg');
+}
+
+.touch-icon-left.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonleft-pressed.svg');
+}
+
+.touch-icon-right {
+    background-image: url('/touch%20controls%20ui/uibuttonright-.svg');
+}
+
+.touch-icon-right.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonright-pressed.svg');
+}
+
+.touch-icon-jump {
+    background-image: url('/touch%20controls%20ui/uibuttonjump-.svg');
+}
+
+.touch-icon-jump.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonjump-pressed.svg');
+}
+
+.touch-icon-block {
+    background-image: url('/touch%20controls%20ui/uibuttonblock-.svg');
+}
+
+.touch-icon-block.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonblock-pressed.svg');
+}
+
+.touch-icon-punch {
+    background-image: url('/touch%20controls%20ui/uibuttonpunch-.svg');
+}
+
+.touch-icon-punch.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonpunch-pressed.svg');
+}
+
+.touch-icon-kick {
+    background-image: url('/touch%20controls%20ui/uibuttonkick-.svg');
+}
+
+.touch-icon-kick.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonkick-pressed.svg');
+}
+
+.touch-icon-special {
+    background-image: url('/touch%20controls%20ui/uibuttonspecial-.svg');
+}
+
+.touch-icon-special.pressed {
+    background-image: url('/touch%20controls%20ui/uibuttonspecial-pressed.svg');
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .touch-side.right .touch-label {
