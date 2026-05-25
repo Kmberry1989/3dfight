@@ -129,6 +129,9 @@ const SHARED_ANIMATIONS = {
     kickLight: '/animations/Kicking light.fbx',
     kickMedium: '/animations/Kick medium.fbx',
     kickHeavy: '/animations/Kick heavy.fbx',
+    specialLight: '/animations/Spin Flip Kick.fbx',
+    specialMedium: '/animations/Leg Sweep.fbx',
+    specialHeavy: '/animations/Big Body Blow.fbx',
     block: '/animations/Blocking.fbx',
     hitHighLight: '/animations/Reaction highlight.fbx',
     hitHighMedium: '/animations/Reaction highmedium.fbx',
@@ -143,7 +146,11 @@ const SHARED_ANIMATIONS = {
     deathFlyBack: '/animations/Flying Back Death.fbx',
     deathKnockout: '/animations/Knocked Out.fbx',
     stunned: '/animations/Stunned.fbx',
-    jumpUp: '/animations/Jumping.fbx',
+    dizzy: '/animations/Dizzy Idle.fbx',
+    knockdown: '/animations/Getting Hit Backwards.fbx',
+    getUp: '/animations/Getting Up.fbx',
+    jumpUp: '/animations/Jump.fbx',
+    doubleJump: '/animations/Double Jump.fbx',
     jumpDown: '/animations/Jumping Down.fbx'
 };
 
@@ -353,6 +360,125 @@ const ATTACKS = {
             reaction: 'hitLowHeavy',
             comboEnder: true
         }
+    },
+    special: {
+        light: {
+            animation: 'specialLight',
+            limbKeywords: ['rightfoot', 'foot', 'leg'],
+            hitWindow: [0.24, 0.48],
+            queueWindowStart: 0.42,
+            chainAt: 0.74,
+            damage: 6,
+            blockDamage: 2,
+            reachX: 1.6,
+            reachY: 1.2,
+            knockback: 0.35,
+            blockKnockback: 0.20,
+            reactionTravel: 0.35,
+            forwardTravel: 0.42,
+            settleBack: 0.05,
+            minSpacing: 0.98,
+            reaction: 'hitMidLight',
+            comboEnder: false
+        },
+        medium: {
+            animation: 'specialMedium',
+            limbKeywords: ['rightfoot', 'foot', 'leg'],
+            hitWindow: [0.30, 0.56],
+            queueWindowStart: 0.48,
+            chainAt: 0.80,
+            damage: 9,
+            blockDamage: 3,
+            reachX: 1.6,
+            reachY: 1.2,
+            knockback: 0.5,
+            blockKnockback: 0.25,
+            reactionTravel: 0.5,
+            forwardTravel: 0.58,
+            settleBack: 0.07,
+            minSpacing: 0.94,
+            reaction: 'hitLowMedium',
+            comboEnder: false
+        },
+        heavy: {
+            animation: 'specialHeavy',
+            limbKeywords: ['rightarm', 'arm', 'hand'],
+            hitWindow: [0.36, 0.66],
+            queueWindowStart: 1,
+            chainAt: 1,
+            damage: 15,
+            blockDamage: 4,
+            reachX: 1.6,
+            reachY: 1.2,
+            knockback: 0.85,
+            blockKnockback: 0.3,
+            reactionTravel: 0.85,
+            forwardTravel: 0.78,
+            settleBack: 0.10,
+            windupBackstep: 0.16,
+            minSpacing: 0.90,
+            reaction: 'hitHighHeavy',
+            comboEnder: true
+        }
+    },
+    jumpAttack: {
+        light: {
+            animation: 'jumpDown',
+            limbKeywords: ['rightfoot', 'foot', 'leg'],
+            hitWindow: [0.10, 0.80],
+            queueWindowStart: 1,
+            chainAt: 1,
+            damage: 8,
+            blockDamage: 2,
+            reachX: 1.6,
+            reachY: 1.6,
+            knockback: 0.5,
+            blockKnockback: 0.2,
+            reactionTravel: 0.5,
+            forwardTravel: 0,
+            settleBack: 0,
+            minSpacing: 0.9,
+            reaction: 'hitMidHeavy',
+            comboEnder: true
+        },
+        medium: {
+            animation: 'jumpDown',
+            limbKeywords: ['rightfoot', 'foot', 'leg'],
+            hitWindow: [0.10, 0.80],
+            queueWindowStart: 1,
+            chainAt: 1,
+            damage: 8,
+            blockDamage: 2,
+            reachX: 1.6,
+            reachY: 1.6,
+            knockback: 0.5,
+            blockKnockback: 0.2,
+            reactionTravel: 0.5,
+            forwardTravel: 0,
+            settleBack: 0,
+            minSpacing: 0.9,
+            reaction: 'hitMidHeavy',
+            comboEnder: true
+        },
+        heavy: {
+            animation: 'jumpDown',
+            limbKeywords: ['rightfoot', 'foot', 'leg'],
+            hitWindow: [0.10, 0.80],
+            queueWindowStart: 1,
+            chainAt: 1,
+            damage: 8,
+            blockDamage: 2,
+            reachX: 1.6,
+            reachY: 1.6,
+            knockback: 0.5,
+            blockKnockback: 0.2,
+            reactionTravel: 0.5,
+            forwardTravel: 0,
+            settleBack: 0,
+            minSpacing: 0.9,
+            reaction: 'hitMidHeavy',
+            comboEnder: true
+        }
     }
 };
 
@@ -370,7 +496,9 @@ const HIT_REACTION_KEYS = new Set([
     'hitMidHeavy',
     'hitLowLight',
     'hitLowMedium',
-    'hitLowHeavy'
+    'hitLowHeavy',
+    'knockdown',
+    'getUp'
 ]);
 const DEATH_ACTION_KEYS = new Set(['deathFall', 'deathFlyBack', 'deathKnockout']);
 const CINEMATIC_ACTION_KEYS = new Set(['intro', 'taunt', 'victory', 'standingPose']);
@@ -461,6 +589,9 @@ function showMainMenu() {
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('hud').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+    
+    if (typeof gridHelper !== 'undefined') gridHelper.visible = true;
+    if (typeof floor !== 'undefined') floor.visible = true;
 }
 
 window.startGameMode = function (mode) {
@@ -628,14 +759,16 @@ window.addEventListener('keydown', (e) => {
     if (!e.repeat) {
         if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
         if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
+        if (e.code === 'KeyC') { bufferAttackInput(1, 'special'); bufferHit = 'special'; }
         if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
         if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
+        if (e.code === 'KeyI') { bufferAttackInput(2, 'special'); bufferHit = 'special'; }
     }
 
     if (gameMode === 'online') {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
             sendNetworkInput('keydown', e.code, bufferHit);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
             sendNetworkInput('keydown', e.code, bufferHit);
         }
     }
@@ -650,9 +783,9 @@ window.addEventListener('keyup', (e) => {
     if (e.code) keys[e.code] = false;
 
     if (gameMode === 'online') {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft')) {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
             sendNetworkInput('keyup', e.code);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO')) {
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
             sendNetworkInput('keyup', e.code);
         }
     }
@@ -777,18 +910,20 @@ async function loadAssets() {
                 });
 
                 // Scale to fit nicely between players and the back wall
-                box.getSize(new THREE.Vector3());
                 const size2 = new THREE.Vector3();
                 box.getSize(size2);
                 const maxDim = Math.max(size2.x, size2.y, size2.z);
                 const targetSize = 8; // meters — fits between spawns (±3.5) and back wall
+                let finalScale = 1;
                 if (isFinite(maxDim) && maxDim > 0.001) {
-                    carouselRig.scale.setScalar(targetSize / maxDim);
+                    finalScale = targetSize / maxDim;
+                    carouselRig.scale.setScalar(finalScale);
                 }
 
                 // Place between the stage back wall and the player spawn points (Z=0)
                 // Back wall is around Z=-5 to -7, spawns at Z=0
-                carouselRig.position.set(0, 0, -4);
+                // Raise the carousel so its bottom rests above the floor
+                carouselRig.position.set(0, (size2.y * finalScale) / 2, -7);
 
                 scene.add(carouselRig);
                 updateProgress('Carousel Rig');
@@ -928,6 +1063,9 @@ function showCharacterSelect() {
     selectSpotlightP1.visible = true;
     selectSpotlightP2.visible = true;
     actionSpotlight.visible = false;
+    
+    if (typeof gridHelper !== 'undefined') gridHelper.visible = true;
+    if (typeof floor !== 'undefined') floor.visible = true;
 
     document.getElementById('p1-locked-status').style.display = 'none';
     document.getElementById('p1-lock-btn').style.display = 'block';
@@ -1481,6 +1619,9 @@ function spawnFighter(charId, startX, isPlayer1) {
         isStunned: false, // NEW: Guard Break State
         stunTimer: 0,
         isJumping: false, // NEW: Airborne State
+        jumps: 0,
+        wWasPressed: false,
+        upWasPressed: false,
         velocityY: 0,
         isDashing: false, // NEW: Double-Tap Dash State
         dashTimer: 0,
@@ -1725,9 +1866,10 @@ function startIntroMotion(player) {
     player.introMotion = {
         elapsed: 0,
         duration: Math.max(getClipDuration(player, 'intro') / getActionTimeScale(player, 'intro'), 0.85),
-        startY: INTRO_DROP_HEIGHT
+        startX: player.mesh.position.x + (player.direction * -3.0) // Start 3 units back
     };
-    player.mesh.position.y = INTRO_DROP_HEIGHT;
+    player.mesh.position.y = 0;
+    player.mesh.position.x = player.introMotion.startX;
     playPreferredAction(player, 'intro', 'idle', 0.05);
 }
 
@@ -1737,10 +1879,12 @@ function updateIntroMotion(player, dt) {
     player.introMotion.elapsed += dt;
     const progress = THREE.MathUtils.clamp(player.introMotion.elapsed / player.introMotion.duration, 0, 1);
     const settleProgress = getPhaseProgress(progress, 0.05, 0.9);
-    player.mesh.position.y = THREE.MathUtils.lerp(player.introMotion.startY, 0, settleProgress);
+    
+    const targetX = player.id === 1 ? -3.4 : 3.4;
+    player.mesh.position.x = THREE.MathUtils.lerp(player.introMotion.startX, targetX, settleProgress);
 
     if (progress >= 1) {
-        player.mesh.position.y = 0;
+        player.mesh.position.x = targetX;
         player.introMotion = null;
     }
 }
@@ -1767,6 +1911,13 @@ function startAttack(player, attackDef) {
 function requestAttack(player, type) {
     if (player.isHit || player.isDead || player.isStunned) return true;
     if (player.isBlocking && !player.isAttacking) return true;
+
+    if (player.isJumping || player.mesh.position.y > 0) {
+        if (!player.isAttacking) {
+            startAttack(player, getAttackDefinition('jumpAttack', 0));
+        }
+        return true;
+    }
 
     if (!player.isAttacking && player.comboTimer <= 0 && player.comboCount !== 0) {
         resetCombo(player);
@@ -1900,7 +2051,7 @@ function checkHits(attacker, defender) {
 
                     resetCombo(defender);
                     attackInputBuffer[defender.id] = null;
-                    defender.fadeTo('stunned', 0.1);
+                    defender.fadeTo('dizzy', 0.1);
 
                     hitStopTime = 0.15;
                     spawnParticles(limbPos, 0xffffff, 35, false); // Glass Shatter Effect
@@ -1961,7 +2112,15 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
 
     resetCombo(player);
     attackInputBuffer[player.id] = null;
-    player.fadeTo(attackDef ? attackDef.reaction : 'hitMidMedium', 0.05);
+    
+    let reactionAnim = attackDef ? attackDef.reaction : 'hitMidMedium';
+    if (attackDef && attackDef.strength === 'heavy') {
+        reactionAnim = 'knockdown';
+        // Give a bit more pushback for knockdown
+        player.reactionDistance *= 1.5;
+    }
+    
+    player.fadeTo(reactionAnim, 0.05);
 }
 
 function triggerDeath(player) {
@@ -2292,6 +2451,9 @@ window.startFight = function (isNetworkCommand = false) {
     selectSpotlightP1.visible = false;
     selectSpotlightP2.visible = false;
     actionSpotlight.visible = true;
+    
+    if (typeof gridHelper !== 'undefined') gridHelper.visible = false;
+    if (typeof floor !== 'undefined') floor.visible = false;
     roundTime = 99;
     document.getElementById('timer').textContent = roundTime;
     setCameraMode('intro', { focusPlayerId: 1, winnerId: 0 });
@@ -2414,11 +2576,20 @@ function animate() {
         if (!p1.isAttacking && !p1.isHit && !p1.isDead && !p1.isStunned) {
 
             // Trigger Jump
-            if (keys['KeyW'] && !p1.isJumping) {
+            const currentWPressed = keys['KeyW'];
+            if (currentWPressed && !p1.wWasPressed && p1.jumps < 2) {
                 p1.isJumping = true;
-                p1.velocityY = 7.5;
-                p1.fadeTo('jumpUp', 0.1);
+                p1.velocityY = 5.0;
+                p1.jumps++;
+                if (p1.jumps > 1) {
+                    p1.fadeTo('doubleJump', 0.1);
+                    spawnParticles(p1.mesh.position, 0xffffff, 15, true); // Double jump burst
+                    AudioSynth.playSwing();
+                } else {
+                    p1.fadeTo('jumpUp', 0.1);
+                }
             }
+            p1.wWasPressed = currentWPressed;
 
             if (keys['KeyS'] && !p1.isJumping && !p1.isDashing) {
                 p1.isBlocking = true;
@@ -2494,15 +2665,23 @@ function animate() {
                     }
                 }
             } else {
-                // P2 Human 
-                if (keys['ArrowUp'] && !p2.isJumping) {
+                // P2 Human
+                const currentUpPressed = keys['ArrowUp'];
+                if (currentUpPressed && !p2.upWasPressed && p2.jumps < 2) {
                     p2.isJumping = true;
-                    p2.velocityY = 7.5;
-                    p2.fadeTo('jumpUp', 0.1);
+                    p2.velocityY = 5.0;
+                    p2.jumps++;
+                    if (p2.jumps > 1) {
+                        p2.fadeTo('doubleJump', 0.1);
+                        spawnParticles(p2.mesh.position, 0xffffff, 15, true);
+                        AudioSynth.playSwing();
+                    } else {
+                        p2.fadeTo('jumpUp', 0.1);
+                    }
                 }
+                p2.upWasPressed = currentUpPressed;
 
-                if (keys['ArrowDown'] && !p2.isJumping && !p2.isDashing) {
-                    p2.isBlocking = true;
+                if (keys['ArrowDown'] && !p2.isJumping && !p2.isDashing) {                    p2.isBlocking = true;
                     resetCombo(p2);
                     p2.fadeTo('block', 0.1);
                 } else if (!p2.isDashing) {
@@ -2568,7 +2747,7 @@ function animate() {
             }
 
             // Jump Physics Loop
-            if (p.isJumping) {
+            if (p.isJumping || p.mesh.position.y > 0) {
                 p.velocityY -= 20.0 * frameDt; // Gravity Constant
                 p.mesh.position.y += p.velocityY * frameDt;
 
@@ -2579,6 +2758,7 @@ function animate() {
                 if (p.mesh.position.y <= 0) {
                     p.mesh.position.y = 0;
                     p.isJumping = false;
+                    p.jumps = 0;
                     p.velocityY = 0;
                     if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
                     spawnParticles(p.mesh.position, 0xaaaaaa, 10, true); // Landing dust
@@ -2639,12 +2819,17 @@ function animate() {
                 const reactionProgress = p.actionTimer / clipDur;
                 applyReactionTravel(p, reactionProgress);
                 if (p.actionTimer >= clipDur) {
-                    p.isHit = false;
-                    p.actionTimer = 0;
-                    p.reactionTravel = 0;
-                    p.reactionDistance = 0;
-                    p.reactionDirection = 0;
-                    if (!p.isJumping) p.fadeTo('idle', 0.2);
+                    if (p.currentState === 'knockdown') {
+                        p.fadeTo('getUp', 0.1);
+                        p.actionTimer = 0; // Reset timer for getUp animation
+                    } else {
+                        p.isHit = false;
+                        p.actionTimer = 0;
+                        p.reactionTravel = 0;
+                        p.reactionDistance = 0;
+                        p.reactionDirection = 0;
+                        if (!p.isJumping) p.fadeTo('idle', 0.2);
+                    }
                 }
             }
         });
