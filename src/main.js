@@ -253,6 +253,11 @@ const COMBO_RESET_DELAY = 0.45;
 const FOOT_BONE_KEYWORDS = ['toe_end', 'toebase', 'foot'];
 const FOOT_GROUND_OFFSET = 0.025;
 const CLOSE_STEP_DISTANCE = 2.9;
+const GROUND_Y = 0;
+const KNOCKDOWN_REACTION_DISTANCE = 2.35;
+const HIT_FADE_DURATION = 0.08;
+const KNOCKDOWN_FADE_DURATION = 0.12;
+const GET_UP_FADE_DURATION = 0.14;
 
 const ATTACKS = {
     punch: {
@@ -2021,7 +2026,7 @@ function getActionTimeScale(actor, actionName) {
     const targetDurations = {
         intro: 2.45,
         taunt: 2.25,
-        victory: 4.25
+        victory: 8.0
     };
 
     const targetDuration = targetDurations[actionName];
@@ -2036,6 +2041,45 @@ function getRandomDeathAction(actor) {
     const available = Array.from(DEATH_ACTION_KEYS).filter((actionName) => actor.actions[actionName]);
     if (available.length === 0) return null;
     return available[Math.floor(Math.random() * available.length)];
+}
+
+function stripRootMotionFromClip(clip, referenceRootY = 0) {
+    if (!clip) return;
+
+    clip.tracks.forEach((track) => {
+        const isVectorPositionTrack =
+            track instanceof THREE.VectorKeyframeTrack ||
+            track.name.endsWith('.position');
+        if (!isVectorPositionTrack || !track.values || track.values.length < 3) return;
+
+        const nodeName = track.name.split('.')[0] || '';
+        const isRootNode = /(^|:)(hips|root|pelvis)$/i.test(nodeName) || /mixamorig:hips/i.test(nodeName);
+        if (!isRootNode) return;
+
+        const baseX = track.values[0];
+        const baseZ = track.values[2];
+        for (let i = 0; i < track.values.length; i += 3) {
+            track.values[i] = baseX;
+            track.values[i + 1] = referenceRootY;
+            track.values[i + 2] = baseZ;
+        }
+    });
+}
+
+function groundFighter(player) {
+    if (!player || !player.mesh) return;
+    player.mesh.position.y = GROUND_Y;
+}
+
+function sanitizeGroundedState(player, { preserveHitState = false } = {}) {
+    if (!player) return;
+    player.velocityY = 0;
+    player.isJumping = false;
+    player.jumps = 0;
+    groundFighter(player);
+    if (!preserveHitState) {
+        player.isHit = false;
+    }
 }
 
 function createPlayerMesh(charId, isPlayer1) {
@@ -2132,6 +2176,18 @@ function createPlayerMesh(charId, isPlayer1) {
 
             const clonedClip = clip.clone();
             clonedClip.name = actionName;
+            let referenceRootY = 0;
+            clonedClip.tracks.forEach((track) => {
+                const isVectorPositionTrack =
+                    track instanceof THREE.VectorKeyframeTrack ||
+                    track.name.endsWith('.position');
+                if (!isVectorPositionTrack || !track.values || track.values.length < 2) return;
+
+                const nodeName = track.name.split('.')[0] || '';
+                const isRootNode = /(^|:)(hips|root|pelvis)$/i.test(nodeName) || /mixamorig:hips/i.test(nodeName);
+                if (isRootNode) referenceRootY = track.values[1];
+            });
+            stripRootMotionFromClip(clonedClip, referenceRootY);
 
             const action = mixer.clipAction(clonedClip);
             actions[actionName] = action;
@@ -2141,61 +2197,11 @@ function createPlayerMesh(charId, isPlayer1) {
                 action.clampWhenFinished = true;
             }
 
-            // Stunned naturally loops. Jumps play once.
             if (actionName === 'jumpUp' || actionName === 'jumpDown') {
                 action.setLoop(THREE.LoopOnce);
                 action.clampWhenFinished = true;
             }
         });
-
-        // --- Animation Height Normalization ---
-        // Animations from Mixamo often have their root/hips bones starting at slightly different Y-coordinates.
-        // This causes characters to snap into the floor or float when switching from 'idle' to an attack (e.g. punchHeavy).
-        // We fix this by finding the 'idle' animation's starting Y, and offsetting ALL other animations so they start at that exact height.
-        let idleStartY = null;
-        if (actions.idle) {
-            const idleClip = actions.idle.getClip();
-            idleClip.tracks.forEach(track => {
-                const isPositionY = track.name.endsWith('.position') || (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
-                const onRoot = /^(mixamorig:)?hips|root|pelvis/i.test(track.name.split('.')[0]);
-                if (isPositionY && onRoot && track.values && track.values.length > 1) {
-                    idleStartY = track.values[1]; // First Y value
-                }
-            });
-        }
-
-        const ROOT_MOTION_STRIP_KEYS = new Set(['running', 'runningSlide']);
-        
-        if (idleStartY !== null) {
-            Object.entries(actions).forEach(([actionName, action]) => {
-                const clip = action.getClip();
-                clip.tracks.forEach(track => {
-                    const isPositionY = track.name.endsWith('.position') || (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
-                    const onRoot = /^(mixamorig:)?hips|root|pelvis/i.test(track.name.split('.')[0]);
-                    
-                    if (isPositionY && onRoot && track.values && track.values.length > 1) {
-                        const animStartY = track.values[1];
-                        const offsetY = idleStartY - animStartY;
-                        
-                        // We still want to strip ALL vertical bouncing for running/sliding 
-                        // so they stay perfectly flat on the ground while approaching
-                        if (ROOT_MOTION_STRIP_KEYS.has(actionName)) {
-                            for (let i = 1; i < track.values.length; i += 3) {
-                                track.values[i] = idleStartY; // lock to flat idle height
-                            }
-                        } else {
-                            // For punches, kicks, hits, etc., preserve the animation's natural Y-curve (bobs, dips, jumps) 
-                            // but offset the whole curve so it seamlessly starts from the idle height.
-                            if (Math.abs(offsetY) > 0.0001) {
-                                for (let i = 1; i < track.values.length; i += 3) {
-                                    track.values[i] += offsetY;
-                                }
-                            }
-                        }
-                    }
-                });
-            });
-        }
 
         if (actions.idle) {
             actions.idle.play();
@@ -2780,7 +2786,12 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
 
     // Clear stun and airborne flags if interrupted
     player.isStunned = false;
+    player.velocityY = 0;
     player.isJumping = false;
+    player.jumps = 0;
+    if (player.mesh.position.y > GROUND_Y) {
+        player.mesh.position.y = GROUND_Y;
+    }
 
     resetCombo(player);
     attackInputBuffer[player.id] = null;
@@ -2788,11 +2799,11 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
     let reactionAnim = attackDef ? attackDef.reaction : 'hitMidMedium';
     if ((attackDef && attackDef.strength === 'heavy') || player.mesh.position.y > 0) {
         reactionAnim = 'knockdown';
-        // Give a bit more pushback for knockdown
-        player.reactionDistance *= 1.5;
+        player.reactionDistance = Math.max(player.reactionDistance * 1.9, KNOCKDOWN_REACTION_DISTANCE);
+        sanitizeGroundedState(player, { preserveHitState: true });
     }
     
-    player.fadeTo(reactionAnim, 0.05);
+    player.fadeTo(reactionAnim, reactionAnim === 'knockdown' ? KNOCKDOWN_FADE_DURATION : HIT_FADE_DURATION);
 }
 
 function triggerDeath(player) {
@@ -2939,12 +2950,15 @@ function updateCameraDirector() {
             lookTarget = new THREE.Vector3(midX, 1.25, 0);
         } else if (cameraDirector.mode === 'victory' && cameraDirector.winnerId > 0) {
             const winner = players[cameraDirector.winnerId - 1] || p1;
-            const elapsed = (performance.now() - cameraDirector.modeStartedAt) / 1000;
-            const sideBias = winner.id === 1 ? -0.9 : 0.9;
-            targetCamX = winner.mesh.position.x + sideBias;
-            targetCamY = 3.0 + Math.min(elapsed, 1.6) * 0.14;
-            targetCamZ = Math.max(5.9, 7.8 - Math.min(elapsed, 2.4) * 0.75);
-            lookTarget = new THREE.Vector3(winner.mesh.position.x, 1.45, 0);
+            const sideBias = winner.id === 1 ? -0.42 : 0.42;
+            targetCamX = winner.mesh.position.x + THREE.MathUtils.lerp(sideBias * 2.1, sideBias, shotProgress);
+            targetCamY = THREE.MathUtils.lerp(2.8, 3.35, shotProgress);
+            targetCamZ = THREE.MathUtils.lerp(7.2, 4.8, shotProgress);
+            lookTarget = new THREE.Vector3(
+                winner.mesh.position.x,
+                THREE.MathUtils.lerp(1.5, 1.28, shotProgress),
+                0.08
+            );
         } else {
             targetCamX = midX;
             targetCamY = THREE.MathUtils.clamp(2.0 + distance * 0.15, 2.5, 4.0);
@@ -3312,15 +3326,26 @@ function endRound(winnerNum) {
     const secondaryBtn = document.getElementById('gameover-secondary-btn');
     const winner = winnerNum > 0 ? players[winnerNum - 1] : null;
     const loser  = winnerNum > 0 ? players[winnerNum === 1 ? 1 : 0] : null;
+    const victoryShowcaseMs = 8000;
 
     if (winner) {
-        setCameraMode('victory', { winnerId: winnerNum });
+        setCameraMode('victory', { winnerId: winnerNum, shotDurationMs: victoryShowcaseMs });
         winner.isAttacking = false;
         winner.isHit = false;
         winner.attackTravel = 0;
+        winner.reactionTravel = 0;
+        winner.reactionDistance = 0;
+        winner.reactionDirection = 0;
+        sanitizeGroundedState(winner);
         playPreferredAction(winner, 'victory', 'idle', 0.1);
 
         if (loser && !loser.isDead) {
+            loser.isAttacking = false;
+            loser.attackTravel = 0;
+            loser.reactionTravel = 0;
+            loser.reactionDistance = 0;
+            loser.reactionDirection = 0;
+            sanitizeGroundedState(loser);
             playPreferredAction(loser, 'idle', 'idle', 0.15);
         }
 
@@ -3332,14 +3357,11 @@ function endRound(winnerNum) {
         setCameraMode('fight', { winnerId: 0 });
     }
 
-    // Let the full victory animation play out, then add a 1.5 s hold before
-    // fading the gameover overlay in over the 3D scene.
     const victoryClipMs = winner
-        ? Math.max(2800, getActionDurationMs(winner, 'victory', 3200))
+        ? Math.max(victoryShowcaseMs, getActionDurationMs(winner, 'victory', victoryShowcaseMs))
         : 0;
-    const holdMs   = 1500;   // extra appreciative pause after animation ends
     const fadeMs   = 600;    // CSS opacity transition
-    const overlayDelayMs = victoryClipMs + holdMs;
+    const overlayDelayMs = victoryClipMs;
 
     scheduleEvent(() => {
         if (winnerNum === 0) {
@@ -3625,10 +3647,7 @@ function animate() {
                 }
 
                 if (p.mesh.position.y <= 0) {
-                    p.mesh.position.y = 0;
-                    p.isJumping = false;
-                    p.jumps = 0;
-                    p.velocityY = 0;
+                    sanitizeGroundedState(p);
                     if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
                     spawnParticles(p.mesh.position, 'landing'); // Landing dust
                 }
@@ -3689,14 +3708,27 @@ function animate() {
                 applyReactionTravel(p, reactionProgress);
                 if (p.actionTimer >= clipDur) {
                     if (p.currentState === 'knockdown') {
-                        p.fadeTo('getUp', 0.1);
-                        p.actionTimer = 0; // Reset timer for getUp animation
+                        sanitizeGroundedState(p, { preserveHitState: true });
+                        p.fadeTo('getUp', GET_UP_FADE_DURATION);
+                        p.actionTimer = 0;
+                        p.reactionTravel = 0;
+                        p.reactionDistance = 0;
+                        p.reactionDirection = 0;
+                    } else if (p.currentState === 'getUp') {
+                        p.isHit = false;
+                        p.actionTimer = 0;
+                        p.reactionTravel = 0;
+                        p.reactionDistance = 0;
+                        p.reactionDirection = 0;
+                        sanitizeGroundedState(p);
+                        p.fadeTo('idle', 0.16);
                     } else {
                         p.isHit = false;
                         p.actionTimer = 0;
                         p.reactionTravel = 0;
                         p.reactionDistance = 0;
                         p.reactionDirection = 0;
+                        sanitizeGroundedState(p);
                         if (!p.isJumping) p.fadeTo('idle', 0.2);
                     }
                 }
@@ -3706,12 +3738,17 @@ function animate() {
 
     players.forEach(p => {
         if (p.mixer) p.mixer.update(frameDt);
-        // Prevent any animation root-motion from sinking the fighter below ground
-        if (p.mesh && p.mesh.position.y < 0) p.mesh.position.y = 0;
+        if (p.mesh) {
+            if (!p.isJumping || p.isHit || p.currentState === 'knockdown' || p.currentState === 'getUp' || p.isDead) {
+                groundFighter(p);
+            } else if (p.mesh.position.y < GROUND_Y) {
+                groundFighter(p);
+            }
+        }
     });
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
-        if (fighter.mesh && fighter.mesh.position.y < 0) fighter.mesh.position.y = 0;
+        if (fighter.mesh && fighter.mesh.position.y < GROUND_Y) fighter.mesh.position.y = GROUND_Y;
     });
 
     // Slowly spin the carousel rig in the background
