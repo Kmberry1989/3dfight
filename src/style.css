@@ -229,7 +229,6 @@ canvas {
 
 .player-select-panel {
     width: min(25vw, 290px);
-    min-height: 295px;
     background: linear-gradient(180deg, rgba(10, 15, 34, 0.4), rgba(8, 7, 24, 0.6));
     border: 2px solid var(--glass-border);
     border-radius: 24px;
@@ -676,7 +675,6 @@ canvas {
 
     .player-select-panel {
         width: min(40vw, 320px);
-        min-height: 250px;
         padding: 14px 14px 12px;
     }
 
@@ -748,7 +746,7 @@ canvas {
     .player-select-panel {
         width: 100%;
         min-height: unset;
-        padding: 12px 12px 14px;
+        padding: 8px 12px;
         border-radius: 16px;
     }
 
@@ -1265,4 +1263,241 @@ body.touch-landscape #touch-controls {
     height: 117.65% !important;
     transform: scale(0.85) !important;
     transform-origin: top left !important;
+}
+
+/* ============================================================
+   SCREEN WIPE TRANSITION SYSTEM
+   ============================================================ */
+
+#screen-wipe {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    pointer-events: none;
+    overflow: hidden;
+    /* Hidden by default — panels are offscreen */
+}
+
+/* Two panels that slide in from opposite sides */
+.wipe-panel {
+    position: absolute;
+    top: 0;
+    width: 52%;            /* slight overlap in the centre */
+    height: 100%;
+    background: #0c0b1e;   /* matches --dark-bg */
+    will-change: transform;
+}
+
+.wipe-panel-left  { left: 0;   transform: translateX(-105%); }
+.wipe-panel-right { right: 0;  transform: translateX(105%); }
+
+/* Name-card that appears in the centre during a wipe */
+.wipe-name-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scaleX(0);
+    white-space: nowrap;
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow:
+        0 0 20px rgba(0, 240, 255, 0.8),
+        0 0 50px rgba(189, 0, 255, 0.5),
+        4px 4px 0 #000;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ── Keyframes ── */
+
+/* Panels slide IN from the sides (close the screen) */
+@keyframes wipe-panel-left-in {
+    from { transform: translateX(-105%); }
+    to   { transform: translateX(0); }
+}
+@keyframes wipe-panel-right-in {
+    from { transform: translateX(105%); }
+    to   { transform: translateX(0); }
+}
+
+/* Panels slide OUT to the sides (open the screen) */
+@keyframes wipe-panel-left-out {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-105%); }
+}
+@keyframes wipe-panel-right-out {
+    from { transform: translateX(0); }
+    to   { transform: translateX(105%); }
+}
+
+/* Name card pops in then out */
+@keyframes wipe-name-in {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(0.2) scaleY(1.3); }
+    40%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1.04) scaleY(0.96); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1) scaleY(1); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scaleX(1) scaleY(1); }
+}
+@keyframes wipe-name-out {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scaleX(1) scaleY(1); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1.04) scaleY(0.96); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.1) scaleY(1.3); }
+}
+
+/* Full-screen white flash */
+@keyframes screen-flash-white {
+    0%   { background: rgba(255,255,255,0.92); opacity: 1; }
+    100% { background: rgba(255,255,255,0);   opacity: 0; }
+}
+
+/* ── Active state classes ── */
+
+/* Closing wipe */
+#screen-wipe.wipe-closing .wipe-panel-left {
+    animation: wipe-panel-left-in var(--wipe-dur, 180ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+#screen-wipe.wipe-closing .wipe-panel-right {
+    animation: wipe-panel-right-in var(--wipe-dur, 180ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+/* Fully closed — panels stay shut */
+#screen-wipe.wipe-closed .wipe-panel-left  { transform: translateX(0); }
+#screen-wipe.wipe-closed .wipe-panel-right { transform: translateX(0); }
+
+/* Opening wipe */
+#screen-wipe.wipe-opening .wipe-panel-left {
+    transform: translateX(0);
+    animation: wipe-panel-left-out var(--wipe-dur, 200ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+#screen-wipe.wipe-opening .wipe-panel-right {
+    transform: translateX(0);
+    animation: wipe-panel-right-out var(--wipe-dur, 200ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+/* Name-card animations (driven by JS via style.animation) */
+.wipe-name-card.name-in {
+    animation: wipe-name-in 0.28s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+.wipe-name-card.name-out {
+    animation: wipe-name-out 0.22s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+/* White flash layer — applied as a one-shot animation on the container */
+#screen-wipe.flash-white {
+    animation: screen-flash-white var(--flash-dur, 300ms) ease-out forwards;
+}
+
+/* ============================================================
+   SHARED PORTRAIT BAR (TOP OF SCREEN)
+   ============================================================ */
+.shared-portrait-bar {
+    width: min(1160px, 96vw);
+    margin: 15px auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.08) 0%, rgba(10, 15, 34, 0.8) 20%, rgba(10, 15, 34, 0.8) 80%, rgba(255, 0, 127, 0.08) 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 10px 15px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 5;
+    pointer-events: auto;
+}
+
+.portrait-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    position: relative;
+    flex: 1;
+}
+
+.portrait-row-p1 {
+    justify-content: flex-start;
+}
+
+.portrait-row-p2 {
+    justify-content: flex-end;
+}
+
+.portrait-row-label {
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    opacity: 0.3;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.portrait-row-p1 .portrait-row-label {
+    left: -40px;
+    color: var(--neon-blue);
+}
+
+.portrait-row-p2 .portrait-row-label {
+    right: -40px;
+    color: var(--neon-red);
+}
+
+.portrait-bar-vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    font-size: 32px;
+    font-weight: 900;
+    font-style: italic;
+    color: #fff4c7;
+    text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+    z-index: 2;
+}
+
+/* Adjust card sizing in the top bar to be horizontal and compact */
+.shared-portrait-bar .character-card {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    z-index: 1;
+}
+
+.shared-portrait-bar .character-name {
+    display: none; /* Hide names in the top strip to save space */
+}
+
+/* Adjust layout on smaller screens */
+@media (max-width: 960px) {
+    .shared-portrait-bar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .portrait-row {
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .portrait-bar-vs {
+        display: none; /* Hide VS in middle on mobile */
+    }
+    
+    .portrait-row-label {
+        display: none;
+    }
+    
+    .shared-portrait-bar .character-card {
+        width: 50px;
+        height: 50px;
+    }
 }

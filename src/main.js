@@ -151,7 +151,11 @@ const SHARED_ANIMATIONS = {
     getUp: '/animations/Getting Up.fbx',
     jumpUp: '/animations/Jump.fbx',
     doubleJump: '/animations/Double Jump.fbx',
-    jumpDown: '/animations/Jumping Down.fbx'
+    jumpDown: '/animations/Jumping Down.fbx',
+    // --- Entrance / Prefight shared animations ---
+    running: '/animations/Running.fbx',
+    runningSlide: '/animations/Running Slide.fbx',
+    standingIdleToFightIdle: '/animations/Standing Idle To Fight Idle.fbx'
 };
 
 const CHARACTERS = {
@@ -748,7 +752,7 @@ window.addEventListener('keydown', (e) => {
                     player.dashTimer = 0.25;
                     const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
                     player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
-                    spawnParticles(player.mesh.position, 0xffffff, 8, true); // Minor dash burst
+                    spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
                 }
             }
             lastTaps[e.code] = now;
@@ -904,26 +908,32 @@ async function loadAssets() {
                 const box = new THREE.Box3().setFromObject(carouselRig);
                 const center = new THREE.Vector3();
                 box.getCenter(center);
-                // Shift children so the rig pivots around its true center
+                // Shift children so the rig pivots around its horizontal centre;
+                // keep them at their original Y so the mesh isn't offset vertically.
                 carouselRig.children.forEach(child => {
-                    child.position.sub(center);
+                    child.position.x -= center.x;
+                    child.position.z -= center.z;
                 });
 
-                // Scale to fit nicely between players and the back wall
+                // Scale to fit nicely in the background
                 const size2 = new THREE.Vector3();
                 box.getSize(size2);
                 const maxDim = Math.max(size2.x, size2.y, size2.z);
-                const targetSize = 8; // meters — fits between spawns (±3.5) and back wall
+                const targetSize = 8;
                 let finalScale = 1;
                 if (isFinite(maxDim) && maxDim > 0.001) {
                     finalScale = targetSize / maxDim;
                     carouselRig.scale.setScalar(finalScale);
                 }
 
-                // Place between the stage back wall and the player spawn points (Z=0)
-                // Back wall is around Z=-5 to -7, spawns at Z=0
-                // Raise the carousel so its bottom rests above the floor
-                carouselRig.position.set(0, (size2.y * finalScale) / 2, -7);
+                // Recompute the bounding box AFTER applying scale so the Y
+                // placement is accurate — then pin the bottom edge to the floor.
+                carouselRig.updateMatrixWorld(true);
+                const scaledBox = new THREE.Box3().setFromObject(carouselRig);
+                const bottomY = scaledBox.min.y;          // world Y of lowest point
+                const desiredFloorY = -0.25;              // match the fight-floor plane
+                // Push the rig back and lift it so its base sits on desiredFloorY
+                carouselRig.position.set(0, desiredFloorY - bottomY, -14);
 
                 scene.add(carouselRig);
                 updateProgress('Carousel Rig');
@@ -974,17 +984,30 @@ let currentTournamentRound = 0;
 let isBossMatch = false;
 
 function selectCharacter(player, charId) {
+    // If clicking the currently selected character, lock them in (double click confirm)
+    if (selections[player] === charId && !((player === 1 && p1Locked) || (player === 2 && p2Locked))) {
+        lockInPlayer(player);
+        return;
+    }
+
     AudioSynth.playSelect();
     selections[player] = charId;
 
+    // Update cards in the player's side-panel (legacy hidden grid)
     const panel = document.getElementById(`p${player}-select-panel`);
-    panel.querySelectorAll('.character-card').forEach(card => {
-        if (card.dataset.char === charId) {
-            card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
-    });
+    if (panel) {
+        panel.querySelectorAll('.character-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.char === charId);
+        });
+    }
+
+    // Update cards in the shared portrait bar at the top
+    const portraitRow = document.getElementById(`p${player}-portrait-row`);
+    if (portraitRow) {
+        portraitRow.querySelectorAll('.character-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.char === charId);
+        });
+    }
 
     document.getElementById(`p${player}-preview-name`).textContent = CHARACTERS[charId].name;
     refreshCharacterSelectPreviews();
@@ -1155,44 +1178,185 @@ const leftWall = new THREE.Mesh(wallGeo, wallMat); leftWall.position.set(-10, 0.
 const rightWall = new THREE.Mesh(wallGeo, wallMat); rightWall.position.set(10, 0.5, 0);
 scene.add(leftWall, rightWall);
 
-// --- 6. PARTICLE PHYSICS SPARK FACTORY ---
+// --- 6. COMIC PARTICLE EFFECTS FACTORY ---
 const particles = [];
 
-function spawnParticles(position, colorHex, count = 15, isShield = false) {
-    const particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+/**
+ * Spawn comic-style hit particles.
+ *
+ * @param {THREE.Vector3} position   world-space origin
+ * @param {'hit'|'guard'|'guardbreak'|'super'|'shield'|'confetti'|'landing'|'dash'} type
+ * @param {number} count             number of pieces (default varies by type)
+ */
+function spawnParticles(position, type = 'hit', count = -1) {
+    // --- Type definitions ---
+    const TYPES = {
+        // Direct hit — bright star-burst pieces in punch yellow/orange
+        hit: {
+            count: count < 0 ? 22 : count,
+            colors: [0xFFE000, 0xFF8C00, 0xFF4500, 0xFFFFFF],
+            size: () => Math.random() * 0.14 + 0.06,
+            shape: 'star',
+            spread: 3.2,
+            upBias: 0.6,
+            gravity: 12,
+            life: () => Math.random() * 0.7 + 0.55,
+            decay: () => Math.random() * 1.4 + 1.0,
+            spin: true,
+        },
+        // Heavy KO hit — large POW stars, purple/pink
+        super: {
+            count: count < 0 ? 32 : count,
+            colors: [0xBD00FF, 0xFF007F, 0xFF4500, 0xFFE000, 0xFFFFFF],
+            size: () => Math.random() * 0.22 + 0.10,
+            shape: 'diamond',
+            spread: 4.5,
+            upBias: 0.9,
+            gravity: 9,
+            life: () => Math.random() * 0.8 + 0.7,
+            decay: () => Math.random() * 1.0 + 0.8,
+            spin: true,
+        },
+        // Guard block — cyan sparks, ring outward
+        guard: {
+            count: count < 0 ? 14 : count,
+            colors: [0x00F0FF, 0x80FFFF, 0xFFFFFF],
+            size: () => Math.random() * 0.10 + 0.05,
+            shape: 'box',
+            spread: 2.0,
+            upBias: 0.0,
+            gravity: 3,
+            life: () => Math.random() * 0.5 + 0.35,
+            decay: () => Math.random() * 2.0 + 1.5,
+            spin: false,
+            radial: true,   // emit radially outward, no upward bias
+        },
+        // Guard break — white shard explosion
+        guardbreak: {
+            count: count < 0 ? 40 : count,
+            colors: [0xFFFFFF, 0xE0E0FF, 0xBD00FF, 0xFF007F],
+            size: () => Math.random() * 0.18 + 0.07,
+            shape: 'diamond',
+            spread: 5.0,
+            upBias: 0.5,
+            gravity: 14,
+            life: () => Math.random() * 0.9 + 0.6,
+            decay: () => Math.random() * 1.2 + 0.7,
+            spin: true,
+        },
+        // Shield / energy ring
+        shield: {
+            count: count < 0 ? 12 : count,
+            colors: [0x00F0FF, 0x0080FF, 0x80FFFF],
+            size: () => Math.random() * 0.09 + 0.05,
+            shape: 'box',
+            spread: 2.2,
+            upBias: 0.0,
+            gravity: 0,
+            life: () => Math.random() * 0.45 + 0.3,
+            decay: () => Math.random() * 2.5 + 1.8,
+            spin: false,
+            radial: true,
+        },
+        // Confetti — multi-color flat quads thrown upward (victory / special)
+        confetti: {
+            count: count < 0 ? 50 : count,
+            colors: [0xFF007F, 0x00F0FF, 0xFFE000, 0xBD00FF, 0x00FF88, 0xFF4500],
+            size: () => Math.random() * 0.12 + 0.05,
+            shape: 'flat',
+            spread: 5.0,
+            upBias: 2.2,
+            gravity: 6,
+            life: () => Math.random() * 1.2 + 0.9,
+            decay: () => Math.random() * 0.8 + 0.5,
+            spin: true,
+        },
+        // Landing dust — grey puffs
+        landing: {
+            count: count < 0 ? 10 : count,
+            colors: [0xAAAAAA, 0x888888, 0xCCCCCC],
+            size: () => Math.random() * 0.09 + 0.04,
+            shape: 'box',
+            spread: 1.6,
+            upBias: 0.4,
+            gravity: 5,
+            life: () => Math.random() * 0.5 + 0.3,
+            decay: () => Math.random() * 2.0 + 1.5,
+            spin: false,
+        },
+        // Dash burst — white ring
+        dash: {
+            count: count < 0 ? 8 : count,
+            colors: [0xFFFFFF, 0xCCEEFF],
+            size: () => Math.random() * 0.08 + 0.04,
+            shape: 'box',
+            spread: 1.8,
+            upBias: 0.2,
+            gravity: 4,
+            life: () => Math.random() * 0.4 + 0.2,
+            decay: () => Math.random() * 2.5 + 2.0,
+            spin: false,
+            radial: true,
+        },
+    };
 
-    for (let i = 0; i < count; i++) {
-        const mat = new THREE.MeshBasicMaterial({
-            color: colorHex,
-            transparent: true,
-            opacity: 1
-        });
-        const mesh = new THREE.Mesh(particleGeo, mat);
+    const def = TYPES[type] || TYPES.hit;
+
+    for (let i = 0; i < def.count; i++) {
+        const colorHex = def.colors[Math.floor(Math.random() * def.colors.length)];
+        const s = def.size();
+
+        let geo;
+        if (def.shape === 'star') {
+            // Flattened octahedron approximation for a star-like shard
+            geo = new THREE.OctahedronGeometry(s, 0);
+        } else if (def.shape === 'diamond') {
+            geo = new THREE.OctahedronGeometry(s, 0);
+        } else if (def.shape === 'flat') {
+            geo = new THREE.BoxGeometry(s * 2.5, s * 0.3, s);
+        } else {
+            geo = new THREE.BoxGeometry(s, s, s);
+        }
+
+        const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 1 });
+        const mesh = new THREE.Mesh(geo, mat);
         mesh.position.copy(position);
+        // Random vertical offset so pieces don't all originate from one point
+        mesh.position.y += Math.random() * 0.6;
 
         let velocity;
-        if (isShield) {
-            const angle = Math.random() * Math.PI * 2;
+        if (def.radial) {
+            const angle = (i / def.count) * Math.PI * 2 + Math.random() * 0.4;
+            const r = (Math.random() * 0.5 + 0.5) * def.spread;
             velocity = new THREE.Vector3(
-                Math.cos(angle) * (Math.random() * 2 + 1),
-                Math.sin(angle) * (Math.random() * 2 + 1),
-                (Math.random() * 2 - 1) * 0.5
+                Math.cos(angle) * r,
+                def.upBias * (Math.random() * 0.5 + 0.5),
+                Math.sin(angle) * r * 0.4
             );
         } else {
             velocity = new THREE.Vector3(
-                (Math.random() * 2 - 1) * 3,
-                (Math.random() * 2 - 0.2) * 2.5,
-                (Math.random() * 2 - 1) * 1.5
+                (Math.random() * 2 - 1) * def.spread,
+                (Math.random() + def.upBias) * def.spread * 0.6,
+                (Math.random() * 2 - 1) * def.spread * 0.4
             );
         }
 
+        const spinRate = def.spin
+            ? new THREE.Vector3(
+                (Math.random() - 0.5) * 12,
+                (Math.random() - 0.5) * 12,
+                (Math.random() - 0.5) * 12
+            )
+            : null;
+
         scene.add(mesh);
         particles.push({
-            mesh: mesh,
-            velocity: velocity,
-            life: 1.0,
-            decay: Math.random() * 1.8 + 1.8,
-            isShield: isShield
+            mesh,
+            velocity,
+            spinRate,
+            gravity: def.gravity,
+            life: def.life(),
+            decay: def.decay(),
         });
     }
 }
@@ -1201,14 +1365,17 @@ function updateParticles(dt) {
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.mesh.position.addScaledVector(p.velocity, dt);
+        p.velocity.y -= p.gravity * dt;
 
-        if (!p.isShield) {
-            p.velocity.y -= 9.8 * dt;
+        if (p.spinRate) {
+            p.mesh.rotation.x += p.spinRate.x * dt;
+            p.mesh.rotation.y += p.spinRate.y * dt;
+            p.mesh.rotation.z += p.spinRate.z * dt;
         }
 
         p.life -= p.decay * dt;
-        p.mesh.material.opacity = p.life;
-        p.mesh.scale.setScalar(p.life);
+        p.mesh.material.opacity = Math.max(0, p.life);
+        p.mesh.scale.setScalar(Math.max(0.01, p.life));
 
         if (p.life <= 0) {
             scene.remove(p.mesh);
@@ -1574,6 +1741,30 @@ function createPlayerMesh(charId, isPlayer1) {
             }
         });
 
+        // Strip vertical (Y) root-motion translation from locomotion clips so
+        // characters never float up or sink into the floor while running/sliding.
+        const ROOT_MOTION_STRIP_KEYS = new Set(['running', 'runningSlide']);
+        Object.entries(actions).forEach(([actionName, action]) => {
+            if (!ROOT_MOTION_STRIP_KEYS.has(actionName)) return;
+            const clip = action.getClip();
+            clip.tracks = clip.tracks.filter(track => {
+                // Remove any position.y track on the root/hips bone
+                const isPositionY = track.name.endsWith('.position') ||
+                    (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
+                const onRoot = /^(mixamorig:)?hips|root|pelvis/i.test(track.name.split('.')[0]);
+                // Keep everything except Y-translation on the root bone
+                if (isPositionY && onRoot) {
+                    // Zero-out Y channel: keep X and Z, force Y=0 every frame
+                    if (track.name.endsWith('.position') && track.values) {
+                        for (let i = 1; i < track.values.length; i += 3) {
+                            track.values[i] = 0; // Y = 0
+                        }
+                    }
+                }
+                return true; // keep the track, just flattened
+            });
+        });
+
         if (actions.idle) {
             actions.idle.play();
             mixer.update(0);
@@ -1862,15 +2053,56 @@ function applyReactionTravel(player, animPercent) {
     player.reactionTravel += (clampedX - startX) * player.reactionDirection;
 }
 
-function startIntroMotion(player) {
+function startIntroMotion(player, onComplete) {
+    const targetX = player.id === 1 ? -3.4 : 3.4;
+    const startX = targetX + (player.direction * -9.0); // Start far offscreen
+
+    // Phase durations in ms
+    const runningDuration = 1600;
+    const runningClipMs = Math.round(getClipDuration(player, 'runningSlide') * 1000);
+    const slideDurationMs = Math.max(runningClipMs, 600);
+    const tauntClipMs = Math.round(
+        (getClipDuration(player, 'taunt') / Math.max(getActionTimeScale(player, 'taunt'), 1)) * 1000
+    );
+    const tauntDurationMs = Math.max(tauntClipMs, 900);
+
+    const totalDuration = (runningDuration + slideDurationMs + tauntDurationMs) / 1000;
+
+    player.introPhase = 'running'; // tracked for camera
     player.introMotion = {
         elapsed: 0,
-        duration: Math.max(getClipDuration(player, 'intro') / getActionTimeScale(player, 'intro'), 0.85),
-        startX: player.mesh.position.x + (player.direction * -3.0) // Start 3 units back
+        duration: totalDuration,
+        startX,
+        targetX,
+        runEndFrac: runningDuration / (totalDuration * 1000),
     };
     player.mesh.position.y = 0;
-    player.mesh.position.x = player.introMotion.startX;
-    playPreferredAction(player, 'intro', 'idle', 0.05);
+    player.mesh.position.x = startX;
+
+    // Phase 1: Running approach
+    playPreferredAction(player, 'running', 'idle', 0.05);
+
+    // Phase 2: Running Slide — camera widens to catch full-body floor animation
+    scheduleEvent(() => {
+        if (!player.introMotion) return;
+        player.introPhase = 'slide';
+        playPreferredAction(player, 'runningSlide', 'idle', 0.12);
+
+        // Phase 3: Taunt
+        scheduleEvent(() => {
+            if (!player.introMotion) return;
+            player.introPhase = 'taunt';
+            player.mesh.position.x = targetX;
+            playPreferredAction(player, 'taunt', 'idle', 0.10);
+
+            scheduleEvent(() => {
+                player.introPhase = null;
+                player.introMotion = null;
+                playPreferredAction(player, 'standingPose', 'idle', 0.15);
+                if (onComplete) onComplete();
+            }, tauntDurationMs);
+        }, slideDurationMs);
+    }, runningDuration);
 }
 
 function updateIntroMotion(player, dt) {
@@ -1878,15 +2110,17 @@ function updateIntroMotion(player, dt) {
 
     player.introMotion.elapsed += dt;
     const progress = THREE.MathUtils.clamp(player.introMotion.elapsed / player.introMotion.duration, 0, 1);
-    const settleProgress = getPhaseProgress(progress, 0.05, 0.9);
-    
-    const targetX = player.id === 1 ? -3.4 : 3.4;
-    player.mesh.position.x = THREE.MathUtils.lerp(player.introMotion.startX, targetX, settleProgress);
 
-    if (progress >= 1) {
-        player.mesh.position.x = targetX;
-        player.introMotion = null;
+    // Only slide position during the running approach phase
+    const runFrac = player.introMotion.runEndFrac;
+    if (progress < runFrac) {
+        const runProgress = progress / runFrac;
+        const settleProgress = getPhaseProgress(runProgress, 0.0, 1.0);
+        player.mesh.position.x = THREE.MathUtils.lerp(
+            player.introMotion.startX, player.introMotion.targetX, settleProgress
+        );
     }
+    // Position is snapped to targetX during slide/taunt phases (done in scheduleEvent)
 }
 
 function startAttack(player, attackDef) {
@@ -2054,7 +2288,7 @@ function checkHits(attacker, defender) {
                     defender.fadeTo('dizzy', 0.1);
 
                     hitStopTime = 0.15;
-                    spawnParticles(limbPos, 0xffffff, 35, false); // Glass Shatter Effect
+                    spawnParticles(limbPos, 'guardbreak'); // Shatter explosion
                     AudioSynth.playHit();
                     triggerScreenShake(0.5, 0.3);
 
@@ -2063,7 +2297,7 @@ function checkHits(attacker, defender) {
                     // Standard block Mitigated
                     defender.health = Math.max(0, defender.health - attacker.currentAttack.blockDamage);
                     hitStopTime = 0.05;
-                    spawnParticles(limbPos, 0x00f0ff, 12, true);
+                    spawnParticles(limbPos, 'guard');
                     AudioSynth.playBlock();
                     defender.mesh.position.x += attacker.direction * attacker.currentAttack.blockKnockback;
                 }
@@ -2079,7 +2313,10 @@ function checkHits(attacker, defender) {
                 globalHitComboCount++;
                 updateComboUI();
 
-                spawnParticles(limbPos, 0xff0055, 20, false);
+                // Comic hit effect — super burst for heavy KOs, regular stars for normal hits
+                const isKO = defender.health <= 0;
+                const isHeavy = attacker.currentAttack.strength === 'heavy';
+                spawnParticles(limbPos, isKO ? 'super' : (isHeavy ? 'super' : 'hit'));
                 AudioSynth.playHit();
 
                 triggerScreenShake(attacker.currentAttack.strength === 'heavy' ? 0.35 : 0.22, 0.25);
@@ -2114,7 +2351,7 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
     attackInputBuffer[player.id] = null;
     
     let reactionAnim = attackDef ? attackDef.reaction : 'hitMidMedium';
-    if (attackDef && attackDef.strength === 'heavy') {
+    if ((attackDef && attackDef.strength === 'heavy') || player.mesh.position.y > 0) {
         reactionAnim = 'knockdown';
         // Give a bit more pushback for knockdown
         player.reactionDistance *= 1.5;
@@ -2231,14 +2468,28 @@ function updateCameraDirector() {
         if (cameraDirector.mode === 'intro') {
             const focus = players[Math.max(0, cameraDirector.focusPlayerId - 1)] || p1;
             const sideBias = focus.id === 1 ? -0.15 : 0.15;
-            targetCamX = focus.mesh.position.x + sideBias;
-            targetCamY = focus.mesh.position.y + THREE.MathUtils.lerp(1.15, 2.25, shotProgress);
-            targetCamZ = THREE.MathUtils.lerp(4.7, 7.35, shotProgress);
-            lookTarget = new THREE.Vector3(
-                focus.mesh.position.x,
-                focus.mesh.position.y + THREE.MathUtils.lerp(1.7, 1.05, shotProgress),
-                0.28
-            );
+            const isSliding = focus.introPhase === 'slide';
+
+            if (isSliding) {
+                // Wider, lower shot to capture the full Running Slide on the ground
+                targetCamX = focus.mesh.position.x + sideBias * 2;
+                targetCamY = focus.mesh.position.y + THREE.MathUtils.lerp(0.75, 1.5, shotProgress);
+                targetCamZ = THREE.MathUtils.lerp(6.5, 8.0, shotProgress);
+                lookTarget = new THREE.Vector3(
+                    focus.mesh.position.x,
+                    focus.mesh.position.y + 0.65,
+                    0.28
+                );
+            } else {
+                targetCamX = focus.mesh.position.x + sideBias;
+                targetCamY = focus.mesh.position.y + THREE.MathUtils.lerp(1.15, 2.25, shotProgress);
+                targetCamZ = THREE.MathUtils.lerp(4.7, 7.35, shotProgress);
+                lookTarget = new THREE.Vector3(
+                    focus.mesh.position.x,
+                    focus.mesh.position.y + THREE.MathUtils.lerp(1.7, 1.05, shotProgress),
+                    0.28
+                );
+            }
         } else if (cameraDirector.mode === 'taunt') {
             const focus = players[Math.max(0, cameraDirector.focusPlayerId - 1)] || p1;
             const sideBias = focus.id === 1 ? -0.45 : 0.45;
@@ -2293,12 +2544,29 @@ function getActionDurationMs(actor, actionName, fallbackMs = 1000) {
 
 function startCountdownSequence() {
     const announce = document.getElementById('announcement');
+
+    // Prefight: both players snap to combat facing and play Standing Idle To Fight Idle
     players.forEach((player) => {
         if (!player) return;
         player.introMotion = null;
         player.mesh.position.y = 0;
-        playPreferredAction(player, 'idle', 'idle', 0.1);
         setPresentationRotation(player, 'combat');
+
+        const siftAction = player.actions && player.actions['standingIdleToFightIdle'];
+        if (siftAction) {
+            siftAction.setLoop(THREE.LoopOnce, 1);
+            siftAction.clampWhenFinished = true;
+        }
+        playPreferredAction(player, 'standingIdleToFightIdle', 'idle', 0.10);
+
+        // After the transition animation completes, hold in idle
+        const siftDurationMs = player.actions && player.actions['standingIdleToFightIdle']
+            ? Math.round(getClipDuration(player, 'standingIdleToFightIdle') * 1000) + 100
+            : 1000;
+        scheduleEvent(() => {
+            if (!player.actions) return;
+            playPreferredAction(player, 'idle', 'idle', 0.15);
+        }, siftDurationMs);
     });
 
     setCameraMode('countdown', { shotDurationMs: 2400 });
@@ -2329,6 +2597,105 @@ function startCountdownSequence() {
     runCountdown(3);
 }
 
+
+// --- SCREEN WIPE TRANSITION SYSTEM ---
+const _wipeEl = document.getElementById('screen-wipe');
+const _wipeNameEl = document.getElementById('wipe-name-card');
+
+/**
+ * Performs a fast whole-screen wipe transition.
+ *
+ * @param {'cut' | 'open' | 'close' | 'flash'} type
+ *   'close'  — panels slide in (hides scene)
+ *   'open'   — panels slide out (reveals scene)
+ *   'cut'    — close then open (hard cut between shots)
+ *   'flash'  — a single white-flash frame
+ * @param {number} durationMs  — how long panels take to animate
+ * @param {string|null} label  — optional name to flash in the centre
+ * @param {Function|null} onMidpoint — called when screen is fully covered (only for 'cut'/'close')
+ * @param {Function|null} onDone    — called after animation fully completes
+ */
+function screenWipe(type, durationMs = 180, label = null, onMidpoint = null, onDone = null) {
+    if (!_wipeEl) { if (onMidpoint) onMidpoint(); if (onDone) onDone(); return; }
+
+    const setDur = (ms) => _wipeEl.style.setProperty('--wipe-dur', `${ms}ms`);
+    const clearClasses = () => _wipeEl.classList.remove(
+        'wipe-closing', 'wipe-closed', 'wipe-opening', 'flash-white'
+    );
+    const resetPanels = () => {
+        _wipeEl.querySelectorAll('.wipe-panel').forEach(p => p.style.animation = 'none');
+        _wipeEl.offsetHeight; // force reflow
+        _wipeEl.querySelectorAll('.wipe-panel').forEach(p => p.style.animation = '');
+    };
+    const showLabel = (text) => {
+        if (!text || !_wipeNameEl) return;
+        _wipeNameEl.textContent = text;
+        _wipeNameEl.classList.remove('name-in', 'name-out');
+        _wipeNameEl.offsetHeight;
+        _wipeNameEl.classList.add('name-in');
+    };
+    const hideLabel = () => {
+        if (!_wipeNameEl) return;
+        _wipeNameEl.classList.remove('name-in');
+        _wipeNameEl.offsetHeight;
+        _wipeNameEl.classList.add('name-out');
+    };
+
+    if (type === 'flash') {
+        clearClasses();
+        const flashDur = durationMs || 300;
+        _wipeEl.style.setProperty('--flash-dur', `${flashDur}ms`);
+        _wipeEl.offsetHeight;
+        _wipeEl.classList.add('flash-white');
+        setTimeout(() => { clearClasses(); if (onDone) onDone(); }, flashDur);
+        return;
+    }
+
+    if (type === 'close') {
+        clearClasses();
+        resetPanels();
+        setDur(durationMs);
+        _wipeEl.classList.add('wipe-closing');
+        setTimeout(() => {
+            _wipeEl.classList.remove('wipe-closing');
+            _wipeEl.classList.add('wipe-closed');
+            if (label) showLabel(label);
+            if (onMidpoint) onMidpoint();
+            if (onDone) onDone();
+        }, durationMs);
+        return;
+    }
+
+    if (type === 'open') {
+        hideLabel();
+        clearClasses();
+        _wipeEl.classList.add('wipe-closed'); // ensure panels are in
+        _wipeEl.offsetHeight;
+        _wipeEl.classList.remove('wipe-closed');
+        resetPanels();
+        setDur(durationMs);
+        _wipeEl.classList.add('wipe-opening');
+        setTimeout(() => {
+            clearClasses();
+            if (onDone) onDone();
+        }, durationMs);
+        return;
+    }
+
+    if (type === 'cut') {
+        // Close → midpoint callback → open
+        const half = Math.round(durationMs / 2);
+        screenWipe('close', half, label, () => {
+            if (onMidpoint) onMidpoint();
+            scheduleEvent(() => {
+                screenWipe('open', half, null, null, onDone);
+            }, label ? 420 : 60);
+        });
+    }
+}
+
+
+
 function startTauntPhaseSequence() {
     const p1 = players[0];
     const p2 = players[1];
@@ -2336,23 +2703,30 @@ function startTauntPhaseSequence() {
     setCameraMode('taunt', { focusPlayerId: p1.id, shotDurationMs: 1000 });
 
     scheduleEvent(() => {
-        const p1DurationMs = playTauntShot(p1);
-
-        scheduleEvent(() => {
-            playPreferredAction(p1, 'idle', 'idle', 0.12);
-            setCameraMode('taunt', { focusPlayerId: p2.id, shotDurationMs: 1000 });
+        // Wipe in → show P1 taunt → wipe to P2 taunt → wipe to countdown
+        screenWipe('cut', 160, p1.name, () => {
+            // midpoint: scene hidden — swap camera to P1 taunt
+            const p1DurationMs = playTauntShot(p1);
 
             scheduleEvent(() => {
-                const p2DurationMs = playTauntShot(p2);
+                // P1 taunt done — cut to P2
+                screenWipe('cut', 160, p2.name, () => {
+                    playPreferredAction(p1, 'idle', 'idle', 0.12);
+                    const p2DurationMs = playTauntShot(p2);
 
-                scheduleEvent(() => {
-                    playPreferredAction(p2, 'idle', 'idle', 0.12);
-                    startCountdownSequence();
-                }, p2DurationMs + TAUNT_BUFFER_MS);
-            }, 800);
-        }, p1DurationMs + 120);
-    }, 800);
+                    scheduleEvent(() => {
+                        // Both taunts done — hard flash into countdown
+                        screenWipe('cut', 140, null, () => {
+                            playPreferredAction(p2, 'idle', 'idle', 0.12);
+                            startCountdownSequence();
+                        });
+                    }, p2DurationMs + TAUNT_BUFFER_MS);
+                });
+            }, p1DurationMs + 120);
+        });
+    }, 600);
 }
+
 
 function playTauntShot(player) {
     if (!player) return 900;
@@ -2377,27 +2751,39 @@ function playPreFightSequence() {
         playPreferredAction(player, 'standingPose', 'idle', 0.05);
     });
 
-    const p1IntroDurationMs = getActionDurationMs(p1, 'intro', 2500);
-    setCameraMode('intro', { focusPlayerId: p1.id, shotDurationMs: p1IntroDurationMs });
+    // Estimate full entrance duration: running + slide + taunt
+    function getEntranceDurationMs(player) {
+        const runningMs = 1600;
+        const slideMs = Math.max(Math.round(getClipDuration(player, 'runningSlide') * 1000), 600);
+        const tauntMs = Math.max(
+            Math.round((getClipDuration(player, 'taunt') / Math.max(getActionTimeScale(player, 'taunt'), 1)) * 1000),
+            900
+        );
+        return runningMs + slideMs + tauntMs;
+    }
 
-    scheduleEvent(() => {
-        startIntroMotion(p1);
+    // Wipe in with P1's name, then start their entrance
+    screenWipe('cut', 180, p1.name.toUpperCase(), () => {
+        const p1EntranceDurationMs = getEntranceDurationMs(p1);
+        setCameraMode('intro', { focusPlayerId: p1.id, shotDurationMs: p1EntranceDurationMs });
 
-        scheduleEvent(() => {
-            playPreferredAction(p1, 'standingPose', 'idle', 0.08);
-            const p2IntroDurationMs = getActionDurationMs(p2, 'intro', 2500);
-            setCameraMode('intro', { focusPlayerId: p2.id, shotDurationMs: p2IntroDurationMs });
-
-            scheduleEvent(() => {
-                startIntroMotion(p2);
+        startIntroMotion(p1, () => {
+            // P1 done — wipe to P2 entrance
+            screenWipe('cut', 180, p2.name.toUpperCase(), () => {
+                const p2EntranceDurationMs = getEntranceDurationMs(p2);
+                setCameraMode('intro', { focusPlayerId: p2.id, shotDurationMs: p2EntranceDurationMs });
 
                 scheduleEvent(() => {
-                    playPreferredAction(p2, 'standingPose', 'idle', 0.08);
-                    startTauntPhaseSequence();
-                }, p2IntroDurationMs + 120);
-            }, 800);
-        }, p1IntroDurationMs + INTRO_STAGGER_MS);
-    }, 800);
+                    startIntroMotion(p2, () => {
+                        // Both entrances done — flash into taunt phase
+                        screenWipe('flash', 240, null, null, () => {
+                            startTauntPhaseSequence();
+                        });
+                    });
+                }, 200);
+            });
+        });
+    });
 }
 
 window.startFight = function (isNetworkCommand = false) {
@@ -2490,7 +2876,7 @@ function endRound(winnerNum) {
     const overlay = document.getElementById('gameover-screen');
     const winnerText = document.getElementById('winner-title');
     const winner = winnerNum > 0 ? players[winnerNum - 1] : null;
-    const loser = winnerNum > 0 ? players[winnerNum === 1 ? 1 : 0] : null;
+    const loser  = winnerNum > 0 ? players[winnerNum === 1 ? 1 : 0] : null;
 
     if (winner) {
         setCameraMode('victory', { winnerId: winnerNum });
@@ -2502,26 +2888,44 @@ function endRound(winnerNum) {
         if (loser && !loser.isDead) {
             playPreferredAction(loser, 'idle', 'idle', 0.15);
         }
+
+        // Burst confetti over the winner on win
+        const confettiPos = winner.mesh.position.clone();
+        confettiPos.y += 1.5;
+        spawnParticles(confettiPos, 'confetti');
     } else {
         setCameraMode('fight', { winnerId: 0 });
     }
 
-    const overlayDelayMs = winner ? Math.max(1800, Math.min(3000, getActionDurationMs(winner, 'victory', 2200))) : 1800;
+    // Let the full victory animation play out, then add a 1.5 s hold before
+    // fading the gameover overlay in over the 3D scene.
+    const victoryClipMs = winner
+        ? Math.max(2800, getActionDurationMs(winner, 'victory', 3200))
+        : 0;
+    const holdMs   = 1500;   // extra appreciative pause after animation ends
+    const fadeMs   = 600;    // CSS opacity transition
+    const overlayDelayMs = victoryClipMs + holdMs;
 
     scheduleEvent(() => {
         if (winnerNum === 0) {
-            winnerText.textContent = "DRAW SEQUENCE";
-            winnerText.className = "";
+            winnerText.textContent = 'DRAW SEQUENCE';
+            winnerText.className = '';
         } else {
             winnerText.textContent = `${players[winnerNum - 1].name} WINS`;
             winnerText.className = winnerNum === 1 ? 'win-p1' : 'win-p2';
             AudioSynth.playWin();
         }
 
+        // Fade the overlay in over the 3D scene
+        overlay.style.transition = `opacity ${fadeMs}ms ease`;
+        overlay.style.opacity = '0';
         overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+        });
     }, overlayDelayMs);
 }
+
 
 function rematch() {
     document.getElementById('gameover-screen').style.display = 'none';
@@ -2583,7 +2987,7 @@ function animate() {
                 p1.jumps++;
                 if (p1.jumps > 1) {
                     p1.fadeTo('doubleJump', 0.1);
-                    spawnParticles(p1.mesh.position, 0xffffff, 15, true); // Double jump burst
+                    spawnParticles(p1.mesh.position, 'dash'); // Double jump burst
                     AudioSynth.playSwing();
                 } else {
                     p1.fadeTo('jumpUp', 0.1);
@@ -2669,11 +3073,11 @@ function animate() {
                 const currentUpPressed = keys['ArrowUp'];
                 if (currentUpPressed && !p2.upWasPressed && p2.jumps < 2) {
                     p2.isJumping = true;
-                    p2.velocityY = 5.0;
+                    p2.velocityY = 4.0;
                     p2.jumps++;
                     if (p2.jumps > 1) {
                         p2.fadeTo('doubleJump', 0.1);
-                        spawnParticles(p2.mesh.position, 0xffffff, 15, true);
+                        spawnParticles(p2.mesh.position, 'dash'); // Double jump burst
                         AudioSynth.playSwing();
                     } else {
                         p2.fadeTo('jumpUp', 0.1);
@@ -2761,7 +3165,7 @@ function animate() {
                     p.jumps = 0;
                     p.velocityY = 0;
                     if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
-                    spawnParticles(p.mesh.position, 0xaaaaaa, 10, true); // Landing dust
+                    spawnParticles(p.mesh.position, 'landing'); // Landing dust
                 }
             }
 
@@ -2837,9 +3241,12 @@ function animate() {
 
     players.forEach(p => {
         if (p.mixer) p.mixer.update(frameDt);
+        // Prevent any animation root-motion from sinking the fighter below ground
+        if (p.mesh && p.mesh.position.y < 0) p.mesh.position.y = 0;
     });
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
+        if (fighter.mesh && fighter.mesh.position.y < 0) fighter.mesh.position.y = 0;
     });
 
     // Slowly spin the carousel rig in the background
