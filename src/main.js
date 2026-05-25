@@ -4,117 +4,53 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Peer from 'peerjs';
 
-// --- 1. WEB AUDIO SYNTHESIZER ---
+// --- 1. SAMPLE-BASED AUDIO ---
 const AudioSynth = {
-    ctx: null,
-    init() {
-        if (this.ctx) return;
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    pools: {},
+    manifest: {
+        select: ['/audio/gui_selection.ogg', '/audio/gui hover.ogg'],
+        swing: ['/audio/swing light.ogg', '/audio/swing light2.ogg', '/audio/swing light3.ogg', '/audio/swing medium.ogg', '/audio/swing heavy.ogg'],
+        hit: ['/audio/hit light.ogg', '/audio/hit light2.ogg', '/audio/hit light3.ogg', '/audio/hit medium.ogg', '/audio/hit heavy.ogg', '/audio/hit finish.ogg'],
+        block: ['/audio/block hit.ogg'],
+        win: ['/audio/hit finish.ogg', '/audio/fall down.ogg']
+    },
+    makePool(url) {
+        if (!this.pools[url]) {
+            this.pools[url] = Array.from({ length: 4 }, () => {
+                const audio = new Audio(url);
+                audio.preload = 'auto';
+                return audio;
+            });
+        }
+        return this.pools[url];
+    },
+    playVariant(variants, { volume = 1, rateMin = 0.96, rateMax = 1.04 } = {}) {
+        if (!variants || variants.length === 0) return;
+        const url = variants[Math.floor(Math.random() * variants.length)];
+        const pool = this.makePool(url);
+        const audio = pool.find((entry) => entry.paused || entry.ended) || pool[0];
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = Math.min(1, volume * sfxVolume);
+        audio.playbackRate = rateMin === rateMax
+            ? rateMin
+            : rateMin + Math.random() * (rateMax - rateMin);
+        audio.play().catch((e) => console.warn('SFX play failed', e));
     },
     playSelect() {
-        this.init();
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
-        gain.gain.setValueAtTime(0.15 * sfxVolume, now);
-        gain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.15);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.15);
+        this.playVariant(this.manifest.select, { volume: 0.7, rateMin: 0.98, rateMax: 1.04 });
     },
     playSwing() {
-        this.init();
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const pitchMod = 0.85 + Math.random() * 0.3;
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(250 * pitchMod, now);
-        osc.frequency.exponentialRampToValueAtTime(60 * pitchMod, now + 0.2);
-        gain.gain.setValueAtTime(0.3 * sfxVolume, now);
-        gain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.25);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.25);
+        this.playVariant(this.manifest.swing, { volume: 0.72, rateMin: 0.92, rateMax: 1.08 });
     },
     playHit() {
-        this.init();
-        const now = this.ctx.currentTime;
-        const pitchMod = 0.8 + Math.random() * 0.4;
-
-        const subOsc = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        subOsc.type = 'sawtooth';
-        subOsc.frequency.setValueAtTime(120 * pitchMod, now);
-        subOsc.frequency.linearRampToValueAtTime(40 * pitchMod, now + 0.15);
-        subGain.gain.setValueAtTime(0.4 * sfxVolume, now);
-        subGain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.2);
-        subOsc.connect(subGain);
-        subGain.connect(this.ctx.destination);
-        subOsc.start(now);
-        subOsc.stop(now + 0.2);
-
-        const bufferSize = this.ctx.sampleRate * 0.1;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 600 * pitchMod;
-        filter.Q.value = 3.0;
-
-        const noiseGain = this.ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.5 * sfxVolume, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.1);
-
-        noise.connect(filter);
-        filter.connect(noiseGain);
-        noiseGain.connect(this.ctx.destination);
-        noise.start(now);
-        noise.stop(now + 0.1);
+        this.playVariant(this.manifest.hit, { volume: 0.8, rateMin: 0.94, rateMax: 1.06 });
     },
     playBlock() {
-        this.init();
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1800, now);
-        osc.frequency.linearRampToValueAtTime(1400, now + 0.08);
-        gain.gain.setValueAtTime(0.2 * sfxVolume, now);
-        gain.gain.exponentialRampToValueAtTime(0.005 * sfxVolume, now + 0.1);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.1);
+        this.playVariant(this.manifest.block, { volume: 0.68, rateMin: 0.98, rateMax: 1.02 });
     },
     playWin() {
-        this.init();
-        const now = this.ctx.currentTime;
-        const notes = [261.63, 329.63, 392.00, 523.25]; // C major chord
-        notes.forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-            gain.gain.setValueAtTime(0.15 * sfxVolume, now + idx * 0.08);
-            gain.gain.exponentialRampToValueAtTime(0.001 * sfxVolume, now + idx * 0.08 + 0.6);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(now + idx * 0.08);
-            osc.stop(now + idx * 0.08 + 0.6);
-        });
+        this.playVariant(this.manifest.win, { volume: 0.82, rateMin: 1, rateMax: 1 });
     }
 };
 
