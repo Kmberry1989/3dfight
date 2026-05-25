@@ -1019,7 +1019,7 @@ async function loadAssets() {
                 const size2 = new THREE.Vector3();
                 box.getSize(size2);
                 const maxDim = Math.max(size2.x, size2.y, size2.z);
-                const targetSize = 8;
+                const targetSize = 9.2;
                 let finalScale = 1;
                 if (isFinite(maxDim) && maxDim > 0.001) {
                     finalScale = targetSize / maxDim;
@@ -1600,7 +1600,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         hit: {
             count: count < 0 ? 22 : count,
             colors: [0xFFE000, 0xFF8C00, 0xFF4500, 0xFFFFFF],
-            size: () => Math.random() * 0.07 + 0.03,
+            size: () => Math.random() * 0.045 + 0.02,
             shape: 'star',
             spread: 3.2,
             upBias: 0.6,
@@ -1613,7 +1613,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         super: {
             count: count < 0 ? 32 : count,
             colors: [0xBD00FF, 0xFF007F, 0xFF4500, 0xFFE000, 0xFFFFFF],
-            size: () => Math.random() * 0.11 + 0.05,
+            size: () => Math.random() * 0.07 + 0.03,
             shape: 'diamond',
             spread: 4.5,
             upBias: 0.9,
@@ -1626,7 +1626,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         guard: {
             count: count < 0 ? 14 : count,
             colors: [0x00F0FF, 0x80FFFF, 0xFFFFFF],
-            size: () => Math.random() * 0.05 + 0.025,
+            size: () => Math.random() * 0.032 + 0.016,
             shape: 'box',
             spread: 2.0,
             upBias: 0.0,
@@ -1640,7 +1640,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         guardbreak: {
             count: count < 0 ? 40 : count,
             colors: [0xFFFFFF, 0xE0E0FF, 0xBD00FF, 0xFF007F],
-            size: () => Math.random() * 0.09 + 0.035,
+            size: () => Math.random() * 0.058 + 0.024,
             shape: 'diamond',
             spread: 5.0,
             upBias: 0.5,
@@ -1653,7 +1653,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         shield: {
             count: count < 0 ? 12 : count,
             colors: [0x00F0FF, 0x0080FF, 0x80FFFF],
-            size: () => Math.random() * 0.045 + 0.025,
+            size: () => Math.random() * 0.03 + 0.016,
             shape: 'box',
             spread: 2.2,
             upBias: 0.0,
@@ -1667,7 +1667,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         confetti: {
             count: count < 0 ? 50 : count,
             colors: [0xFF007F, 0x00F0FF, 0xFFE000, 0xBD00FF, 0x00FF88, 0xFF4500],
-            size: () => Math.random() * 0.06 + 0.025,
+            size: () => Math.random() * 0.04 + 0.018,
             shape: 'flat',
             spread: 5.0,
             upBias: 2.2,
@@ -1680,7 +1680,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         landing: {
             count: count < 0 ? 10 : count,
             colors: [0xAAAAAA, 0x888888, 0xCCCCCC],
-            size: () => Math.random() * 0.045 + 0.02,
+            size: () => Math.random() * 0.03 + 0.014,
             shape: 'box',
             spread: 1.6,
             upBias: 0.4,
@@ -1693,7 +1693,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         dash: {
             count: count < 0 ? 8 : count,
             colors: [0xFFFFFF, 0xCCEEFF],
-            size: () => Math.random() * 0.04 + 0.02,
+            size: () => Math.random() * 0.028 + 0.014,
             shape: 'box',
             spread: 1.8,
             upBias: 0.2,
@@ -3064,7 +3064,7 @@ const _wipeNameEl = document.getElementById('wipe-name-card');
  * @param {Function|null} onMidpoint — called when screen is fully covered (only for 'cut'/'close')
  * @param {Function|null} onDone    — called after animation fully completes
  */
-function screenWipe(type, durationMs = 180, label = null, onMidpoint = null, onDone = null) {
+function screenWipe(type, durationMs = 280, label = null, onMidpoint = null, onDone = null) {
     if (!_wipeEl) { if (onMidpoint) onMidpoint(); if (onDone) onDone(); return; }
 
     const setDur = (ms) => _wipeEl.style.setProperty('--wipe-dur', `${ms}ms`);
@@ -3153,19 +3153,19 @@ function startTauntPhaseSequence() {
 
     scheduleEvent(() => {
         // Wipe in → show P1 taunt → wipe to P2 taunt → wipe to countdown
-        screenWipe('cut', 160, p1.name, () => {
+        screenWipe('cut', 240, p1.name, () => {
             // midpoint: scene hidden — swap camera to P1 taunt
             const p1DurationMs = playTauntShot(p1);
 
             scheduleEvent(() => {
                 // P1 taunt done — cut to P2
-                screenWipe('cut', 160, p2.name, () => {
+                screenWipe('cut', 240, p2.name, () => {
                     playPreferredAction(p1, 'idle', 'idle', 0.12);
                     const p2DurationMs = playTauntShot(p2);
 
                     scheduleEvent(() => {
                         // Both taunts done — hard flash into countdown
-                        screenWipe('cut', 140, null, () => {
+                        screenWipe('cut', 220, null, () => {
                             playPreferredAction(p2, 'idle', 'idle', 0.12);
                             startCountdownSequence();
                         });
@@ -3212,20 +3212,20 @@ function playPreFightSequence() {
     }
 
     // Wipe in with P1's name, then start their entrance
-    screenWipe('cut', 180, p1.name.toUpperCase(), () => {
+    screenWipe('cut', 280, p1.name.toUpperCase(), () => {
         const p1EntranceDurationMs = getEntranceDurationMs(p1);
         setCameraMode('intro', { focusPlayerId: p1.id, shotDurationMs: p1EntranceDurationMs });
 
         startIntroMotion(p1, () => {
             // P1 done — wipe to P2 entrance
-            screenWipe('cut', 180, p2.name.toUpperCase(), () => {
+            screenWipe('cut', 280, p2.name.toUpperCase(), () => {
                 const p2EntranceDurationMs = getEntranceDurationMs(p2);
                 setCameraMode('intro', { focusPlayerId: p2.id, shotDurationMs: p2EntranceDurationMs });
 
                 scheduleEvent(() => {
                     startIntroMotion(p2, () => {
                         // Both entrances done — flash into taunt phase
-                        screenWipe('flash', 240, null, null, () => {
+                        screenWipe('flash', 360, null, null, () => {
                             startTauntPhaseSequence();
                         });
                     });
@@ -3753,7 +3753,7 @@ function animate() {
 
     // Slowly spin the carousel rig in the background
     if (carouselRig) {
-        carouselRig.rotation.y += 0.15 * realDt; // ~8.6°/sec — one full revolution every ~42s
+        carouselRig.rotation.y += 0.24 * realDt; // faster ambient spin for the select backdrop
     }
 
     updateCameraDirector();

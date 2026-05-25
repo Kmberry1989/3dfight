@@ -1368,10 +1368,10 @@ body.touch-landscape #touch-controls {
 
 /* Closing wipe */
 #screen-wipe.wipe-closing .wipe-panel-left {
-    animation: wipe-panel-left-in var(--wipe-dur, 180ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+    animation: wipe-panel-left-in var(--wipe-dur, 280ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
 }
 #screen-wipe.wipe-closing .wipe-panel-right {
-    animation: wipe-panel-right-in var(--wipe-dur, 180ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+    animation: wipe-panel-right-in var(--wipe-dur, 280ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
 }
 
 /* Fully closed — panels stay shut */
@@ -1381,24 +1381,24 @@ body.touch-landscape #touch-controls {
 /* Opening wipe */
 #screen-wipe.wipe-opening .wipe-panel-left {
     transform: translateX(0);
-    animation: wipe-panel-left-out var(--wipe-dur, 200ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+    animation: wipe-panel-left-out var(--wipe-dur, 300ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
 }
 #screen-wipe.wipe-opening .wipe-panel-right {
     transform: translateX(0);
-    animation: wipe-panel-right-out var(--wipe-dur, 200ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
+    animation: wipe-panel-right-out var(--wipe-dur, 300ms) cubic-bezier(0.77, 0, 0.18, 1) forwards;
 }
 
 /* Name-card animations (driven by JS via style.animation) */
 .wipe-name-card.name-in {
-    animation: wipe-name-in 0.28s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    animation: wipe-name-in 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 .wipe-name-card.name-out {
-    animation: wipe-name-out 0.22s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+    animation: wipe-name-out 0.32s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
 /* White flash layer — applied as a one-shot animation on the container */
 #screen-wipe.flash-white {
-    animation: screen-flash-white var(--flash-dur, 300ms) ease-out forwards;
+    animation: screen-flash-white var(--flash-dur, 420ms) ease-out forwards;
 }
 
 /* ============================================================
