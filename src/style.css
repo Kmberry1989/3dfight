@@ -1464,11 +1464,17 @@ body.touch-landscape #touch-controls {
 
 /* Adjust card sizing in the top bar to be horizontal and compact */
 .shared-portrait-bar .character-card {
-    width: 60px;
-    height: 60px;
+    width: 85px;
+    height: 85px;
     flex-shrink: 0;
-    border-radius: 8px;
+    border-radius: 12px;
     z-index: 1;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.shared-portrait-bar .character-card:hover {
+    transform: scale(1.05);
 }
 
 .shared-portrait-bar .character-name {
@@ -1488,16 +1494,8 @@ body.touch-landscape #touch-controls {
         gap: 8px;
     }
     
-    .portrait-bar-vs {
-        display: none; /* Hide VS in middle on mobile */
-    }
-    
-    .portrait-row-label {
-        display: none;
-    }
-    
     .shared-portrait-bar .character-card {
-        width: 50px;
-        height: 50px;
+        width: 65px;
+        height: 65px;
     }
 }

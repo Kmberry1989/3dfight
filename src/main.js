@@ -983,6 +983,17 @@ let tournamentOpponents = [];
 let currentTournamentRound = 0;
 let isBossMatch = false;
 
+window.handlePortraitClick = function(charId) {
+    let player = 1;
+    if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
+        player = 2;
+    } else if (gameMode === 'local' && p1Locked) {
+        player = 2;
+    }
+    selectCharacter(player, charId);
+};
+
+
 function selectCharacter(player, charId) {
     // If clicking the currently selected character, lock them in (double click confirm)
     if (selections[player] === charId && !((player === 1 && p1Locked) || (player === 2 && p2Locked))) {
@@ -1002,9 +1013,9 @@ function selectCharacter(player, charId) {
     }
 
     // Update cards in the shared portrait bar at the top
-    const portraitRow = document.getElementById(`p${player}-portrait-row`);
-    if (portraitRow) {
-        portraitRow.querySelectorAll('.character-card').forEach(card => {
+    const mainPortraitRow = document.getElementById('main-portrait-row');
+    if (mainPortraitRow) {
+        mainPortraitRow.querySelectorAll('.character-card').forEach(card => {
             card.classList.toggle('selected', card.dataset.char === charId);
         });
     }
@@ -1012,7 +1023,8 @@ function selectCharacter(player, charId) {
     document.getElementById(`p${player}-preview-name`).textContent = CHARACTERS[charId].name;
     refreshCharacterSelectPreviews();
 
-    const previewActor = previewFighters[player - 1];
+    // The single preview model is always at index 0
+    const previewActor = previewFighters[0];
     if (previewActor && previewActor.actions && previewActor.actions['taunt']) {
         const tauntAction = previewActor.actions['taunt'];
         tauntAction.setLoop(THREE.LoopPingPong, Infinity);
@@ -1035,6 +1047,9 @@ window.lockInPlayer = function (player) {
         if (gameMode === 'online') sendNetworkInput('lockIn', 'p2');
     }
 
+    // Refresh previews to immediately focus on next player (if any)
+    refreshCharacterSelectPreviews();
+
     if (p1Locked && (gameMode === 'single' || p2Locked)) {
         setTimeout(() => { startFight(); }, 500);
     }
@@ -1049,22 +1064,29 @@ function refreshCharacterSelectPreviews() {
         selections[2] = tournamentOpponents[currentTournamentRound];
     }
 
-    const p1Preview = spawnFighter(selections[1], -1.0, true);
-    const p2Preview = spawnFighter(selections[2], 1.0, false);
+    let activePlayer = 1;
+    if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
+        activePlayer = 2;
+    } else if (gameMode === 'local' && p1Locked) {
+        activePlayer = 2;
+    }
 
-    setPresentationRotation(p1Preview, 'select');
-    p1Preview.mesh.position.y = 0.58;
-    p1Preview.mesh.position.z = 3.0;
-    playPreferredAction(p1Preview, 'idle', 'standingPose', 0.01);
-    previewFighters.push(p1Preview);
-    startPreviewTauntCycle(p1Preview);
+    // Sync the top portrait bar with the active player's selection
+    const mainPortraitRow = document.getElementById('main-portrait-row');
+    if (mainPortraitRow) {
+        mainPortraitRow.querySelectorAll('.character-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.char === selections[activePlayer]);
+        });
+    }
 
-    setPresentationRotation(p2Preview, 'select');
-    p2Preview.mesh.position.y = 0.58;
-    p2Preview.mesh.position.z = 3.0;
-    playPreferredAction(p2Preview, 'idle', 'standingPose', 0.01);
-    previewFighters.push(p2Preview);
-    startPreviewTauntCycle(p2Preview);
+    // Spawn only the active player for "focus on player"
+    const preview = spawnFighter(selections[activePlayer], 0.0, true);
+    setPresentationRotation(preview, 'select');
+    preview.mesh.position.y = 0.58;
+    preview.mesh.position.z = 3.8; // Move a bit closer for better single-player view
+    playPreferredAction(preview, 'idle', 'standingPose', 0.01);
+    previewFighters.push(preview);
+    startPreviewTauntCycle(preview);
 
     setCameraMode('select', { shotDurationMs: 2000 });
 }
@@ -1137,14 +1159,14 @@ scene.add(actionSpotlight);
 
 const selectSpotlightP1 = new THREE.SpotLight(0xffffff, 4.0, 30, Math.PI / 4, 0.5, 1);
 selectSpotlightP1.position.set(-1.0, 6, 7);
-selectSpotlightP1.target.position.set(-1.0, 1.5, 3);
+selectSpotlightP1.target.position.set(0.0, 1.5, 3.8);
 selectSpotlightP1.castShadow = true;
 scene.add(selectSpotlightP1);
 scene.add(selectSpotlightP1.target);
 
 const selectSpotlightP2 = new THREE.SpotLight(0xffffff, 4.0, 30, Math.PI / 4, 0.5, 1);
 selectSpotlightP2.position.set(1.0, 6, 7);
-selectSpotlightP2.target.position.set(1.0, 1.5, 3);
+selectSpotlightP2.target.position.set(0.0, 1.5, 3.8);
 selectSpotlightP2.castShadow = true;
 scene.add(selectSpotlightP2);
 scene.add(selectSpotlightP2.target);
