@@ -264,10 +264,10 @@ const ATTACKS = {
             chainAt: 0.72,
             damage: 4,
             blockDamage: 1,
-            knockback: 0.22,
+            knockback: 0.45,
             blockKnockback: 0.14,
-            reactionTravel: 0.22,
-            forwardTravel: 0.34,
+            reactionTravel: 0.45,
+            forwardTravel: 0.50,
             settleBack: 0.05,
             minSpacing: 0.92,
             reaction: 'hitMidLight',
@@ -281,10 +281,10 @@ const ATTACKS = {
             chainAt: 0.76,
             damage: 7,
             blockDamage: 2,
-            knockback: 0.38,
+            knockback: 0.70,
             blockKnockback: 0.18,
-            reactionTravel: 0.38,
-            forwardTravel: 0.48,
+            reactionTravel: 0.70,
+            forwardTravel: 0.70,
             settleBack: 0.06,
             minSpacing: 0.88,
             reaction: 'hitMidMedium',
@@ -298,10 +298,10 @@ const ATTACKS = {
             chainAt: 1,
             damage: 11,
             blockDamage: 3,
-            knockback: 0.62,
+            knockback: 1.10,
             blockKnockback: 0.22,
-            reactionTravel: 0.62,
-            forwardTravel: 0.66,
+            reactionTravel: 1.10,
+            forwardTravel: 0.95,
             settleBack: 0.08,
             windupBackstep: 0.12,
             minSpacing: 0.84,
@@ -320,10 +320,10 @@ const ATTACKS = {
             blockDamage: 1,
             reachX: 1.4,
             reachY: 1.2,
-            knockback: 0.28,
+            knockback: 0.55,
             blockKnockback: 0.16,
-            reactionTravel: 0.28,
-            forwardTravel: 0.42,
+            reactionTravel: 0.55,
+            forwardTravel: 0.65,
             settleBack: 0.05,
             minSpacing: 0.98,
             reaction: 'hitLowLight',
@@ -337,10 +337,10 @@ const ATTACKS = {
             chainAt: 0.80,
             damage: 8,
             blockDamage: 2,
-            knockback: 0.46,
+            knockback: 0.85,
             blockKnockback: 0.20,
-            reactionTravel: 0.46,
-            forwardTravel: 0.58,
+            reactionTravel: 0.85,
+            forwardTravel: 0.85,
             settleBack: 0.07,
             minSpacing: 0.94,
             reaction: 'hitLowMedium',
@@ -354,10 +354,10 @@ const ATTACKS = {
             chainAt: 1,
             damage: 13,
             blockDamage: 3,
-            knockback: 0.78,
+            knockback: 1.30,
             blockKnockback: 0.24,
-            reactionTravel: 0.78,
-            forwardTravel: 0.78,
+            reactionTravel: 1.30,
+            forwardTravel: 1.10,
             settleBack: 0.10,
             windupBackstep: 0.16,
             minSpacing: 0.90,
@@ -376,10 +376,10 @@ const ATTACKS = {
             blockDamage: 2,
             reachX: 1.6,
             reachY: 1.2,
-            knockback: 0.35,
+            knockback: 0.65,
             blockKnockback: 0.20,
-            reactionTravel: 0.35,
-            forwardTravel: 0.42,
+            reactionTravel: 0.65,
+            forwardTravel: 0.65,
             settleBack: 0.05,
             minSpacing: 0.98,
             reaction: 'hitMidLight',
@@ -395,10 +395,10 @@ const ATTACKS = {
             blockDamage: 3,
             reachX: 1.6,
             reachY: 1.2,
-            knockback: 0.5,
+            knockback: 0.90,
             blockKnockback: 0.25,
-            reactionTravel: 0.5,
-            forwardTravel: 0.58,
+            reactionTravel: 0.90,
+            forwardTravel: 0.85,
             settleBack: 0.07,
             minSpacing: 0.94,
             reaction: 'hitLowMedium',
@@ -414,10 +414,10 @@ const ATTACKS = {
             blockDamage: 4,
             reachX: 1.6,
             reachY: 1.2,
-            knockback: 0.85,
+            knockback: 1.50,
             blockKnockback: 0.3,
-            reactionTravel: 0.85,
-            forwardTravel: 0.78,
+            reactionTravel: 1.50,
+            forwardTravel: 1.10,
             settleBack: 0.10,
             windupBackstep: 0.16,
             minSpacing: 0.90,
@@ -436,10 +436,10 @@ const ATTACKS = {
             blockDamage: 2,
             reachX: 1.6,
             reachY: 1.6,
-            knockback: 0.5,
+            knockback: 0.90,
             blockKnockback: 0.2,
-            reactionTravel: 0.5,
-            forwardTravel: 0,
+            reactionTravel: 0.90,
+            forwardTravel: 0.30,
             settleBack: 0,
             minSpacing: 0.9,
             reaction: 'hitMidHeavy',
@@ -455,10 +455,10 @@ const ATTACKS = {
             blockDamage: 2,
             reachX: 1.6,
             reachY: 1.6,
-            knockback: 0.5,
+            knockback: 0.90,
             blockKnockback: 0.2,
-            reactionTravel: 0.5,
-            forwardTravel: 0,
+            reactionTravel: 0.90,
+            forwardTravel: 0.30,
             settleBack: 0,
             minSpacing: 0.9,
             reaction: 'hitMidHeavy',
@@ -474,10 +474,10 @@ const ATTACKS = {
             blockDamage: 2,
             reachX: 1.6,
             reachY: 1.6,
-            knockback: 0.5,
+            knockback: 0.90,
             blockKnockback: 0.2,
-            reactionTravel: 0.5,
-            forwardTravel: 0,
+            reactionTravel: 0.90,
+            forwardTravel: 0.30,
             settleBack: 0,
             minSpacing: 0.9,
             reaction: 'hitMidHeavy',
@@ -555,8 +555,84 @@ let conn = null;
 let isHost = false;
 let sfxVolume = 0.5;
 let musicVolume = 0.5;
-let bgMusic = new Audio('/stages/the_carousel/generic-loop.ogg');
-bgMusic.loop = true;
+const MUSIC_TRACKS = {
+    menu: '/audio/main-menu.ogg',
+    characterSelect: '/audio/character-select.ogg',
+    fight: '/stages/the_carousel/generic-loop.ogg'
+};
+const musicPlayers = Object.fromEntries(
+    Object.entries(MUSIC_TRACKS).map(([key, src]) => {
+        const audio = new Audio(src);
+        audio.loop = true;
+        audio.volume = 0;
+        return [key, audio];
+    })
+);
+let activeMusicKey = null;
+let musicFadeInterval = null;
+
+function clearMusicFade() {
+    if (musicFadeInterval) {
+        clearInterval(musicFadeInterval);
+        musicFadeInterval = null;
+    }
+}
+
+function setAllMusicVolumes() {
+    Object.values(musicPlayers).forEach(audio => {
+        if (!audio.paused) {
+            audio.volume = Math.min(audio.volume, musicVolume);
+        }
+    });
+}
+
+function crossfadeMusic(nextKey) {
+    if (activeMusicKey === nextKey) {
+        const current = musicPlayers[nextKey];
+        if (current) current.volume = musicVolume;
+        return;
+    }
+
+    clearMusicFade();
+    const incoming = nextKey ? musicPlayers[nextKey] : null;
+    const outgoing = activeMusicKey ? musicPlayers[activeMusicKey] : null;
+    const steps = 12;
+    let step = 0;
+
+    if (incoming) {
+        incoming.currentTime = incoming.currentTime || 0;
+        incoming.volume = 0;
+        incoming.play().catch(e => console.warn('Audio play failed', e));
+    }
+
+    musicFadeInterval = setInterval(() => {
+        step += 1;
+        const progress = step / steps;
+
+        if (incoming) incoming.volume = musicVolume * progress;
+        if (outgoing) outgoing.volume = musicVolume * (1 - progress);
+
+        if (step >= steps) {
+            clearMusicFade();
+            if (outgoing) {
+                outgoing.pause();
+                outgoing.currentTime = 0;
+                outgoing.volume = 0;
+            }
+            if (incoming) incoming.volume = musicVolume;
+            activeMusicKey = nextKey;
+        }
+    }, 35);
+}
+
+function playScreenMusic(screenKey) {
+    const trackKey = screenKey === 'menu' ? 'menu' : 'characterSelect';
+    crossfadeMusic(trackKey);
+}
+
+function stopMusicForFight() {
+    crossfadeMusic('fight');
+}
 
 // GLOBAL TIME CONTROLS (JUICE)
 let globalTimeScale = 1.0;
@@ -591,19 +667,19 @@ function injectGuardBars() {
 
 function showMainMenu() {
     document.getElementById('selector-screen').classList.add('hidden');
+    document.getElementById('ladder-screen').classList.add('hidden');
+    document.getElementById('lobby-screen').style.display = 'none';
+    document.getElementById('options-menu').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    
-    if (typeof gridHelper !== 'undefined') gridHelper.visible = true;
-    if (typeof floor !== 'undefined') floor.visible = true;
+    playScreenMusic('menu');
+
+    setFightEnvironmentVisible(false);
+    setSelectEnvironmentVisible(true);
 }
 
 window.startGameMode = function (mode) {
     gameMode = mode;
-    if (mode === 'single') {
-        tournamentOpponents = Object.keys(CHARACTERS).sort(() => 0.5 - Math.random());
-        currentTournamentRound = 0;
-    }
     document.getElementById('main-menu').style.display = 'none';
     showCharacterSelect();
 };
@@ -611,6 +687,7 @@ window.startGameMode = function (mode) {
 function openLobby() {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'flex';
+    playScreenMusic('menu');
     if (!peer) {
         document.getElementById('lobby-status').textContent = 'Connecting to signaling server...';
         peer = new Peer();
@@ -686,22 +763,28 @@ function sendNetworkInput(action, key, buffer = null) {
 function closeLobby() {
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+    playScreenMusic('menu');
 }
 
 function openOptions() {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('options-menu').style.display = 'flex';
+    playScreenMusic('menu');
 }
 
 function closeOptions() {
     document.getElementById('options-menu').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+    playScreenMusic('menu');
 }
 
 function updateAudioOptions() {
     sfxVolume = parseFloat(document.getElementById('sfx-vol').value);
     musicVolume = parseFloat(document.getElementById('music-vol').value);
-    bgMusic.volume = musicVolume;
+    setAllMusicVolumes();
+    if (activeMusicKey && musicPlayers[activeMusicKey]) {
+        musicPlayers[activeMusicKey].volume = musicVolume;
+    }
 }
 
 function togglePause() {
@@ -723,11 +806,11 @@ function quitToMainMenu() {
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
     document.getElementById('gameover-screen').style.display = 'none';
+    document.getElementById('ladder-screen').classList.add('hidden');
     if (comboUI) comboUI.classList.remove('show');
     removeFighterList(players);
     removeFighterList(previewFighters);
     showMainMenu();
-    bgMusic.pause();
 }
 
 const DOUBLE_TAP_WINDOW = 250;
@@ -802,6 +885,18 @@ const loadedAnims = {};
 // --- STAGE PROPS ---
 let carouselRig = null;  // The spinning carousel_rig.glb object
 let stageSceneRoot = null; // The stage environment (scene.glb)
+let selectSceneRoot = null;
+
+function setFightEnvironmentVisible(visible) {
+    if (stageSceneRoot) stageSceneRoot.visible = visible;
+    if (carouselRig) carouselRig.visible = visible;
+    if (typeof gridHelper !== 'undefined') gridHelper.visible = false;
+    if (typeof floor !== 'undefined') floor.visible = false;
+}
+
+function setSelectEnvironmentVisible(visible) {
+    if (selectSceneRoot) selectSceneRoot.visible = visible;
+}
 
 // --- 3. ASSET LOAD PIPELINE ---
 async function loadAssets() {
@@ -969,6 +1064,41 @@ window.addEventListener('DOMContentLoaded', () => {
     initTouchControls();
     createComboUI();
     loadAssets();
+
+    const singleBtn = document.getElementById('menu-single-btn');
+    const localBtn = document.getElementById('menu-local-btn');
+    const onlineBtn = document.getElementById('menu-online-btn');
+    const optionsBtn = document.getElementById('menu-options-btn');
+    const bindMenuAction = (button, action) => {
+        if (!button) return;
+        let handledPointer = false;
+
+        button.addEventListener('pointerup', (event) => {
+            handledPointer = true;
+            event.preventDefault();
+            action();
+            setTimeout(() => { handledPointer = false; }, 0);
+        });
+
+        button.addEventListener('touchend', (event) => {
+            event.preventDefault();
+            action();
+        }, { passive: false });
+
+        button.addEventListener('click', (event) => {
+            if (handledPointer) {
+                handledPointer = false;
+                return;
+            }
+            event.preventDefault();
+            action();
+        });
+    };
+
+    bindMenuAction(singleBtn, () => startGameMode('single'));
+    bindMenuAction(localBtn, () => startGameMode('local'));
+    bindMenuAction(onlineBtn, () => openLobby());
+    bindMenuAction(optionsBtn, () => openOptions());
 });
 
 // --- 4. CHARACTER SELECT CONTROL LOGIC ---
@@ -979,15 +1109,135 @@ const selections = {
 
 let p1Locked = false;
 let p2Locked = false;
-let tournamentOpponents = [];
-let currentTournamentRound = 0;
 let isBossMatch = false;
+const tournamentRun = {
+    playerCharId: null,
+    ladder: [],
+    currentIndex: 0,
+    status: 'idle'
+};
+
+function getPortraitPath(charId) {
+    return `/characters/portrait_${CHARACTERS[charId].name}.png`;
+}
+
+function isMobilePortraitLayout() {
+    return window.matchMedia('(max-width: 600px) and (orientation: portrait), (max-width: 480px)').matches;
+}
+
+function applySelectorLayoutMode() {
+    const selectorScreen = document.getElementById('selector-screen');
+    const singlePane = gameMode !== 'online';
+    selectorScreen.classList.toggle('single-pane-selector', singlePane);
+    document.body.classList.toggle('selector-mobile-portraits', singlePane && isMobilePortraitLayout());
+}
+
+function buildTournamentLadder(selectedCharId) {
+    const opponents = Object.keys(CHARACTERS).filter(charId => charId !== selectedCharId);
+    const shuffled = opponents.sort(() => Math.random() - 0.5);
+    shuffled.push(selectedCharId);
+    return shuffled;
+}
+
+function getCurrentLadderOpponent() {
+    return tournamentRun.ladder[tournamentRun.currentIndex] || selections[2];
+}
+
+function startSinglePlayerRun(selectedCharId) {
+    tournamentRun.playerCharId = selectedCharId;
+    tournamentRun.ladder = buildTournamentLadder(selectedCharId);
+    tournamentRun.currentIndex = 0;
+    tournamentRun.status = 'in_progress';
+    selections[1] = selectedCharId;
+    selections[2] = getCurrentLadderOpponent();
+}
+
+function advanceTournamentRun() {
+    tournamentRun.currentIndex += 1;
+    if (tournamentRun.currentIndex >= tournamentRun.ladder.length) {
+        tournamentRun.status = 'complete';
+        return false;
+    }
+
+    selections[2] = getCurrentLadderOpponent();
+    tournamentRun.status = 'between_rounds';
+    return true;
+}
+
+function endTournamentRun(result) {
+    tournamentRun.status = result;
+}
+
+function renderTournamentLadder(result = 'advance') {
+    const ladderTitle = document.getElementById('ladder-title');
+    const ladderSubtitle = document.getElementById('ladder-subtitle');
+    const ladderPlayerName = document.getElementById('ladder-player-name');
+    const ladderNextName = document.getElementById('ladder-next-name');
+    const ladderRungs = document.getElementById('ladder-rungs');
+    const continueBtn = document.getElementById('ladder-continue-btn');
+    const nextOpponent = getCurrentLadderOpponent();
+
+    ladderTitle.textContent = result === 'complete' ? 'Tournament Cleared' : 'Round Cleared';
+    ladderSubtitle.textContent = result === 'complete'
+        ? 'You ran the whole ladder. Step back into the menu when you are ready.'
+        : `Advance to face ${CHARACTERS[nextOpponent].name}.`;
+    ladderPlayerName.textContent = CHARACTERS[tournamentRun.playerCharId].name;
+    ladderNextName.textContent = result === 'complete' ? 'Champion' : CHARACTERS[nextOpponent].name;
+    continueBtn.textContent = result === 'complete' ? 'Play Again' : 'Continue';
+    continueBtn.onclick = result === 'complete'
+        ? () => showCharacterSelect()
+        : () => window.continueTournament();
+
+    ladderRungs.innerHTML = tournamentRun.ladder.map((charId, index) => {
+        const rungState = index < tournamentRun.currentIndex
+            ? 'complete'
+            : index === tournamentRun.currentIndex
+                ? 'current'
+                : 'pending';
+        const status = rungState === 'complete'
+            ? 'Cleared'
+            : rungState === 'current'
+                ? 'Next Fight'
+                : 'Awaiting';
+
+        return `
+            <div class="ladder-rung ${rungState}">
+                <span class="ladder-rung-label">Rung ${index + 1}</span>
+                <div class="ladder-rung-art">
+                    <img src="${getPortraitPath(charId)}" alt="${CHARACTERS[charId].name}">
+                </div>
+                <div class="ladder-rung-name">${CHARACTERS[charId].name}</div>
+                <div class="ladder-rung-status">${status}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showTournamentLadderScreen(result = 'advance') {
+    document.getElementById('gameover-screen').style.display = 'none';
+    document.getElementById('selector-screen').classList.add('hidden');
+    document.getElementById('ladder-screen').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+    removeFighterList(players);
+    removeFighterList(previewFighters);
+    renderTournamentLadder(result);
+    playScreenMusic('characterSelect');
+    updateViewportState();
+}
+
+window.continueTournament = function () {
+    document.getElementById('ladder-screen').classList.add('hidden');
+    tournamentRun.status = 'in_progress';
+    if (tournamentRun.currentIndex >= tournamentRun.ladder.length) {
+        showCharacterSelect();
+        return;
+    }
+    startFight();
+};
 
 window.handlePortraitClick = function(charId) {
     let player = 1;
     if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
-        player = 2;
-    } else if (gameMode === 'local' && p1Locked) {
         player = 2;
     }
     selectCharacter(player, charId);
@@ -995,6 +1245,8 @@ window.handlePortraitClick = function(charId) {
 
 
 function selectCharacter(player, charId) {
+    if (gameMode !== 'online') player = 1;
+
     // If clicking the currently selected character, lock them in (double click confirm)
     if (selections[player] === charId && !((player === 1 && p1Locked) || (player === 2 && p2Locked))) {
         lockInPlayer(player);
@@ -1021,6 +1273,11 @@ function selectCharacter(player, charId) {
     }
 
     document.getElementById(`p${player}-preview-name`).textContent = CHARACTERS[charId].name;
+    document.getElementById('select-player-state').textContent = gameMode === 'single'
+        ? 'Tournament fighter selected'
+        : gameMode === 'online'
+            ? ''
+            : 'Ready your fighter';
     refreshCharacterSelectPreviews();
 
     // The single preview model is always at index 0
@@ -1034,6 +1291,7 @@ function selectCharacter(player, charId) {
 }
 
 window.lockInPlayer = function (player) {
+    if (gameMode !== 'online') player = 1;
     AudioSynth.playSelect();
     if (player === 1) {
         p1Locked = true;
@@ -1050,7 +1308,11 @@ window.lockInPlayer = function (player) {
     // Refresh previews to immediately focus on next player (if any)
     refreshCharacterSelectPreviews();
 
-    if (p1Locked && (gameMode === 'single' || p2Locked)) {
+    if (gameMode === 'single') {
+        startSinglePlayerRun(selections[1]);
+    }
+
+    if (p1Locked && (gameMode !== 'online' || p2Locked)) {
         setTimeout(() => { startFight(); }, 500);
     }
 };
@@ -1061,13 +1323,11 @@ function refreshCharacterSelectPreviews() {
     removeFighterList(previewFighters);
 
     if (gameMode === 'single') {
-        selections[2] = tournamentOpponents[currentTournamentRound];
+        selections[2] = tournamentRun.playerCharId ? getCurrentLadderOpponent() : selections[2];
     }
 
     let activePlayer = 1;
     if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
-        activePlayer = 2;
-    } else if (gameMode === 'local' && p1Locked) {
         activePlayer = 2;
     }
 
@@ -1079,11 +1339,20 @@ function refreshCharacterSelectPreviews() {
         });
     }
 
-    // Spawn only the active player for "focus on player"
+    document.getElementById('select-opponent-name').textContent = CHARACTERS[selections[2]].name;
+
+    if (gameMode !== 'online' && isMobilePortraitLayout()) {
+        setCameraMode('select', { shotDurationMs: 2000 });
+        return;
+    }
+
     const preview = spawnFighter(selections[activePlayer], 0.0, true);
     setPresentationRotation(preview, 'select');
     preview.mesh.position.y = 0.58;
-    preview.mesh.position.z = 3.8; // Move a bit closer for better single-player view
+    preview.mesh.position.z = 3.2; // Zoomed out a little bit
+    if (selections[activePlayer] === 'jonah') {
+        preview.mesh.position.z += 1.0; // Fix Jonah displaying too far back
+    }
     playPreferredAction(preview, 'idle', 'standingPose', 0.01);
     previewFighters.push(preview);
     startPreviewTauntCycle(preview);
@@ -1101,16 +1370,35 @@ function showCharacterSelect() {
     slowMoTimer = 0;
 
     document.getElementById('gameover-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('lobby-screen').style.display = 'none';
+    document.getElementById('options-menu').style.display = 'none';
+    document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
-    document.getElementById('instructions').style.display = 'none';
+    document.getElementById('select-mode-kicker').textContent = gameMode === 'single'
+        ? 'Arcade Tournament Ladder'
+        : gameMode === 'online'
+            ? 'Online Match Setup'
+            : 'Local Exhibition';
+    document.getElementById('select-rules-title').textContent = gameMode === 'single' ? 'Single Player' : gameMode === 'online' ? 'Online Multiplayer' : 'Local Multiplayer';
+    document.getElementById('select-rules-desc').textContent = gameMode === 'single'
+        ? 'Choose one fighter and climb the full tournament ladder.'
+        : gameMode === 'online'
+            ? 'Each player locks in a fighter before the match starts.'
+            : 'Pick a fighter and jump straight into a local exhibition.';
+    document.getElementById('select-player-state').textContent = gameMode === 'single'
+        ? 'Choose your tournament fighter'
+        : gameMode === 'online'
+            ? ''
+            : 'Choose your fighter';
 
     selectSpotlightP1.visible = true;
     selectSpotlightP2.visible = true;
     actionSpotlight.visible = false;
     
-    if (typeof gridHelper !== 'undefined') gridHelper.visible = true;
-    if (typeof floor !== 'undefined') floor.visible = true;
+    setFightEnvironmentVisible(false);
+    setSelectEnvironmentVisible(true);
 
     document.getElementById('p1-locked-status').style.display = 'none';
     document.getElementById('p1-lock-btn').style.display = 'block';
@@ -1118,15 +1406,21 @@ function showCharacterSelect() {
     document.getElementById('p2-lock-btn').style.display = 'block';
 
     if (gameMode === 'single') {
-        document.getElementById('p2-select-panel').style.display = 'none';
-        document.getElementById('p1-select-panel').style.marginLeft = '0';
+        tournamentRun.playerCharId = null;
+        tournamentRun.ladder = [];
+        tournamentRun.currentIndex = 0;
+        tournamentRun.status = 'idle';
+        selections[2] = 'jonah';
     } else {
-        document.getElementById('p2-select-panel').style.display = 'flex';
+        tournamentRun.status = 'idle';
     }
+
+    applySelectorLayoutMode();
 
     removeFighterList(players);
     removeFighterList(previewFighters);
     refreshCharacterSelectPreviews();
+    playScreenMusic('characterSelect');
     updateViewportState();
 }
 
@@ -1194,6 +1488,90 @@ const gridHelper = new THREE.GridHelper(22, 22, 0xbd00ff, 0x1f1947);
 gridHelper.position.y = 0.01;
 scene.add(gridHelper);
 
+selectSceneRoot = new THREE.Group();
+selectSceneRoot.visible = false;
+scene.add(selectSceneRoot);
+
+const selectBackdrop = new THREE.Mesh(
+    new THREE.PlaneGeometry(26, 12),
+    new THREE.MeshBasicMaterial({
+        color: 0x0f1531,
+        transparent: true,
+        opacity: 0.92
+    })
+);
+selectBackdrop.position.set(0, 4.1, -8.4);
+selectSceneRoot.add(selectBackdrop);
+
+const selectBackdropGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(22, 9.6),
+    new THREE.MeshBasicMaterial({
+        color: 0x1d2f6f,
+        transparent: true,
+        opacity: 0.24
+    })
+);
+selectBackdropGlow.position.set(0, 4.1, -8.2);
+selectSceneRoot.add(selectBackdropGlow);
+
+const selectFloor = new THREE.Mesh(
+    new THREE.CylinderGeometry(4.3, 5.8, 0.5, 48),
+    new THREE.MeshStandardMaterial({
+        color: 0x11172f,
+        emissive: 0x0e1f4f,
+        emissiveIntensity: 0.18,
+        roughness: 0.48,
+        metalness: 0.45
+    })
+);
+selectFloor.position.set(0, -0.26, 3.72);
+selectFloor.receiveShadow = true;
+selectFloor.castShadow = false;
+selectSceneRoot.add(selectFloor);
+
+const selectRing = new THREE.Mesh(
+    new THREE.TorusGeometry(5.15, 0.11, 18, 90),
+    new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x38bdf8,
+        emissiveIntensity: 0.85,
+        roughness: 0.2,
+        metalness: 0.8
+    })
+);
+selectRing.rotation.x = Math.PI / 2;
+selectRing.position.set(0, -0.01, 3.72);
+selectSceneRoot.add(selectRing);
+
+const selectColumnGeo = new THREE.CylinderGeometry(0.22, 0.22, 5.8, 24);
+const selectColumnMat = new THREE.MeshStandardMaterial({
+    color: 0x1d2748,
+    emissive: 0x13254d,
+    emissiveIntensity: 0.2,
+    roughness: 0.4,
+    metalness: 0.55
+});
+[
+    [-7.2, 2.4, -5.2],
+    [7.2, 2.4, -5.2],
+    [-9.1, 2.7, -9.0],
+    [9.1, 2.7, -9.0]
+].forEach(([x, y, z]) => {
+    const column = new THREE.Mesh(selectColumnGeo, selectColumnMat);
+    column.position.set(x, y, z);
+    column.castShadow = false;
+    column.receiveShadow = false;
+    selectSceneRoot.add(column);
+});
+
+const selectAccentLightA = new THREE.PointLight(0x00f0ff, 2.8, 18, 2);
+selectAccentLightA.position.set(-5.8, 3.2, -1.8);
+selectSceneRoot.add(selectAccentLightA);
+
+const selectAccentLightB = new THREE.PointLight(0xff007f, 2.2, 18, 2);
+selectAccentLightB.position.set(5.8, 3.1, -1.8);
+selectSceneRoot.add(selectAccentLightB);
+
 const wallGeo = new THREE.BoxGeometry(0.5, 1, 7);
 const wallMat = new THREE.MeshBasicMaterial({ color: 0xbd00ff, transparent: true, opacity: 0.1 });
 const leftWall = new THREE.Mesh(wallGeo, wallMat); leftWall.position.set(-10, 0.5, 0);
@@ -1217,7 +1595,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         hit: {
             count: count < 0 ? 22 : count,
             colors: [0xFFE000, 0xFF8C00, 0xFF4500, 0xFFFFFF],
-            size: () => Math.random() * 0.14 + 0.06,
+            size: () => Math.random() * 0.07 + 0.03,
             shape: 'star',
             spread: 3.2,
             upBias: 0.6,
@@ -1230,7 +1608,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         super: {
             count: count < 0 ? 32 : count,
             colors: [0xBD00FF, 0xFF007F, 0xFF4500, 0xFFE000, 0xFFFFFF],
-            size: () => Math.random() * 0.22 + 0.10,
+            size: () => Math.random() * 0.11 + 0.05,
             shape: 'diamond',
             spread: 4.5,
             upBias: 0.9,
@@ -1243,7 +1621,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         guard: {
             count: count < 0 ? 14 : count,
             colors: [0x00F0FF, 0x80FFFF, 0xFFFFFF],
-            size: () => Math.random() * 0.10 + 0.05,
+            size: () => Math.random() * 0.05 + 0.025,
             shape: 'box',
             spread: 2.0,
             upBias: 0.0,
@@ -1257,7 +1635,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         guardbreak: {
             count: count < 0 ? 40 : count,
             colors: [0xFFFFFF, 0xE0E0FF, 0xBD00FF, 0xFF007F],
-            size: () => Math.random() * 0.18 + 0.07,
+            size: () => Math.random() * 0.09 + 0.035,
             shape: 'diamond',
             spread: 5.0,
             upBias: 0.5,
@@ -1270,7 +1648,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         shield: {
             count: count < 0 ? 12 : count,
             colors: [0x00F0FF, 0x0080FF, 0x80FFFF],
-            size: () => Math.random() * 0.09 + 0.05,
+            size: () => Math.random() * 0.045 + 0.025,
             shape: 'box',
             spread: 2.2,
             upBias: 0.0,
@@ -1284,7 +1662,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         confetti: {
             count: count < 0 ? 50 : count,
             colors: [0xFF007F, 0x00F0FF, 0xFFE000, 0xBD00FF, 0x00FF88, 0xFF4500],
-            size: () => Math.random() * 0.12 + 0.05,
+            size: () => Math.random() * 0.06 + 0.025,
             shape: 'flat',
             spread: 5.0,
             upBias: 2.2,
@@ -1297,7 +1675,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         landing: {
             count: count < 0 ? 10 : count,
             colors: [0xAAAAAA, 0x888888, 0xCCCCCC],
-            size: () => Math.random() * 0.09 + 0.04,
+            size: () => Math.random() * 0.045 + 0.02,
             shape: 'box',
             spread: 1.6,
             upBias: 0.4,
@@ -1310,7 +1688,7 @@ function spawnParticles(position, type = 'hit', count = -1) {
         dash: {
             count: count < 0 ? 8 : count,
             colors: [0xFFFFFF, 0xCCEEFF],
-            size: () => Math.random() * 0.08 + 0.04,
+            size: () => Math.random() * 0.04 + 0.02,
             shape: 'box',
             spread: 1.8,
             upBias: 0.2,
@@ -1529,8 +1907,15 @@ function startPreviewTauntCycle(fighter) {
 function updateViewportState() {
     const isTouchDevice =
         (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+    const isTouchLandscape = isTouchDevice && window.matchMedia('(orientation: landscape)').matches;
 
-    document.body.classList.toggle('touch-landscape', isTouchDevice);
+    document.body.classList.toggle('touch-landscape', isTouchLandscape);
+    applySelectorLayoutMode();
+
+    if (!document.getElementById('selector-screen').classList.contains('hidden')) {
+        removeFighterList(previewFighters);
+        refreshCharacterSelectPreviews();
+    }
 
     const isGameplayActive =
         document.getElementById('selector-screen').classList.contains('hidden') &&
@@ -1763,29 +2148,54 @@ function createPlayerMesh(charId, isPlayer1) {
             }
         });
 
-        // Strip vertical (Y) root-motion translation from locomotion clips so
-        // characters never float up or sink into the floor while running/sliding.
-        const ROOT_MOTION_STRIP_KEYS = new Set(['running', 'runningSlide']);
-        Object.entries(actions).forEach(([actionName, action]) => {
-            if (!ROOT_MOTION_STRIP_KEYS.has(actionName)) return;
-            const clip = action.getClip();
-            clip.tracks = clip.tracks.filter(track => {
-                // Remove any position.y track on the root/hips bone
-                const isPositionY = track.name.endsWith('.position') ||
-                    (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
+        // --- Animation Height Normalization ---
+        // Animations from Mixamo often have their root/hips bones starting at slightly different Y-coordinates.
+        // This causes characters to snap into the floor or float when switching from 'idle' to an attack (e.g. punchHeavy).
+        // We fix this by finding the 'idle' animation's starting Y, and offsetting ALL other animations so they start at that exact height.
+        let idleStartY = null;
+        if (actions.idle) {
+            const idleClip = actions.idle.getClip();
+            idleClip.tracks.forEach(track => {
+                const isPositionY = track.name.endsWith('.position') || (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
                 const onRoot = /^(mixamorig:)?hips|root|pelvis/i.test(track.name.split('.')[0]);
-                // Keep everything except Y-translation on the root bone
-                if (isPositionY && onRoot) {
-                    // Zero-out Y channel: keep X and Z, force Y=0 every frame
-                    if (track.name.endsWith('.position') && track.values) {
-                        for (let i = 1; i < track.values.length; i += 3) {
-                            track.values[i] = 0; // Y = 0
+                if (isPositionY && onRoot && track.values && track.values.length > 1) {
+                    idleStartY = track.values[1]; // First Y value
+                }
+            });
+        }
+
+        const ROOT_MOTION_STRIP_KEYS = new Set(['running', 'runningSlide']);
+        
+        if (idleStartY !== null) {
+            Object.entries(actions).forEach(([actionName, action]) => {
+                const clip = action.getClip();
+                clip.tracks.forEach(track => {
+                    const isPositionY = track.name.endsWith('.position') || (track instanceof THREE.VectorKeyframeTrack && track.name.includes('position'));
+                    const onRoot = /^(mixamorig:)?hips|root|pelvis/i.test(track.name.split('.')[0]);
+                    
+                    if (isPositionY && onRoot && track.values && track.values.length > 1) {
+                        const animStartY = track.values[1];
+                        const offsetY = idleStartY - animStartY;
+                        
+                        // We still want to strip ALL vertical bouncing for running/sliding 
+                        // so they stay perfectly flat on the ground while approaching
+                        if (ROOT_MOTION_STRIP_KEYS.has(actionName)) {
+                            for (let i = 1; i < track.values.length; i += 3) {
+                                track.values[i] = idleStartY; // lock to flat idle height
+                            }
+                        } else {
+                            // For punches, kicks, hits, etc., preserve the animation's natural Y-curve (bobs, dips, jumps) 
+                            // but offset the whole curve so it seamlessly starts from the idle height.
+                            if (Math.abs(offsetY) > 0.0001) {
+                                for (let i = 1; i < track.values.length; i += 3) {
+                                    track.values[i] += offsetY;
+                                }
+                            }
                         }
                     }
-                }
-                return true; // keep the track, just flattened
+                });
             });
-        });
+        }
 
         if (actions.idle) {
             actions.idle.play();
@@ -2098,10 +2508,11 @@ function startIntroMotion(player, onComplete) {
         targetX,
         runEndFrac: runningDuration / (totalDuration * 1000),
     };
-    player.mesh.position.y = 0;
+    player.mesh.position.y = 0.2; // Raised during running/sliding
     player.mesh.position.x = startX;
 
     // Phase 1: Running approach
+    setPresentationRotation(player, 'combat');
     playPreferredAction(player, 'running', 'idle', 0.05);
 
     // Phase 2: Running Slide — camera widens to catch full-body floor animation
@@ -2115,6 +2526,8 @@ function startIntroMotion(player, onComplete) {
             if (!player.introMotion) return;
             player.introPhase = 'taunt';
             player.mesh.position.x = targetX;
+            player.mesh.position.y = 0.0; // Return to floor for taunt and idle
+            setPresentationRotation(player, 'taunt'); // Face the camera
             playPreferredAction(player, 'taunt', 'idle', 0.10);
 
             scheduleEvent(() => {
@@ -2814,13 +3227,11 @@ window.startFight = function (isNetworkCommand = false) {
     }
 
     if (gameMode === 'single') {
-        if (currentTournamentRound >= tournamentOpponents.length) {
-            selections[2] = selections[1];
-            isBossMatch = true;
-        } else {
-            selections[2] = tournamentOpponents[currentTournamentRound];
-            isBossMatch = false;
+        if (!tournamentRun.playerCharId || tournamentRun.status === 'idle') {
+            startSinglePlayerRun(selections[1]);
         }
+        selections[2] = getCurrentLadderOpponent();
+        isBossMatch = selections[2] === selections[1];
     } else {
         isBossMatch = false;
     }
@@ -2828,13 +3239,13 @@ window.startFight = function (isNetworkCommand = false) {
     AudioSynth.playSelect();
     clearScheduledEvents();
     if (timerInterval) clearInterval(timerInterval);
-    bgMusic.play().catch(e => console.warn('Audio play failed', e));
+    stopMusicForFight();
 
     document.getElementById('announcement').classList.remove('active');
     document.getElementById('gameover-screen').style.display = 'none';
+    document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('hud').style.display = 'flex';
-    document.getElementById('instructions').style.display = 'flex';
     updateViewportState();
 
     removeFighterList(previewFighters);
@@ -2860,8 +3271,8 @@ window.startFight = function (isNetworkCommand = false) {
     selectSpotlightP2.visible = false;
     actionSpotlight.visible = true;
     
-    if (typeof gridHelper !== 'undefined') gridHelper.visible = false;
-    if (typeof floor !== 'undefined') floor.visible = false;
+    setFightEnvironmentVisible(true);
+    setSelectEnvironmentVisible(false);
     roundTime = 99;
     document.getElementById('timer').textContent = roundTime;
     setCameraMode('intro', { focusPlayerId: 1, winnerId: 0 });
@@ -2897,6 +3308,8 @@ function endRound(winnerNum) {
 
     const overlay = document.getElementById('gameover-screen');
     const winnerText = document.getElementById('winner-title');
+    const primaryBtn = document.getElementById('gameover-primary-btn');
+    const secondaryBtn = document.getElementById('gameover-secondary-btn');
     const winner = winnerNum > 0 ? players[winnerNum - 1] : null;
     const loser  = winnerNum > 0 ? players[winnerNum === 1 ? 1 : 0] : null;
 
@@ -2938,6 +3351,32 @@ function endRound(winnerNum) {
             AudioSynth.playWin();
         }
 
+        if (gameMode === 'single') {
+            if (winnerNum === 1) {
+                const hasNextFight = advanceTournamentRun();
+                if (hasNextFight) {
+                    showTournamentLadderScreen('advance');
+                    return;
+                }
+                endTournamentRun('complete');
+                primaryBtn.textContent = 'Tournament Ladder';
+                primaryBtn.onclick = () => showTournamentLadderScreen('complete');
+                secondaryBtn.textContent = 'Main Menu';
+                secondaryBtn.onclick = () => quitToMainMenu();
+            } else {
+                endTournamentRun('failed');
+                primaryBtn.textContent = 'Try Again';
+                primaryBtn.onclick = () => showCharacterSelect();
+                secondaryBtn.textContent = 'Main Menu';
+                secondaryBtn.onclick = () => quitToMainMenu();
+            }
+        } else {
+            primaryBtn.textContent = 'Rematch';
+            primaryBtn.onclick = () => rematch();
+            secondaryBtn.textContent = 'Fighter Select';
+            secondaryBtn.onclick = () => backToSelect();
+        }
+
         // Fade the overlay in over the 3D scene
         overlay.style.transition = `opacity ${fadeMs}ms ease`;
         overlay.style.opacity = '0';
@@ -2956,6 +3395,10 @@ function rematch() {
 
 function backToSelect() {
     document.getElementById('gameover-screen').style.display = 'none';
+    if (gameMode === 'single' && tournamentRun.status === 'between_rounds') {
+        showTournamentLadderScreen('advance');
+        return;
+    }
     showCharacterSelect();
 }
 
@@ -3060,7 +3503,7 @@ function animate() {
                         aiCurrentAction = 'forward';
                         aiNextActionTime = performance.now() + 300 + Math.random() * 400;
                     } else {
-                        if (Math.random() < 0.7) {
+                        if (Math.random() < 0.85) {
                             const attackType = Math.random() < 0.5 ? 'punch' : 'kick';
                             bufferAttackInput(2, attackType);
                             aiCurrentAction = 'idle';

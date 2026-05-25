@@ -1,0 +1,72 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - heading "FAMILY FIGHTER" [level=2] [ref=e4]
+    - button "Single Player" [ref=e5] [cursor=pointer]
+    - button "Online Multiplayer" [ref=e6] [cursor=pointer]
+    - button "Options" [ref=e7] [cursor=pointer]
+  - generic [ref=e9]:
+    - generic [ref=e10]: FAMILY FIGHTER
+    - generic [ref=e11]: Syncing Simulation (98%)
+    - generic [ref=e14]: Loaded Stage Environment...
+  - generic:
+    - generic:
+      - generic:
+        - generic: Arcade Tournament Ladder
+        - heading "Select Fighter" [level=1]
+      - generic:
+        - generic: FAMILY FIGHTER
+        - paragraph: Choose your character, then READY up!
+    - generic [ref=e16]:
+      - generic [ref=e17] [cursor=pointer]:
+        - img "Kyle"
+        - generic [ref=e18]: Kyle
+      - generic [ref=e19] [cursor=pointer]:
+        - img "Jonah"
+        - generic [ref=e20]: Jonah
+      - generic [ref=e21] [cursor=pointer]:
+        - img "Rochelle"
+        - generic [ref=e22]: Rochelle
+      - generic [ref=e23] [cursor=pointer]:
+        - img "Vickie"
+        - generic [ref=e24]: Vickie
+      - generic [ref=e25] [cursor=pointer]:
+        - img "Donald"
+        - generic [ref=e26]: Donald
+      - generic [ref=e27] [cursor=pointer]:
+        - img "Eric"
+        - generic [ref=e28]: Eric
+      - generic [ref=e29] [cursor=pointer]:
+        - img "Kristen"
+        - generic [ref=e30]: Kristen
+    - generic:
+      - generic [ref=e31]:
+        - generic [ref=e32]: Player 1 READY
+        - generic [ref=e33]: Choose your fighter
+        - generic [ref=e34]: Kyle
+        - button "READY" [ref=e35] [cursor=pointer]
+      - text: READY
+    - generic:
+      - generic:
+        - strong: Single Player
+        - generic: Best of three rounds, climb the ladder to the top place in tournament mode!
+      - generic:
+        - strong: Current Opponent
+        - generic: Jonah
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic: Tournament Ladder
+          - heading "Round Cleared" [level=2]
+        - paragraph: Advance to the next challenger.
+      - generic:
+        - generic:
+          - generic: Your Fighter
+          - strong: Kyle
+        - generic:
+          - generic: Up Next
+          - strong: Jonah
+      - generic:
+        - button "Continue"
+        - button "Quit to Menu"
+  - generic: FIGHT!

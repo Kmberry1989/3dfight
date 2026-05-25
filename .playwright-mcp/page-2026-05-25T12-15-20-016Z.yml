@@ -1,0 +1,68 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - heading "FAMILY FIGHTER" [level=2] [ref=e4]
+    - button "Single Player" [ref=e5] [cursor=pointer]
+    - button "Online Multiplayer" [ref=e6] [cursor=pointer]
+    - button "Options" [ref=e7] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic: Arcade Tournament Ladder
+        - heading "Select Fighter" [level=1]
+      - generic:
+        - generic: FAMILY FIGHTER
+        - paragraph: Choose your character, then READY up!
+    - generic [ref=e9]:
+      - generic [ref=e10] [cursor=pointer]:
+        - img "Kyle"
+        - generic [ref=e11]: Kyle
+      - generic [ref=e12] [cursor=pointer]:
+        - img "Jonah"
+        - generic [ref=e13]: Jonah
+      - generic [ref=e14] [cursor=pointer]:
+        - img "Rochelle"
+        - generic [ref=e15]: Rochelle
+      - generic [ref=e16] [cursor=pointer]:
+        - img "Vickie"
+        - generic [ref=e17]: Vickie
+      - generic [ref=e18] [cursor=pointer]:
+        - img "Donald"
+        - generic [ref=e19]: Donald
+      - generic [ref=e20] [cursor=pointer]:
+        - img "Eric"
+        - generic [ref=e21]: Eric
+      - generic [ref=e22] [cursor=pointer]:
+        - img "Kristen"
+        - generic [ref=e23]: Kristen
+    - generic:
+      - generic [ref=e24]:
+        - generic [ref=e25]: Player 1 READY
+        - generic [ref=e26]: Choose your fighter
+        - generic [ref=e27]: Kyle
+        - button "READY" [ref=e28] [cursor=pointer]
+      - text: READY
+    - generic:
+      - generic:
+        - strong: Single Player
+        - generic: Best of three rounds, climb the ladder to the top place in tournament mode!
+      - generic:
+        - strong: Current Opponent
+        - generic: Jonah
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic: Tournament Ladder
+          - heading "Round Cleared" [level=2]
+        - paragraph: Advance to the next challenger.
+      - generic:
+        - generic:
+          - generic: Your Fighter
+          - strong: Kyle
+        - generic:
+          - generic: Up Next
+          - strong: Jonah
+      - generic:
+        - button "Continue"
+        - button "Quit to Menu"
+  - generic: FIGHT!

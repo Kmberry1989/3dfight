@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 
-  <script type="module" crossorigin src="/assets/index-ueDDhNXZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CQ6D05eQ.css">
+  <script type="module" crossorigin src="/assets/index-DLLJwCJ5.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-RezgbXKs.css">
 </head>
 
 <body>
@@ -23,10 +23,10 @@
     <div id="main-menu" class="ui-screen" style="display: flex;">
         <div class="menu-box">
             <h2>FAMILY FIGHTER</h2>
-            <button class="menu-btn" onclick="startGameMode('single')">Single Player</button>
-            <button class="menu-btn" onclick="startGameMode('local')" style="display:none">Local Multiplayer</button>
-            <button class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
-            <button class="menu-btn" onclick="openOptions()">Options</button>
+            <button id="menu-single-btn" class="menu-btn" onclick="startGameMode('single')">Single Player</button>
+            <button id="menu-local-btn" class="menu-btn" onclick="startGameMode('local')" style="display:none">Local Multiplayer</button>
+            <button id="menu-online-btn" class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
+            <button id="menu-options-btn" class="menu-btn" onclick="openOptions()">Options</button>
         </div>
     </div>
 
@@ -87,7 +87,7 @@
     <div id="selector-screen" class="ui-screen hidden">
         <div class="select-header">
             <div>
-                <div class="select-marquee">Arcade Tournament Ladder</div>
+                <div class="select-marquee" id="select-mode-kicker">Arcade Tournament Ladder</div>
                 <h1>Select Fighter</h1>
             </div>
             <div class="select-header-copy">
@@ -96,48 +96,58 @@
             </div>
         </div>
 
-
+        <div class="shared-portrait-bar">
+            <div class="portrait-row" id="main-portrait-row" style="justify-content: center;">
+                <div class="character-card selected" data-char="kyle" onclick="handlePortraitClick('kyle')">
+                    <img class="portrait-img" src="/characters/portrait_Kyle.png" alt="Kyle" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Kyle</div>
+                </div>
+                <div class="character-card" data-char="jonah" onclick="handlePortraitClick('jonah')">
+                    <img class="portrait-img" src="/characters/portrait_Jonah.png" alt="Jonah" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Jonah</div>
+                </div>
+                <div class="character-card" data-char="rochelle" onclick="handlePortraitClick('rochelle')">
+                    <img class="portrait-img" src="/characters/portrait_Rochelle.png" alt="Rochelle" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Rochelle</div>
+                </div>
+                <div class="character-card" data-char="vickie" onclick="handlePortraitClick('vickie')">
+                    <img class="portrait-img" src="/characters/portrait_Vickie.png" alt="Vickie" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Vickie</div>
+                </div>
+                <div class="character-card" data-char="donald" onclick="handlePortraitClick('donald')">
+                    <img class="portrait-img" src="/characters/portrait_Donald.png" alt="Donald" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Donald</div>
+                </div>
+                <div class="character-card" data-char="eric" onclick="handlePortraitClick('eric')">
+                    <img class="portrait-img" src="/characters/portrait_Eric.png" alt="Eric" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Eric</div>
+                </div>
+                <div class="character-card" data-char="kristen" onclick="handlePortraitClick('kristen')">
+                    <img class="portrait-img" src="/characters/portrait_Kristen.png" alt="Kristen" draggable="false">
+                    <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
+                    <div class="character-name">Kristen</div>
+                </div>
+            </div>
+        </div>
 
         <div class="selection-container">
-            <!-- PLAYER 1 PANEL -->
             <div class="player-select-panel p1-active" id="p1-select-panel">
-                <div class="panel-title">Player 1 </div>
-                <div class="character-grid">
-                    <div class="character-card selected" data-char="kyle" onclick="selectCharacter(1, 'kyle')">
-                        <img class="portrait-img" src="/characters/portrait_Kyle.png" alt="Kyle" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Kyle</div>
-                    </div>
-                    <div class="character-card" data-char="jonah" onclick="selectCharacter(1, 'jonah')">
-                        <img class="portrait-img" src="/characters/portrait_Jonah.png" alt="Jonah" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Jonah</div>
-                    </div>
-                    <div class="character-card" data-char="rochelle" onclick="selectCharacter(1, 'rochelle')">
-                        <img class="portrait-img" src="/characters/portrait_Rochelle.png" alt="Rochelle" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Rochelle</div>
-                    </div>
-                    <div class="character-card" data-char="vickie" onclick="selectCharacter(1, 'vickie')">
-                        <img class="portrait-img" src="/characters/portrait_Vickie.png" alt="Vickie" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Vickie</div>
-                    </div>
-                    <div class="character-card" data-char="donald" onclick="selectCharacter(1, 'donald')">
-                        <img class="portrait-img" src="/characters/portrait_Donald.png" alt="Donald" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Donald</div>
-                    </div>
-                    <div class="character-card" data-char="eric" onclick="selectCharacter(1, 'eric')">
-                        <img class="portrait-img" src="/characters/portrait_Eric.png" alt="Eric" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Eric</div>
-                    </div>
-                    <div class="character-card" data-char="kristen" onclick="selectCharacter(1, 'kristen')">
-                        <img class="portrait-img" src="/characters/portrait_Kristen.png" alt="Kristen" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Kristen</div>
-                    </div>
+                <div class="panel-title">Player 1</div>
+                <div class="selector-player-state" id="select-player-state">Choose your fighter</div>
+                <div class="character-grid" style="display:none" id="p1-legacy-grid">
+                    <div class="character-card selected" data-char="kyle" onclick="selectCharacter(1, 'kyle')"></div>
+                    <div class="character-card" data-char="jonah" onclick="selectCharacter(1, 'jonah')"></div>
+                    <div class="character-card" data-char="rochelle" onclick="selectCharacter(1, 'rochelle')"></div>
+                    <div class="character-card" data-char="vickie" onclick="selectCharacter(1, 'vickie')"></div>
+                    <div class="character-card" data-char="donald" onclick="selectCharacter(1, 'donald')"></div>
+                    <div class="character-card" data-char="eric" onclick="selectCharacter(1, 'eric')"></div>
+                    <div class="character-card" data-char="kristen" onclick="selectCharacter(1, 'kristen')"></div>
                 </div>
                 <div class="preview-name" id="p1-preview-name">Kyle</div>
                 <div class="locked-status" id="p1-locked-status"
@@ -151,45 +161,17 @@
                 <div class="select-versus">VS</div>
             </div>
 
-            <!-- PLAYER 2 PANEL -->
             <div class="player-select-panel p2-active" id="p2-select-panel">
-                <div class="panel-title">Player 2 </div>
-                <div class="character-grid">
-                    <div class="character-card" data-char="kyle" onclick="selectCharacter(2, 'kyle')">
-                        <img class="portrait-img" src="/characters/portrait_Kyle.png" alt="Kyle" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Kyle</div>
-                    </div>
-                    <div class="character-card selected" data-char="jonah" onclick="selectCharacter(2, 'jonah')">
-                        <img class="portrait-img" src="/characters/portrait_Jonah.png" alt="Jonah" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Jonah</div>
-                    </div>
-                    <div class="character-card" data-char="rochelle" onclick="selectCharacter(2, 'rochelle')">
-                        <img class="portrait-img" src="/characters/portrait_Rochelle.png" alt="Rochelle" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Rochelle</div>
-                    </div>
-                    <div class="character-card" data-char="vickie" onclick="selectCharacter(2, 'vickie')">
-                        <img class="portrait-img" src="/characters/portrait_Vickie.png" alt="Vickie" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Vickie</div>
-                    </div>
-                    <div class="character-card" data-char="donald" onclick="selectCharacter(2, 'donald')">
-                        <img class="portrait-img" src="/characters/portrait_Donald.png" alt="Donald" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Donald</div>
-                    </div>
-                    <div class="character-card" data-char="eric" onclick="selectCharacter(2, 'eric')">
-                        <img class="portrait-img" src="/characters/portrait_Eric.png" alt="Eric" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Eric</div>
-                    </div>
-                    <div class="character-card" data-char="kristen" onclick="selectCharacter(2, 'kristen')">
-                        <img class="portrait-img" src="/characters/portrait_Kristen.png" alt="Kristen" draggable="false">
-                        <img class="portrait-frame" src="/characters/portrait_selection_frame.png" alt="" draggable="false">
-                        <div class="character-name">Kristen</div>
-                    </div>
+                <div class="panel-title">Player 2</div>
+                <!-- hidden grid kept for JS compatibility -->
+                <div class="character-grid" style="display:none" id="p2-legacy-grid">
+                    <div class="character-card" data-char="kyle" onclick="selectCharacter(2, 'kyle')"></div>
+                    <div class="character-card selected" data-char="jonah" onclick="selectCharacter(2, 'jonah')"></div>
+                    <div class="character-card" data-char="rochelle" onclick="selectCharacter(2, 'rochelle')"></div>
+                    <div class="character-card" data-char="vickie" onclick="selectCharacter(2, 'vickie')"></div>
+                    <div class="character-card" data-char="donald" onclick="selectCharacter(2, 'donald')"></div>
+                    <div class="character-card" data-char="eric" onclick="selectCharacter(2, 'eric')"></div>
+                    <div class="character-card" data-char="kristen" onclick="selectCharacter(2, 'kristen')"></div>
                 </div>
                 <div class="preview-name" id="p2-preview-name">Jonah</div>
                 <div class="locked-status" id="p2-locked-status"
@@ -203,11 +185,39 @@
         <div class="select-footer">
             <div class="select-footer-copy">
                 <strong id="select-rules-title">Single Player</strong>
-                <span id="select-rules-desc">Best of three rounds, climb the ladder to the top place in tournament mode!
-
-                </span>
+                <span id="select-rules-desc">Best of three rounds, climb the ladder to the top place in tournament mode!</span>
             </div>
-            <!-- Global fight button removed in favor of player-specific READY buttons -->
+            <div class="select-footer-copy select-footer-copy-right" id="select-opponent-copy">
+                <strong>Current Opponent</strong>
+                <span id="select-opponent-name">Jonah</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="ladder-screen" class="ui-screen hidden">
+        <div class="ladder-shell">
+            <div class="ladder-header">
+                <div>
+                    <div class="select-marquee">Tournament Ladder</div>
+                    <h2 id="ladder-title">Round Cleared</h2>
+                </div>
+                <p id="ladder-subtitle">Advance to the next challenger.</p>
+            </div>
+            <div class="ladder-summary">
+                <div class="ladder-summary-card">
+                    <span>Your Fighter</span>
+                    <strong id="ladder-player-name">Kyle</strong>
+                </div>
+                <div class="ladder-summary-card">
+                    <span>Up Next</span>
+                    <strong id="ladder-next-name">Jonah</strong>
+                </div>
+            </div>
+            <div id="ladder-rungs" class="ladder-rungs"></div>
+            <div class="ladder-actions">
+                <button id="ladder-continue-btn" class="game-btn primary-btn" onclick="continueTournament()">Continue</button>
+                <button class="game-btn" onclick="quitToMainMenu()">Quit to Menu</button>
+            </div>
         </div>
     </div>
 
@@ -294,6 +304,13 @@
         </div>
     </div>
 
+    <!-- 4.5 SCREEN WIPE TRANSITION OVERLAY -->
+    <div id="screen-wipe" aria-hidden="true">
+        <div class="wipe-panel wipe-panel-left"></div>
+        <div class="wipe-panel wipe-panel-right"></div>
+        <div class="wipe-name-card" id="wipe-name-card"></div>
+    </div>
+
     <!-- 5. FIGHT / HIT ANNOUNCEMENT -->
     <div id="announcement">FIGHT!</div>
 
@@ -302,8 +319,8 @@
         <div class="gameover-box">
             <div id="winner-title">PLAYER 1 WINS</div>
             <div class="btn-group">
-                <button class="game-btn primary-btn" onclick="rematch()">Rematch</button>
-                <button class="game-btn" onclick="backToSelect()">Fighter Select</button>
+                <button id="gameover-primary-btn" class="game-btn primary-btn" onclick="rematch()">Rematch</button>
+                <button id="gameover-secondary-btn" class="game-btn" onclick="backToSelect()">Fighter Select</button>
             </div>
         </div>
     </div>
