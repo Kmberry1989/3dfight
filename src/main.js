@@ -499,7 +499,7 @@ let musicVolume = 0.5;
 const MUSIC_TRACKS = {
     menu: '/audio/main-menu.ogg',
     characterSelect: '/audio/character-select.ogg',
-    fight: '/stages/the_carousel/generic-loop.ogg'
+    fight: '/audio/the_carousel.ogg'
 };
 const musicPlayers = Object.fromEntries(
     Object.entries(MUSIC_TRACKS).map(([key, src]) => {
@@ -511,6 +511,18 @@ const musicPlayers = Object.fromEntries(
 );
 let activeMusicKey = null;
 let musicFadeInterval = null;
+const TOUCH_STICK_CONFIG = {
+    deadzone: 0.22,
+    horizontalThreshold: 0.36,
+    jumpThreshold: -0.58,
+    blockThreshold: 0.46,
+    maxTravelRatio: 0.34
+};
+const touchMovementBindings = {
+    1: { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' },
+    2: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' }
+};
+const touchStickStates = {};
 
 function clearMusicFade() {
     if (musicFadeInterval) {
@@ -607,6 +619,7 @@ function injectGuardBars() {
 }
 
 function showMainMenu() {
+    resetAllTouchMovementStates();
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('lobby-screen').style.display = 'none';
@@ -702,18 +715,21 @@ function sendNetworkInput(action, key, buffer = null) {
 }
 
 function closeLobby() {
+    resetAllTouchMovementStates();
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
     playScreenMusic('menu');
 }
 
 function openOptions() {
+    resetAllTouchMovementStates();
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('options-menu').style.display = 'flex';
     playScreenMusic('menu');
 }
 
 function closeOptions() {
+    resetAllTouchMovementStates();
     document.getElementById('options-menu').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
     playScreenMusic('menu');
@@ -731,6 +747,7 @@ function updateAudioOptions() {
 function togglePause() {
     if (!gameActive && !gamePaused) return;
     gamePaused = !gamePaused;
+    if (gamePaused) resetAllTouchMovementStates();
     document.getElementById('pause-screen').style.display = gamePaused ? 'flex' : 'none';
     if (!gamePaused && timerInterval === null && gameActive) {
         startTimer();
@@ -743,6 +760,7 @@ function togglePause() {
 function quitToMainMenu() {
     gamePaused = false;
     gameActive = false;
+    resetAllTouchMovementStates();
     clearInterval(timerInterval);
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
@@ -955,7 +973,7 @@ async function loadAssets() {
                 const size2 = new THREE.Vector3();
                 box.getSize(size2);
                 const maxDim = Math.max(size2.x, size2.y, size2.z);
-                const targetSize = 9.2;
+                const targetSize = 9.7;
                 let finalScale = 1;
                 if (isFinite(maxDim) && maxDim > 0.001) {
                     finalScale = targetSize / maxDim;
@@ -968,8 +986,9 @@ async function loadAssets() {
                 const scaledBox = new THREE.Box3().setFromObject(carouselRig);
                 const bottomY = scaledBox.min.y;          // world Y of lowest point
                 const desiredFloorY = -0.25;              // match the fight-floor plane
-                // Push the rig back and lift it so its base sits on desiredFloorY
-                carouselRig.position.set(0, desiredFloorY - bottomY, -14);
+                // Bring the rig slightly forward toward the fighter spawn line
+                // while keeping it behind gameplay space.
+                carouselRig.position.set(0, desiredFloorY - bottomY, -12.8);
 
                 scene.add(carouselRig);
                 updateProgress('Carousel Rig');
@@ -1155,6 +1174,7 @@ function renderTournamentLadder(result = 'advance') {
 }
 
 function showTournamentLadderScreen(result = 'advance') {
+    resetAllTouchMovementStates();
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.remove('hidden');
@@ -1305,6 +1325,7 @@ function showCharacterSelect() {
     clearScheduledEvents();
     clearInterval(timerInterval);
     gameActive = false;
+    resetAllTouchMovementStates();
     p1Locked = false;
     p2Locked = false;
     globalTimeScale = 1.0;
@@ -1871,6 +1892,7 @@ function updateViewportState() {
         const isSinglePlayerLayout = (gameMode === 'single' || gameMode === 'online');
         touchControls.classList.toggle('single-player-mode', isSinglePlayerLayout);
     }
+    if (!shouldShowTouchControls) resetAllTouchMovementStates();
 
     const sideP1 = document.getElementById('touch-side-p1');
     const sideP2 = document.getElementById('touch-side-p2');
@@ -1899,6 +1921,11 @@ function updateViewportState() {
 }
 
 function initTouchControls() {
+    document.querySelectorAll('#touch-controls .touch-stick').forEach((stick) => {
+        const playerSide = Number(stick.dataset.player || 0);
+        initVirtualStick(stick, touchMovementBindings[playerSide]);
+    });
+
     const touchButtons = document.querySelectorAll('#touch-controls .touch-btn');
     touchButtons.forEach((button) => {
         const keyCode = button.dataset.key;
@@ -1928,6 +1955,9 @@ function initTouchControls() {
 
     window.addEventListener('resize', updateViewportState);
     window.addEventListener('orientationchange', updateViewportState);
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) resetAllTouchMovementStates();
+    });
     updateViewportState();
 }
 
@@ -2016,6 +2046,143 @@ function sanitizeGroundedState(player, { preserveHitState = false } = {}) {
     if (!preserveHitState) {
         player.isHit = false;
     }
+}
+
+function reconcileGroundedState(player, reason = '') {
+    if (!player || !player.mesh) return;
+    const airborneByJump = player.isJumping && (
+        player.currentState === 'jumpUp' ||
+        player.currentState === 'jumpDown' ||
+        player.currentState === 'doubleJump'
+    );
+    if (airborneByJump) return;
+    sanitizeGroundedState(player, { preserveHitState: player.isHit });
+}
+
+function resetTouchMovementState(playerSide) {
+    const bindings = touchMovementBindings[playerSide];
+    if (!bindings) return;
+
+    keys[bindings.left] = false;
+    keys[bindings.right] = false;
+    keys[bindings.down] = false;
+    keys[bindings.up] = false;
+
+    const state = touchStickStates[playerSide];
+    if (!state) return;
+    state.activePointerId = null;
+    state.jumpLatched = false;
+    state.upReleaseAt = 0;
+    if (state.container) state.container.classList.remove('active');
+    if (state.knob) state.knob.style.transform = 'translate(-50%, -50%)';
+}
+
+function resetAllTouchMovementStates() {
+    Object.keys(touchMovementBindings).forEach((side) => resetTouchMovementState(Number(side)));
+}
+
+function applyStickIntent(playerSide, intent) {
+    const bindings = touchMovementBindings[playerSide];
+    const state = touchStickStates[playerSide];
+    if (!bindings || !state) return;
+
+    keys[bindings.left] = !!intent.left;
+    keys[bindings.right] = !!intent.right;
+    keys[bindings.down] = !!intent.down;
+
+    const now = performance.now();
+    if (intent.jump && !state.jumpLatched) {
+        keys[bindings.up] = true;
+        state.upReleaseAt = now + 70;
+        state.jumpLatched = true;
+    }
+    if (!intent.jump) {
+        state.jumpLatched = false;
+    }
+    if (state.upReleaseAt && now >= state.upReleaseAt) {
+        keys[bindings.up] = false;
+        state.upReleaseAt = 0;
+    }
+}
+
+function updateVirtualStick(playerSide, pointerX, pointerY) {
+    const state = touchStickStates[playerSide];
+    if (!state || !state.base || !state.knob) return;
+
+    const rect = state.base.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const radius = rect.width * TOUCH_STICK_CONFIG.maxTravelRatio;
+    const dx = pointerX - centerX;
+    const dy = pointerY - centerY;
+    const distance = Math.hypot(dx, dy);
+    const clampedDistance = Math.min(distance, radius);
+    const angle = Math.atan2(dy, dx);
+    const knobX = Math.cos(angle) * clampedDistance;
+    const knobY = Math.sin(angle) * clampedDistance;
+    const nx = radius > 0 ? knobX / radius : 0;
+    const ny = radius > 0 ? knobY / radius : 0;
+    const magnitude = Math.min(1, distance / Math.max(radius, 1));
+
+    state.container.classList.add('active');
+    state.knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+
+    if (magnitude < TOUCH_STICK_CONFIG.deadzone) {
+        applyStickIntent(playerSide, { left: false, right: false, down: false, jump: false });
+        return;
+    }
+
+    applyStickIntent(playerSide, {
+        left: nx <= -TOUCH_STICK_CONFIG.horizontalThreshold,
+        right: nx >= TOUCH_STICK_CONFIG.horizontalThreshold,
+        down: ny >= TOUCH_STICK_CONFIG.blockThreshold,
+        jump: ny <= TOUCH_STICK_CONFIG.jumpThreshold
+    });
+}
+
+function initVirtualStick(container, keyMap) {
+    if (!container || !keyMap) return;
+    const playerSide = Number(container.dataset.player || 0);
+    const base = container.querySelector('.touch-stick-base');
+    const knob = container.querySelector('.touch-stick-knob');
+
+    touchStickStates[playerSide] = {
+        container,
+        base,
+        knob,
+        keyMap,
+        activePointerId: null,
+        jumpLatched: false,
+        upReleaseAt: 0
+    };
+
+    const begin = (event) => {
+        event.preventDefault();
+        touchStickStates[playerSide].activePointerId = event.pointerId;
+        container.setPointerCapture?.(event.pointerId);
+        updateVirtualStick(playerSide, event.clientX, event.clientY);
+    };
+
+    const move = (event) => {
+        if (touchStickStates[playerSide].activePointerId !== event.pointerId) return;
+        event.preventDefault();
+        updateVirtualStick(playerSide, event.clientX, event.clientY);
+    };
+
+    const end = (event) => {
+        const state = touchStickStates[playerSide];
+        if (!state) return;
+        if (state.activePointerId !== null && state.activePointerId !== event.pointerId) return;
+        event.preventDefault();
+        resetTouchMovementState(playerSide);
+    };
+
+    container.addEventListener('pointerdown', begin);
+    container.addEventListener('pointermove', move);
+    container.addEventListener('pointerup', end);
+    container.addEventListener('pointercancel', end);
+    container.addEventListener('lostpointercapture', end);
+    container.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
 function createPlayerMesh(charId, isPlayer1) {
@@ -2712,6 +2879,7 @@ function checkHits(attacker, defender) {
 }
 
 function triggerHitReaction(player, attackDef, incomingDirection = 0) {
+    const wasAirborne = player.mesh.position.y > GROUND_Y || player.isJumping;
     player.isHit = true;
     player.isAttacking = false;
     player.actionTimer = 0;
@@ -2725,15 +2893,13 @@ function triggerHitReaction(player, attackDef, incomingDirection = 0) {
     player.velocityY = 0;
     player.isJumping = false;
     player.jumps = 0;
-    if (player.mesh.position.y > GROUND_Y) {
-        player.mesh.position.y = GROUND_Y;
-    }
+    reconcileGroundedState(player, 'hit-start');
 
     resetCombo(player);
     attackInputBuffer[player.id] = null;
     
     let reactionAnim = attackDef ? attackDef.reaction : 'hitMidMedium';
-    if ((attackDef && attackDef.strength === 'heavy') || player.mesh.position.y > 0) {
+    if ((attackDef && attackDef.strength === 'heavy') || wasAirborne) {
         reactionAnim = 'knockdown';
         player.reactionDistance = Math.max(player.reactionDistance * 1.9, KNOCKDOWN_REACTION_DISTANCE);
         sanitizeGroundedState(player, { preserveHitState: true });
@@ -2752,6 +2918,7 @@ function triggerDeath(player) {
     player.reactionDirection = 0;
     resetCombo(player);
     attackInputBuffer[player.id] = null;
+    reconcileGroundedState(player, 'death');
     player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
     endRound(player.id === 1 ? 2 : 1);
 }
@@ -2934,7 +3101,7 @@ function startCountdownSequence() {
     players.forEach((player) => {
         if (!player) return;
         player.introMotion = null;
-        player.mesh.position.y = 0;
+        reconcileGroundedState(player, 'countdown');
         setPresentationRotation(player, 'combat');
 
         const siftAction = player.actions && player.actions['standingIdleToFightIdle'];
@@ -3116,7 +3283,7 @@ function startTauntPhaseSequence() {
 function playTauntShot(player) {
     if (!player) return 900;
 
-    player.mesh.position.y = 0;
+    reconcileGroundedState(player, 'taunt-shot');
     player.introMotion = null;
     setPresentationRotation(player, 'taunt');
     playPreferredAction(player, 'taunt', 'idle', 0.08);
@@ -3131,7 +3298,7 @@ function playPreFightSequence() {
 
     const [p1, p2] = players;
     [p1, p2].forEach((player) => {
-        player.mesh.position.y = 0;
+        reconcileGroundedState(player, 'prefight');
         setPresentationRotation(player, 'intro');
         playPreferredAction(player, 'standingPose', 'idle', 0.05);
     });
@@ -3206,6 +3373,7 @@ window.startFight = function (isNetworkCommand = false) {
     players.push(p1, p2);
     attackInputBuffer[1] = null;
     attackInputBuffer[2] = null;
+    resetAllTouchMovementStates();
 
     document.getElementById('p1-name-display').textContent = p1.name;
     document.getElementById('p2-name-display').textContent = p2.name;
@@ -3255,6 +3423,7 @@ function endRound(winnerNum) {
     gameActive = false;
     clearInterval(timerInterval);
     clearScheduledEvents();
+    resetAllTouchMovementStates();
 
     const overlay = document.getElementById('gameover-screen');
     const winnerText = document.getElementById('winner-title');
@@ -3348,11 +3517,13 @@ function endRound(winnerNum) {
 
 function rematch() {
     document.getElementById('gameover-screen').style.display = 'none';
+    resetAllTouchMovementStates();
     startFight();
 }
 
 function backToSelect() {
     document.getElementById('gameover-screen').style.display = 'none';
+    resetAllTouchMovementStates();
     if (gameMode === 'single' && tournamentRun.status === 'between_rounds') {
         showTournamentLadderScreen('advance');
         return;
@@ -3569,12 +3740,13 @@ function animate() {
                 if (p.stunTimer <= 0) {
                     p.isStunned = false;
                     p.guardHealth = 100;
+                    reconcileGroundedState(p, 'stun-recovery');
                     p.fadeTo('idle', 0.2);
                 }
             }
 
             // Jump Physics Loop
-            if (p.isJumping || p.mesh.position.y > 0) {
+            if (p.isJumping) {
                 p.velocityY -= 20.0 * frameDt; // Gravity Constant
                 p.mesh.position.y += p.velocityY * frameDt;
 
@@ -3582,7 +3754,7 @@ function animate() {
                     p.fadeTo('jumpDown', 0.2);
                 }
 
-                if (p.mesh.position.y <= 0) {
+                if (p.mesh.position.y <= GROUND_Y) {
                     sanitizeGroundedState(p);
                     if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
                     spawnParticles(p.mesh.position, 'landing'); // Landing dust
@@ -3676,9 +3848,9 @@ function animate() {
         if (p.mixer) p.mixer.update(frameDt);
         if (p.mesh) {
             if (!p.isJumping || p.isHit || p.currentState === 'knockdown' || p.currentState === 'getUp' || p.isDead) {
-                groundFighter(p);
+                reconcileGroundedState(p, 'post-mixer');
             } else if (p.mesh.position.y < GROUND_Y) {
-                groundFighter(p);
+                reconcileGroundedState(p, 'below-ground');
             }
         }
     });

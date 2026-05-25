@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 
-  <script type="module" crossorigin src="/assets/index-BHV1PBpp.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-sMQx-Zbo.css">
+  <script type="module" crossorigin src="/assets/index-BoQtfcnj.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CaFS4tTt.css">
 </head>
 
 <body>
@@ -252,15 +252,18 @@
         <div id="touch-side-p1" class="touch-side left">
             <div class="touch-label">Player 1</div>
             <div class="touch-move-cluster">
-                <button class="touch-btn p1 touch-icon-jump" data-key="KeyW" aria-label="Player 1 jump"><span class="sr-only">Jump</span></button>
-                <div class="touch-pair">
-                    <button class="touch-btn p1 touch-icon-left" data-key="KeyA" aria-label="Player 1 move left"><span class="sr-only">Left</span></button>
-                    <button class="touch-btn p1 touch-icon-right" data-key="KeyD" aria-label="Player 1 move right"><span class="sr-only">Right</span></button>
+                <div class="touch-stick" data-player="1" aria-label="Player 1 movement stick">
+                    <div class="touch-stick-base">
+                        <span class="touch-stick-hint touch-stick-hint-up"></span>
+                        <span class="touch-stick-hint touch-stick-hint-left"></span>
+                        <span class="touch-stick-hint touch-stick-hint-right"></span>
+                        <span class="touch-stick-hint touch-stick-hint-down"></span>
+                        <div class="touch-stick-knob"></div>
+                    </div>
                 </div>
-                <button class="touch-btn p1 touch-icon-block" data-key="KeyS" aria-label="Player 1 block"><span class="sr-only">Block</span></button>
             </div>
             <div class="touch-action-cluster">
-                <div class="touch-column">
+                <div class="touch-action-fan">
                     <button class="touch-btn p1 touch-icon-punch" data-key="Space" data-buffer="punch" data-player="1" aria-label="Player 1 punch"><span class="sr-only">Punch</span></button>
                     <button class="touch-btn p1 touch-icon-kick" data-key="ShiftLeft" data-buffer="kick" data-player="1" aria-label="Player 1 kick"><span class="sr-only">Kick</span></button>
                     <button class="touch-btn p1 touch-icon-special" data-key="KeyC" data-buffer="special" data-player="1" aria-label="Player 1 special"><span class="sr-only">Special</span></button>
@@ -270,15 +273,18 @@
         <div id="touch-side-p2" class="touch-side right">
             <div class="touch-label">Player 2</div>
             <div class="touch-move-cluster">
-                <button class="touch-btn p2 touch-icon-jump" data-key="ArrowUp" aria-label="Player 2 jump"><span class="sr-only">Jump</span></button>
-                <div class="touch-pair">
-                    <button class="touch-btn p2 touch-icon-left" data-key="ArrowLeft" aria-label="Player 2 move left"><span class="sr-only">Left</span></button>
-                    <button class="touch-btn p2 touch-icon-right" data-key="ArrowRight" aria-label="Player 2 move right"><span class="sr-only">Right</span></button>
+                <div class="touch-stick" data-player="2" aria-label="Player 2 movement stick">
+                    <div class="touch-stick-base">
+                        <span class="touch-stick-hint touch-stick-hint-up"></span>
+                        <span class="touch-stick-hint touch-stick-hint-left"></span>
+                        <span class="touch-stick-hint touch-stick-hint-right"></span>
+                        <span class="touch-stick-hint touch-stick-hint-down"></span>
+                        <div class="touch-stick-knob"></div>
+                    </div>
                 </div>
-                <button class="touch-btn p2 touch-icon-block" data-key="ArrowDown" aria-label="Player 2 block"><span class="sr-only">Block</span></button>
             </div>
             <div class="touch-action-cluster">
-                <div class="touch-column">
+                <div class="touch-action-fan">
                     <button class="touch-btn p2 touch-icon-punch" data-key="KeyP" data-buffer="punch" data-player="2" aria-label="Player 2 punch"><span class="sr-only">Punch</span></button>
                     <button class="touch-btn p2 touch-icon-kick" data-key="KeyO" data-buffer="kick" data-player="2" aria-label="Player 2 kick"><span class="sr-only">Kick</span></button>
                     <button class="touch-btn p2 touch-icon-special" data-key="KeyI" data-buffer="special" data-player="2" aria-label="Player 2 special"><span class="sr-only">Special</span></button>
