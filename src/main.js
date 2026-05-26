@@ -496,6 +496,19 @@ let conn = null;
 let isHost = false;
 let sfxVolume = 0.5;
 let musicVolume = 0.5;
+const configuredPeerPort = import.meta.env.VITE_PEER_PORT;
+const inferredPeerPort = import.meta.env.DEV
+    ? 9000
+    : (window.location.port ? Number(window.location.port) : (window.location.protocol === 'https:' ? 443 : 80));
+const PEER_SERVER_PORT = configuredPeerPort ? Number(configuredPeerPort) : inferredPeerPort;
+const PEER_SERVER_CONFIG = {
+    host: import.meta.env.VITE_PEER_HOST || window.location.hostname,
+    port: PEER_SERVER_PORT,
+    path: import.meta.env.VITE_PEER_PATH || '/peerjs',
+    secure: import.meta.env.VITE_PEER_SECURE
+        ? import.meta.env.VITE_PEER_SECURE === 'true'
+        : window.location.protocol === 'https:'
+};
 const MUSIC_TRACKS = {
     menu: '/audio/main-menu.ogg',
     characterSelect: '/audio/character-select.ogg',
@@ -639,14 +652,15 @@ window.startGameMode = function (mode) {
 };
 
 function openLobby() {
+    resetAllTouchMovementStates();
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'flex';
     playScreenMusic('menu');
     if (!peer) {
         document.getElementById('lobby-status').textContent = 'Connecting to signaling server...';
-        peer = new Peer();
+        peer = new Peer(undefined, PEER_SERVER_CONFIG);
         peer.on('open', id => {
-            document.getElementById('lobby-status').textContent = 'Connected. READY to host or join.';
+            document.getElementById('lobby-status').textContent = 'Connected to lobby server. READY to host or join.';
         });
         peer.on('connection', c => {
             conn = c;

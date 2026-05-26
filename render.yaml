@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: family-fighter-lobby
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /peerjs/id
+    envVars:
+      - key: PEER_HOST
+        value: 0.0.0.0
+      - key: PEER_PORT
+        value: 10000
+      - key: PEER_PATH
+        value: /peerjs
+      - key: PEER_KEY
+        value: family-fighter
+      - key: PEER_ALLOW_DISCOVERY
+        value: false
