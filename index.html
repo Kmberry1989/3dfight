@@ -21,17 +21,29 @@
     <div id="main-menu" class="ui-screen" style="display: flex;">
         <div class="menu-box">
             <h2>FAMILY FIGHTER</h2>
-            <button id="menu-single-btn" class="menu-btn" onclick="startGameMode('single')">Single Player</button>
+            <button id="menu-story-btn" class="menu-btn" onclick="openStoryMenu()">Story Mode</button>
+            <button id="menu-single-btn" class="menu-btn" onclick="startGameMode('arcade_single')">Arcade</button>
             <button id="menu-local-btn" class="menu-btn" onclick="startGameMode('local')" style="display:none">Local Multiplayer</button>
-            <button id="menu-online-btn" class="menu-btn" onclick="openLobby()">Online Multiplayer</button>
+            <button id="menu-online-btn" class="menu-btn" onclick="openLobby('online_versus')">Online Multiplayer</button>
             <button id="menu-options-btn" class="menu-btn" onclick="openOptions()">Options</button>
+        </div>
+    </div>
+
+    <div id="story-menu" class="ui-screen">
+        <div class="menu-box">
+            <h2>Story Mode</h2>
+            <p class="menu-copy">Pick a campaign lane, then lock in your fighter and clear the thug ladder chapter by chapter.</p>
+            <button class="menu-btn" onclick="startGameMode('story_solo')">Solo Story</button>
+            <button class="menu-btn" onclick="openLobby('story_coop_online')">Online Co-op Story</button>
+            <button class="menu-btn" style="border-color: #ff007f; margin-top: 20px;" onclick="closeStoryMenu()">Back</button>
         </div>
     </div>
 
     <!-- 0.1 LOBBY SCREEN -->
     <div id="lobby-screen" class="ui-screen">
         <div class="menu-box">
-            <h2>Online Lobby</h2>
+            <h2 id="lobby-title">Online Lobby</h2>
+            <p id="lobby-copy" class="menu-copy">Host a room or join one with a code.</p>
             <input type="text" id="lobby-username" class="menu-input" placeholder="Enter Username" value="Player">
             <button class="menu-btn" onclick="hostGame()">Host Game (Generate Code)</button>
             <div style="margin: 10px 0; font-size: 14px; color: #888;">OR</div>

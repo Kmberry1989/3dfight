@@ -2,6 +2,8 @@ import './style.css';
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import Peer from 'peerjs';
 
 // --- 1. SAMPLE-BASED AUDIO ---
@@ -97,7 +99,7 @@ const SHARED_ANIMATIONS = {
 const CHARACTERS = {
     kyle: {
         name: 'Kyle',
-        path: '/characters/kyle.fbx',
+        path: '/characters_glb/kyle.glb',
         color: 0x00f0ff,
         animations: {
             idle: '/animations/kyle/Kyle Idle.fbx',
@@ -109,7 +111,7 @@ const CHARACTERS = {
     },
     jonah: {
         name: 'Jonah',
-        path: '/characters/jonah.fbx',
+        path: '/characters_glb/jonah.glb',
         color: 0xff2e63,
         animations: {
             idle: '/animations/jonah/Jonah Idle.fbx',
@@ -121,7 +123,7 @@ const CHARACTERS = {
     },
     rochelle: {
         name: 'Rochelle',
-        path: '/characters/rochelle.fbx',
+        path: '/characters_glb/rochelle.glb',
         color: 0x00ff87,
         animations: {
             idle: '/animations/rochelle/Rochelle Idle.fbx',
@@ -133,7 +135,7 @@ const CHARACTERS = {
     },
     vickie: {
         name: 'Vickie',
-        path: '/characters/vickie.fbx',
+        path: '/characters_glb/vickie.glb',
         color: 0xff00ff,
         animations: {
             idle: '/animations/vickie/Vickie Idle.fbx',
@@ -145,7 +147,7 @@ const CHARACTERS = {
     },
     donald: {
         name: 'Donald',
-        path: '/characters/donald.fbx',
+        path: '/characters_glb/donald.glb',
         color: 0xffd44d,
         animations: {
             idle: '/animations/donald/Donald Idle.fbx',
@@ -160,7 +162,7 @@ const CHARACTERS = {
     },
     eric: {
         name: 'Eric',
-        path: '/characters/eric.fbx',
+        path: '/characters_glb/eric.glb',
         color: 0xff8c00,
         animations: {
             idle: '/animations/Fighting Idle.fbx',
@@ -172,7 +174,7 @@ const CHARACTERS = {
     },
     kristen: {
         name: 'Kristen',
-        path: '/characters/kristen.fbx',
+        path: '/characters_glb/kristen.glb',
         color: 0x00ffcc,
         animations: {
             idle: '/animations/Bouncing Fight Idle.fbx',
@@ -182,6 +184,96 @@ const CHARACTERS = {
             victory: '/animations/Booty Hip Hop Dance.fbx'
         }
     }
+};
+
+const ENEMIES = {
+    thug1: {
+        id: 'thug1',
+        name: 'South Alley Bruiser',
+        path: '/enemies/thug1.glb',
+        color: 0xf78b54,
+        animationProfileId: 'eric',
+        stats: { healthMultiplier: 0.95, damageMultiplier: 0.92, guardMultiplier: 0.95 },
+        presentation: {
+            introText: 'First one through the gate.',
+            outroText: 'The alley opens up. Keep moving.'
+        }
+    },
+    thug2: {
+        id: 'thug2',
+        name: 'Parking Lot Enforcer',
+        path: '/enemies/thug2.glb',
+        color: 0xffd44d,
+        animationProfileId: 'donald',
+        stats: { healthMultiplier: 1.05, damageMultiplier: 1.02, guardMultiplier: 1.05 },
+        presentation: {
+            introText: 'Bigger frame. Slower hands. Harder hits.',
+            outroText: 'One down. The lot is still crawling.'
+        }
+    },
+    thug3: {
+        id: 'thug3',
+        name: 'Boardwalk Technician',
+        path: '/enemies/thug3.glb',
+        color: 0x64d6ff,
+        animationProfileId: 'jonah',
+        stats: { healthMultiplier: 1.08, damageMultiplier: 1.08, guardMultiplier: 1.1 },
+        presentation: {
+            introText: 'Fast feet, sharp timing.',
+            outroText: 'The lights dim. The boss is close.'
+        }
+    },
+    thug4: {
+        id: 'thug4',
+        name: 'Carousel Boss',
+        path: '/enemies/thug4.glb',
+        color: 0xff4666,
+        animationProfileId: 'donald',
+        stats: { healthMultiplier: 1.25, damageMultiplier: 1.18, guardMultiplier: 1.2 },
+        presentation: {
+            introText: 'Final checkpoint. No spectators left.',
+            outroText: 'The carousel clears. Chapter complete.'
+        }
+    }
+};
+
+const STORY_CHAPTERS = [
+    {
+        id: 'chapter-1',
+        title: 'Neon Entrance',
+        introText: 'Fight through the opening gate and break the first sentry.',
+        outroText: 'The first lane is clear.',
+        encounters: ['thug1']
+    },
+    {
+        id: 'chapter-2',
+        title: 'Concrete Relay',
+        introText: 'A second crew rotates in before the dust settles.',
+        outroText: 'Two checkpoints down.',
+        encounters: ['thug2', 'thug1']
+    },
+    {
+        id: 'chapter-3',
+        title: 'Boardwalk Pressure',
+        introText: 'Tighter timing. Harder counters.',
+        outroText: 'Only the boss route remains.',
+        encounters: ['thug3', 'thug2']
+    },
+    {
+        id: 'chapter-4',
+        title: 'Carousel Crown',
+        introText: 'The boss arrives with one last cleanup squad.',
+        outroText: 'Story route cleared.',
+        encounters: ['thug4', 'thug3']
+    }
+];
+
+const MODE = {
+    ARCADE_SINGLE: 'arcade_single',
+    LOCAL_VERSUS: 'local_versus',
+    ONLINE_VERSUS: 'online_versus',
+    STORY_SOLO: 'story_solo',
+    STORY_COOP_ONLINE: 'story_coop_online'
 };
 
 const COMBO_SEQUENCE = ['light', 'medium', 'heavy'];
@@ -489,11 +581,35 @@ const progressBar = document.getElementById('progress-bar');
 const loadStatusTitle = document.getElementById('load-status-title');
 const loadStatusDetail = document.getElementById('load-status-detail');
 
-let gameMode = 'local';
+function normalizeGameMode(mode) {
+    if (mode === 'single') return MODE.ARCADE_SINGLE;
+    if (mode === 'local') return MODE.LOCAL_VERSUS;
+    if (mode === 'online') return MODE.ONLINE_VERSUS;
+    return mode || MODE.LOCAL_VERSUS;
+}
+
+function isArcadeMode() {
+    return gameMode === MODE.ARCADE_SINGLE;
+}
+
+function isOnlineVersusMode() {
+    return gameMode === MODE.ONLINE_VERSUS;
+}
+
+function isStoryMode() {
+    return gameMode === MODE.STORY_SOLO || gameMode === MODE.STORY_COOP_ONLINE;
+}
+
+function isStoryCoopMode() {
+    return gameMode === MODE.STORY_COOP_ONLINE;
+}
+
+let gameMode = MODE.LOCAL_VERSUS;
 let gamePaused = false;
 let peer = null;
 let conn = null;
 let isHost = false;
+let requestedOnlineMode = MODE.ONLINE_VERSUS;
 let sfxVolume = 0.5;
 let musicVolume = 0.5;
 const configuredPeerPort = import.meta.env.VITE_PEER_PORT;
@@ -633,8 +749,10 @@ function injectGuardBars() {
 
 function showMainMenu() {
     resetAllTouchMovementStates();
+    resetStoryRun();
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.add('hidden');
+    document.getElementById('story-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('options-menu').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
@@ -645,16 +763,39 @@ function showMainMenu() {
     setSelectEnvironmentVisible(true);
 }
 
-window.startGameMode = function (mode) {
-    gameMode = mode;
+function openStoryMenu() {
+    resetAllTouchMovementStates();
     document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('story-menu').style.display = 'flex';
+    playScreenMusic('menu');
+}
+
+function closeStoryMenu() {
+    resetAllTouchMovementStates();
+    document.getElementById('story-menu').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    playScreenMusic('menu');
+}
+
+window.startGameMode = function (mode) {
+    gameMode = normalizeGameMode(mode);
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('story-menu').style.display = 'none';
     showCharacterSelect();
 };
 
-function openLobby() {
+function openLobby(mode = MODE.ONLINE_VERSUS) {
+    requestedOnlineMode = normalizeGameMode(mode);
     resetAllTouchMovementStates();
     document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('story-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'flex';
+    document.getElementById('lobby-title').textContent = requestedOnlineMode === MODE.STORY_COOP_ONLINE
+        ? 'Story Co-op Lobby'
+        : 'Online Lobby';
+    document.getElementById('lobby-copy').textContent = requestedOnlineMode === MODE.STORY_COOP_ONLINE
+        ? 'Connect your partner, then both players lock in heroes for the campaign.'
+        : 'Host a room or join one with a code.';
     playScreenMusic('menu');
     if (!peer) {
         document.getElementById('lobby-status').textContent = 'Connecting to signaling server...';
@@ -695,7 +836,7 @@ function setupConnection() {
     document.getElementById('lobby-status').textContent = 'Peer connected! Starting...';
     conn.on('data', data => {
         if (data.type === 'start') {
-            gameMode = 'online';
+            gameMode = normalizeGameMode(data.mode || requestedOnlineMode || MODE.ONLINE_VERSUS);
             document.getElementById('lobby-screen').style.display = 'none';
             showCharacterSelect();
         } else if (data.type === 'input' && gameActive) {
@@ -708,14 +849,20 @@ function setupConnection() {
             }
         } else if (data.type === 'select') {
             selectCharacter(data.player, data.charId, true);
+        } else if (data.type === 'lockIn') {
+            lockInPlayer(data.player, true);
         } else if (data.type === 'fight') {
             startFight(true);
+        } else if (data.type === 'storyEnemyState') {
+            applyRemoteStoryEnemyState(data);
+        } else if (data.type === 'storyProgress') {
+            syncStoryProgress(data.payload);
         }
     });
     if (isHost) {
         setTimeout(() => {
-            conn.send({ type: 'start' });
-            gameMode = 'online';
+            conn.send({ type: 'start', mode: requestedOnlineMode });
+            gameMode = normalizeGameMode(requestedOnlineMode);
             document.getElementById('lobby-screen').style.display = 'none';
             showCharacterSelect();
         }, 1000);
@@ -723,7 +870,7 @@ function setupConnection() {
 }
 
 function sendNetworkInput(action, key, buffer = null) {
-    if (gameMode === 'online' && conn && conn.open) {
+    if ((isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
         conn.send({ type: 'input', action, key, buffer });
     }
 }
@@ -782,6 +929,7 @@ function quitToMainMenu() {
     document.getElementById('ladder-screen').classList.add('hidden');
     if (comboUI) comboUI.classList.remove('show');
     removeFighterList(players);
+    removeStoryEnemy();
     removeFighterList(previewFighters);
     showMainMenu();
 }
@@ -825,7 +973,7 @@ window.addEventListener('keydown', (e) => {
         if (e.code === 'KeyI') { bufferAttackInput(2, 'special'); bufferHit = 'special'; }
     }
 
-    if (gameMode === 'online') {
+    if (isOnlineVersusMode() || isStoryCoopMode()) {
         if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
             sendNetworkInput('keydown', e.code, bufferHit);
         } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
@@ -842,7 +990,7 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
     if (e.code) keys[e.code] = false;
 
-    if (gameMode === 'online') {
+    if (isOnlineVersusMode() || isStoryCoopMode()) {
         if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
             sendNetworkInput('keyup', e.code);
         } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
@@ -875,12 +1023,18 @@ function setSelectEnvironmentVisible(visible) {
 async function loadAssets() {
     const fbxLoader = new FBXLoader();
     const gltfLoader = new GLTFLoader();
+    const ktx2Loader = new KTX2Loader()
+        .setTranscoderPath('/basis/')
+        .detectSupport(renderer);
+    gltfLoader.setKTX2Loader(ktx2Loader);
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
     const charKeys = Object.keys(CHARACTERS);
+    const enemyKeys = Object.keys(ENEMIES);
     const animationManifest = buildAnimationManifest();
     const animKeys = Object.keys(animationManifest);
     // +2 for the stage scene.glb and carousel_rig.glb
-    const totalFiles = charKeys.length + animKeys.length + 2;
+    const totalFiles = charKeys.length + enemyKeys.length + animKeys.length + 2;
     let loadedCount = 0;
 
     const updateProgress = (itemName) => {
@@ -916,16 +1070,34 @@ async function loadAssets() {
     // Load all characters
     const charPromises = charKeys.map(key => {
         return new Promise((resolve) => {
-            fbxLoader.load(CHARACTERS[key].path,
-                (fbx) => {
-                    loadedModels[key] = fbx;
+            gltfLoader.load(CHARACTERS[key].path,
+                (gltf) => {
+                    loadedModels[key] = gltf.scene;
                     updateProgress(CHARACTERS[key].name);
                     resolve(true);
                 },
                 undefined,
                 (err) => {
-                    console.warn(`Could not load character FBX: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
+                    console.warn(`Could not load character GLB: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
                     updateProgress(CHARACTERS[key].name);
+                    resolve(false);
+                }
+            );
+        });
+    });
+
+    const enemyPromises = enemyKeys.map(key => {
+        return new Promise((resolve) => {
+            gltfLoader.load(ENEMIES[key].path,
+                (gltf) => {
+                    loadedModels[key] = gltf.scene;
+                    updateProgress(ENEMIES[key].name);
+                    resolve(true);
+                },
+                undefined,
+                (err) => {
+                    console.warn(`Could not load enemy GLB: ${key}. Path: ${ENEMIES[key].path}. Falling back...`, err);
+                    updateProgress(ENEMIES[key].name);
                     resolve(false);
                 }
             );
@@ -1017,7 +1189,7 @@ async function loadAssets() {
         );
     });
 
-    await Promise.all([...animPromises, ...charPromises, stagePromise, carouselPromise]);
+    await Promise.all([...animPromises, ...charPromises, ...enemyPromises, stagePromise, carouselPromise]);
 
     const hasAnimations = Object.keys(loadedAnims).length > 0;
     const hasCharacters = Object.keys(loadedModels).length > 0;
@@ -1040,6 +1212,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadAssets();
 
     const singleBtn = document.getElementById('menu-single-btn');
+    const storyBtn = document.getElementById('menu-story-btn');
     const localBtn = document.getElementById('menu-local-btn');
     const onlineBtn = document.getElementById('menu-online-btn');
     const optionsBtn = document.getElementById('menu-options-btn');
@@ -1069,9 +1242,10 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    bindMenuAction(singleBtn, () => startGameMode('single'));
-    bindMenuAction(localBtn, () => startGameMode('local'));
-    bindMenuAction(onlineBtn, () => openLobby());
+    bindMenuAction(storyBtn, () => openStoryMenu());
+    bindMenuAction(singleBtn, () => startGameMode(MODE.ARCADE_SINGLE));
+    bindMenuAction(localBtn, () => startGameMode(MODE.LOCAL_VERSUS));
+    bindMenuAction(onlineBtn, () => openLobby(MODE.ONLINE_VERSUS));
     bindMenuAction(optionsBtn, () => openOptions());
 });
 
@@ -1090,6 +1264,75 @@ const tournamentRun = {
     currentIndex: 0,
     status: 'idle'
 };
+const storyRun = {
+    campaignId: 'family-fighter-v1',
+    chapterIndex: 0,
+    encounterIndex: 0,
+    player1CharId: null,
+    player2CharId: null,
+    onlineEnabled: false,
+    status: 'idle'
+};
+
+function getCurrentStoryChapter() {
+    return STORY_CHAPTERS[storyRun.chapterIndex] || STORY_CHAPTERS[0];
+}
+
+function getCurrentStoryEnemyId() {
+    const chapter = getCurrentStoryChapter();
+    return chapter?.encounters?.[storyRun.encounterIndex] || chapter?.encounters?.[0] || 'thug1';
+}
+
+function getStoryChapterProgressLabel() {
+    return `Chapter ${storyRun.chapterIndex + 1} · Wave ${storyRun.encounterIndex + 1}`;
+}
+
+function initializeStoryRun() {
+    storyRun.chapterIndex = 0;
+    storyRun.encounterIndex = 0;
+    storyRun.player1CharId = selections[1];
+    storyRun.player2CharId = isStoryCoopMode() ? selections[2] : null;
+    storyRun.onlineEnabled = isStoryCoopMode();
+    storyRun.status = 'in_progress';
+}
+
+function advanceStoryRun() {
+    const chapter = getCurrentStoryChapter();
+    if (storyRun.encounterIndex < chapter.encounters.length - 1) {
+        storyRun.encounterIndex += 1;
+        storyRun.status = 'between_encounters';
+        return 'encounter';
+    }
+
+    if (storyRun.chapterIndex < STORY_CHAPTERS.length - 1) {
+        storyRun.chapterIndex += 1;
+        storyRun.encounterIndex = 0;
+        storyRun.status = 'between_encounters';
+        return 'chapter';
+    }
+
+    storyRun.status = 'complete';
+    return 'complete';
+}
+
+function resetStoryRun() {
+    storyRun.chapterIndex = 0;
+    storyRun.encounterIndex = 0;
+    storyRun.player1CharId = null;
+    storyRun.player2CharId = null;
+    storyRun.onlineEnabled = false;
+    storyRun.status = 'idle';
+}
+
+function syncStoryProgress(payload) {
+    if (!payload) return;
+    storyRun.chapterIndex = payload.chapterIndex ?? storyRun.chapterIndex;
+    storyRun.encounterIndex = payload.encounterIndex ?? storyRun.encounterIndex;
+    storyRun.player1CharId = payload.player1CharId ?? storyRun.player1CharId;
+    storyRun.player2CharId = payload.player2CharId ?? storyRun.player2CharId;
+    storyRun.onlineEnabled = payload.onlineEnabled ?? storyRun.onlineEnabled;
+    storyRun.status = payload.status ?? storyRun.status;
+}
 
 function getPortraitPath(charId) {
     return `/characters/portrait_${CHARACTERS[charId].name}.png`;
@@ -1101,7 +1344,7 @@ function isMobilePortraitLayout() {
 
 function applySelectorLayoutMode() {
     const selectorScreen = document.getElementById('selector-screen');
-    const singlePane = gameMode !== 'online';
+    const singlePane = !(isOnlineVersusMode() || isStoryCoopMode());
     selectorScreen.classList.toggle('single-pane-selector', singlePane);
     document.body.classList.toggle('selector-mobile-portraits', singlePane && isMobilePortraitLayout());
 }
@@ -1194,8 +1437,60 @@ function showTournamentLadderScreen(result = 'advance') {
     document.getElementById('ladder-screen').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
     removeFighterList(players);
+    removeStoryEnemy();
     removeFighterList(previewFighters);
     renderTournamentLadder(result);
+    playScreenMusic('characterSelect');
+    updateViewportState();
+}
+
+function renderStoryProgressScreen(result = 'advance') {
+    const chapter = getCurrentStoryChapter();
+    const ladderTitle = document.getElementById('ladder-title');
+    const ladderSubtitle = document.getElementById('ladder-subtitle');
+    const ladderPlayerName = document.getElementById('ladder-player-name');
+    const ladderNextName = document.getElementById('ladder-next-name');
+    const ladderRungs = document.getElementById('ladder-rungs');
+    const continueBtn = document.getElementById('ladder-continue-btn');
+    const currentEnemy = ENEMIES[getCurrentStoryEnemyId()];
+
+    ladderTitle.textContent = result === 'complete' ? 'Story Cleared' : chapter.title;
+    ladderSubtitle.textContent = result === 'complete'
+        ? 'The campaign route is clear. Step back in any time for another run.'
+        : `${chapter.introText} ${getStoryChapterProgressLabel()}.`;
+    ladderPlayerName.textContent = CHARACTERS[storyRun.player1CharId || selections[1]]?.name || 'Player 1';
+    ladderNextName.textContent = currentEnemy?.name || 'Unknown Enemy';
+    continueBtn.textContent = result === 'complete' ? 'Play Again' : 'Continue';
+    continueBtn.onclick = result === 'complete'
+        ? () => showCharacterSelect()
+        : () => window.continueStory();
+
+    ladderRungs.innerHTML = STORY_CHAPTERS.map((entry, index) => {
+        const rungState = index < storyRun.chapterIndex
+            ? 'complete'
+            : index === storyRun.chapterIndex
+                ? 'current'
+                : 'pending';
+        return `
+            <div class="ladder-rung ${rungState}">
+                <span class="ladder-rung-label">Chapter ${index + 1}</span>
+                <div class="ladder-rung-name">${entry.title}</div>
+                <div class="ladder-rung-status">${entry.encounters.map((enemyId) => ENEMIES[enemyId].name).join(' / ')}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showStoryProgressScreen(result = 'advance') {
+    resetAllTouchMovementStates();
+    document.getElementById('gameover-screen').style.display = 'none';
+    document.getElementById('selector-screen').classList.add('hidden');
+    document.getElementById('ladder-screen').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+    removeFighterList(players);
+    removeStoryEnemy();
+    removeFighterList(previewFighters);
+    renderStoryProgressScreen(result);
     playScreenMusic('characterSelect');
     updateViewportState();
 }
@@ -1210,26 +1505,35 @@ window.continueTournament = function () {
     startFight();
 };
 
+window.continueStory = function () {
+    document.getElementById('ladder-screen').classList.add('hidden');
+    storyRun.status = 'in_progress';
+    startFight();
+};
+
 window.handlePortraitClick = function(charId) {
     let player = 1;
-    if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
+    if ((isOnlineVersusMode() || isStoryCoopMode()) && typeof isHost !== 'undefined' && !isHost) {
         player = 2;
     }
     selectCharacter(player, charId);
 };
 
 
-function selectCharacter(player, charId) {
-    if (gameMode !== 'online') player = 1;
+function selectCharacter(player, charId, isNetworkSync = false) {
+    if (!(isOnlineVersusMode() || isStoryCoopMode())) player = 1;
 
     // If clicking the currently selected character, lock them in (double click confirm)
-    if (selections[player] === charId && !((player === 1 && p1Locked) || (player === 2 && p2Locked))) {
+    if (!isNetworkSync && selections[player] === charId && !((player === 1 && p1Locked) || (player === 2 && p2Locked))) {
         lockInPlayer(player);
         return;
     }
 
     AudioSynth.playSelect();
     selections[player] = charId;
+    if (!isNetworkSync && (isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
+        conn.send({ type: 'select', player, charId });
+    }
 
     // Update cards in the player's side-panel (legacy hidden grid)
     const panel = document.getElementById(`p${player}-select-panel`);
@@ -1248,11 +1552,11 @@ function selectCharacter(player, charId) {
     }
 
     document.getElementById(`p${player}-preview-name`).textContent = CHARACTERS[charId].name;
-    document.getElementById('select-player-state').textContent = gameMode === 'single'
+    document.getElementById('select-player-state').textContent = isArcadeMode()
         ? 'Tournament fighter selected'
-        : gameMode === 'online'
-            ? ''
-            : 'Ready your fighter';
+        : isStoryMode()
+            ? 'Story fighter selected'
+            : (isOnlineVersusMode() ? '' : 'Ready your fighter');
     refreshCharacterSelectPreviews();
 
     // The single preview model is always at index 0
@@ -1265,29 +1569,36 @@ function selectCharacter(player, charId) {
     }
 }
 
-window.lockInPlayer = function (player) {
-    if (gameMode !== 'online') player = 1;
+window.lockInPlayer = function (player, isNetworkSync = false) {
+    if (!(isOnlineVersusMode() || isStoryCoopMode())) player = 1;
     AudioSynth.playSelect();
     if (player === 1) {
         p1Locked = true;
         document.getElementById('p1-locked-status').style.display = 'block';
         document.getElementById('p1-lock-btn').style.display = 'none';
-        if (gameMode === 'online') sendNetworkInput('lockIn', 'p1');
+        if (!isNetworkSync && (isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
+            conn.send({ type: 'lockIn', player: 1 });
+        }
     } else if (player === 2) {
         p2Locked = true;
         document.getElementById('p2-locked-status').style.display = 'block';
         document.getElementById('p2-lock-btn').style.display = 'none';
-        if (gameMode === 'online') sendNetworkInput('lockIn', 'p2');
+        if (!isNetworkSync && (isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
+            conn.send({ type: 'lockIn', player: 2 });
+        }
     }
 
     // Refresh previews to immediately focus on next player (if any)
     refreshCharacterSelectPreviews();
 
-    if (gameMode === 'single') {
+    if (isArcadeMode()) {
         startSinglePlayerRun(selections[1]);
+    } else if (isStoryMode() && storyRun.status === 'idle') {
+        initializeStoryRun();
     }
 
-    if (p1Locked && (gameMode !== 'online' || p2Locked)) {
+    const everyoneReady = isStoryCoopMode() || isOnlineVersusMode() ? (p1Locked && p2Locked) : p1Locked;
+    if (everyoneReady) {
         setTimeout(() => { startFight(); }, 500);
     }
 };
@@ -1297,12 +1608,12 @@ function refreshCharacterSelectPreviews() {
 
     removeFighterList(previewFighters);
 
-    if (gameMode === 'single') {
+    if (isArcadeMode()) {
         selections[2] = tournamentRun.playerCharId ? getCurrentLadderOpponent() : selections[2];
     }
 
     let activePlayer = 1;
-    if (gameMode === 'online' && typeof isHost !== 'undefined' && !isHost) {
+    if ((isOnlineVersusMode() || isStoryCoopMode()) && typeof isHost !== 'undefined' && !isHost) {
         activePlayer = 2;
     }
 
@@ -1314,9 +1625,11 @@ function refreshCharacterSelectPreviews() {
         });
     }
 
-    document.getElementById('select-opponent-name').textContent = CHARACTERS[selections[2]].name;
+    document.getElementById('select-opponent-name').textContent = isStoryMode()
+        ? `${getCurrentStoryChapter().title} · ${ENEMIES[getCurrentStoryEnemyId()]?.name || getCurrentStoryEnemyId()}`
+        : CHARACTERS[selections[2]].name;
 
-    if (gameMode !== 'online' && isMobilePortraitLayout()) {
+    if (!(isOnlineVersusMode() || isStoryCoopMode()) && isMobilePortraitLayout()) {
         setCameraMode('select', { shotDurationMs: 2000 });
         return;
     }
@@ -1347,27 +1660,40 @@ function showCharacterSelect() {
 
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('story-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('options-menu').style.display = 'none';
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
-    document.getElementById('select-mode-kicker').textContent = gameMode === 'single'
+    document.getElementById('select-mode-kicker').textContent = isArcadeMode()
         ? 'Arcade Tournament Ladder'
-        : gameMode === 'online'
-            ? 'Online Match Setup'
-            : 'Local Exhibition';
-    document.getElementById('select-rules-title').textContent = gameMode === 'single' ? 'Single Player' : gameMode === 'online' ? 'Online Multiplayer' : 'Local Multiplayer';
-    document.getElementById('select-rules-desc').textContent = gameMode === 'single'
+        : isStoryMode()
+            ? (isStoryCoopMode() ? 'Online Co-op Story' : 'Solo Story')
+            : isOnlineVersusMode()
+                ? 'Online Match Setup'
+                : 'Local Exhibition';
+    document.getElementById('select-rules-title').textContent = isArcadeMode()
+        ? 'Arcade'
+        : isStoryMode()
+            ? 'Story Mode'
+            : isOnlineVersusMode()
+                ? 'Online Multiplayer'
+                : 'Local Multiplayer';
+    document.getElementById('select-rules-desc').textContent = isArcadeMode()
         ? 'Choose one fighter and climb the full tournament ladder.'
-        : gameMode === 'online'
+        : isStoryMode()
+            ? (isStoryCoopMode()
+                ? 'Both players lock in heroes, then fight through sequential thug encounters online.'
+                : 'Choose one fighter and clear each chapter of the thug campaign.')
+        : isOnlineVersusMode()
             ? 'Each player locks in a fighter before the match starts.'
             : 'Pick a fighter and jump straight into a local exhibition.';
-    document.getElementById('select-player-state').textContent = gameMode === 'single'
+    document.getElementById('select-player-state').textContent = isArcadeMode()
         ? 'Choose your tournament fighter'
-        : gameMode === 'online'
-            ? ''
-            : 'Choose your fighter';
+        : isStoryMode()
+            ? 'Choose your story fighter'
+            : (isOnlineVersusMode() ? '' : 'Choose your fighter');
 
     selectSpotlightP1.visible = true;
     selectSpotlightP2.visible = true;
@@ -1381,19 +1707,24 @@ function showCharacterSelect() {
     document.getElementById('p2-locked-status').style.display = 'none';
     document.getElementById('p2-lock-btn').style.display = 'block';
 
-    if (gameMode === 'single') {
+    if (isArcadeMode()) {
         tournamentRun.playerCharId = null;
         tournamentRun.ladder = [];
         tournamentRun.currentIndex = 0;
         tournamentRun.status = 'idle';
         selections[2] = 'jonah';
+        resetStoryRun();
+    } else if (isStoryMode()) {
+        resetStoryRun();
     } else {
         tournamentRun.status = 'idle';
+        resetStoryRun();
     }
 
     applySelectorLayoutMode();
 
     removeFighterList(players);
+    removeStoryEnemy();
     removeFighterList(previewFighters);
     refreshCharacterSelectPreviews();
     playScreenMusic('characterSelect');
@@ -1763,6 +2094,10 @@ function updateParticles(dt) {
 }
 
 // --- 7. FIGHTER MODEL GENERATOR FACTORY ---
+function getFighterProfile(fighterId, options = {}) {
+    return options.profile || CHARACTERS[fighterId] || ENEMIES[fighterId] || null;
+}
+
 function cloneSkinnedMesh(source) {
     function parallelTraverse(a, b, callback) {
         callback(a, b);
@@ -1800,6 +2135,7 @@ function cloneSkinnedMesh(source) {
 
 let players = [];
 let previewFighters = [];
+let storyEnemy = null;
 const scheduledEvents = [];
 const cameraDirector = {
     mode: 'select',
@@ -1903,7 +2239,7 @@ function updateViewportState() {
     if (touchControls) {
         touchControls.classList.toggle('active', shouldShowTouchControls);
 
-        const isSinglePlayerLayout = (gameMode === 'single' || gameMode === 'online');
+        const isSinglePlayerLayout = (isArcadeMode() || isOnlineVersusMode() || isStoryMode());
         touchControls.classList.toggle('single-player-mode', isSinglePlayerLayout);
     }
     if (!shouldShowTouchControls) resetAllTouchMovementStates();
@@ -1911,10 +2247,10 @@ function updateViewportState() {
     const sideP1 = document.getElementById('touch-side-p1');
     const sideP2 = document.getElementById('touch-side-p2');
     if (sideP1 && sideP2) {
-        if (gameMode === 'single') {
+        if (isArcadeMode() || gameMode === MODE.STORY_SOLO) {
             sideP1.style.display = '';
             sideP2.style.display = 'none';
-        } else if (gameMode === 'online') {
+        } else if (isOnlineVersusMode() || isStoryCoopMode()) {
             if (isHost) {
                 sideP1.style.display = '';
                 sideP2.style.display = 'none';
@@ -1990,6 +2326,20 @@ function removeFighterList(list) {
         }
     });
     list.length = 0;
+}
+
+function removeStoryEnemy() {
+    if (!storyEnemy) return;
+    if (storyEnemy.mesh) scene.remove(storyEnemy.mesh);
+    storyEnemy = null;
+}
+
+function getActiveCombatants() {
+    return [...players, ...(storyEnemy ? [storyEnemy] : [])].filter(Boolean);
+}
+
+function findCombatantById(id) {
+    return getActiveCombatants().find((actor) => actor.id === id) || null;
 }
 
 function playPreferredAction(actor, actionName, fallback = 'idle', fade = 0.12) {
@@ -2199,13 +2549,14 @@ function initVirtualStick(container, keyMap) {
     container.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
-function createPlayerMesh(charId, isPlayer1) {
+function createPlayerMesh(charId, isPlayer1, options = {}) {
     const container = new THREE.Group();
+    const profile = getFighterProfile(charId, options);
 
     const useBoxFallback = isFallbackMode || !loadedModels[charId];
 
     if (useBoxFallback) {
-        const baseColor = CHARACTERS[charId].color;
+        const baseColor = profile?.color || 0xffffff;
         const torsoMat = new THREE.MeshStandardMaterial({
             color: baseColor,
             roughness: 0.1,
@@ -2285,7 +2636,7 @@ function createPlayerMesh(charId, isPlayer1) {
 
         const mixer = new THREE.AnimationMixer(model);
         const actions = {};
-        const actionManifest = getCharacterActionManifest(charId);
+        const actionManifest = getCharacterActionManifest(options.animationProfileId || charId);
 
         Object.entries(actionManifest).forEach(([actionName, clipKey]) => {
             const clip = loadedAnims[clipKey];
@@ -2341,19 +2692,24 @@ function createPlayerMesh(charId, isPlayer1) {
     }
 }
 
-function spawnFighter(charId, startX, isPlayer1) {
-    const setup = createPlayerMesh(charId, isPlayer1);
+function spawnFighter(charId, startX, isPlayer1, options = {}) {
+    const profile = getFighterProfile(charId, options);
+    const statProfile = profile?.stats || {};
+    const setup = createPlayerMesh(charId, isPlayer1, options);
 
     const player = {
-        id: isPlayer1 ? 1 : 2,
+        id: options.id ?? (isPlayer1 ? 1 : 2),
         charId: charId,
-        name: CHARACTERS[charId].name,
+        name: options.displayName || profile?.name || charId,
         mesh: setup.model,
         mixer: setup.mixer,
         actions: setup.actions,
-        color: CHARACTERS[charId].color,
-        health: 100,
-        guardHealth: 100, // NEW: Stamina
+        color: profile?.color || 0xffffff,
+        team: options.team || 'hero',
+        role: options.role || 'fighter',
+        health: Math.round(100 * (options.healthMultiplier || statProfile.healthMultiplier || 1)),
+        guardHealth: Math.round(100 * (options.guardMultiplier || statProfile.guardMultiplier || 1)), // NEW: Stamina
+        damageMultiplier: options.damageMultiplier || statProfile.damageMultiplier || 1,
         velocity: 0,
         direction: isPlayer1 ? 1 : -1,
 
@@ -2415,7 +2771,7 @@ function spawnFighter(charId, startX, isPlayer1) {
     player.mesh.position.set(startX, 0, 0);
     player.mesh.rotation.y = isPlayer1 ? Math.PI / 2 : -Math.PI / 2;
 
-    if (isBossMatch && !isPlayer1) {
+    if ((options.isBoss || isBossMatch) && !isPlayer1) {
         player.mesh.traverse(child => {
             if (child.isMesh) {
                 const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -2453,6 +2809,60 @@ function bufferAttackInput(playerId, attackType) {
 let aiNextActionTime = 0;
 let aiCurrentAction = 'idle';
 let aiHitCount = 0;
+let storyEnemyFocusPlayerId = 1;
+let storyEnemyFocusChangeAt = 0;
+
+function getLivingHeroes() {
+    return players.filter((actor) => actor && !actor.isDead);
+}
+
+function getNearestLivingHero(enemy = storyEnemy) {
+    const heroes = getLivingHeroes();
+    if (!enemy || heroes.length === 0) return null;
+    return heroes.reduce((best, hero) => {
+        if (!best) return hero;
+        const bestDist = Math.abs(best.mesh.position.x - enemy.mesh.position.x);
+        const nextDist = Math.abs(hero.mesh.position.x - enemy.mesh.position.x);
+        return nextDist < bestDist ? hero : best;
+    }, null);
+}
+
+function getStoryEnemyTarget() {
+    if (!storyEnemy) return null;
+    const heroes = getLivingHeroes();
+    if (heroes.length === 0) return null;
+
+    const preferred = players.find((hero) => hero && hero.id === storyEnemyFocusPlayerId && !hero.isDead);
+    if (preferred && performance.now() < storyEnemyFocusChangeAt) {
+        return preferred;
+    }
+
+    const nearest = getNearestLivingHero(storyEnemy) || heroes[0];
+    storyEnemyFocusPlayerId = nearest?.id || 1;
+    storyEnemyFocusChangeAt = performance.now() + 1200;
+    return nearest;
+}
+
+function applyRemoteStoryEnemyState(data) {
+    if (!storyEnemy || !data) return;
+    storyEnemy.aiState = data.state || 'idle';
+    storyEnemy.aiTargetPlayerId = data.targetPlayerId || 1;
+    storyEnemy.aiNextActionTime = performance.now() + (data.nextActionDelayMs || 0);
+    if (data.buffer) {
+        storyEnemy.pendingRemoteBuffer = data.buffer;
+    }
+}
+
+function broadcastStoryEnemyState(state, targetPlayerId, nextActionDelayMs, buffer = null) {
+    if (!isStoryCoopMode() || !isHost || !conn || !conn.open) return;
+    conn.send({ type: 'storyEnemyState', state, targetPlayerId, nextActionDelayMs, buffer });
+}
+
+function resolveStoryEnemyTarget() {
+    if (!storyEnemy) return null;
+    const target = players.find((hero) => hero && hero.id === storyEnemy.aiTargetPlayerId && !hero.isDead);
+    return target || getStoryEnemyTarget();
+}
 
 function resetCombo(player) {
     player.comboCount = 0;
@@ -2831,7 +3241,7 @@ function checkHits(attacker, defender) {
 
             if (defender.isBlocking) {
                 // GUARD DAMAGE (STAMINA)
-                const damageToGuard = attacker.currentAttack.damage * 4.5; // Scale heavy hits to drain fast
+                const damageToGuard = attacker.currentAttack.damage * (attacker.damageMultiplier || 1) * 4.5; // Scale heavy hits to drain fast
                 defender.guardHealth -= damageToGuard;
 
                 if (defender.guardHealth <= 0) {
@@ -2853,7 +3263,7 @@ function checkHits(attacker, defender) {
                     defender.mesh.position.x += attacker.direction * 0.6; // Heavy pushback
                 } else {
                     // Standard block Mitigated
-                    defender.health = Math.max(0, defender.health - attacker.currentAttack.blockDamage);
+                    defender.health = Math.max(0, defender.health - (attacker.currentAttack.blockDamage * (attacker.damageMultiplier || 1)));
                     hitStopTime = 0.05;
                     spawnParticles(limbPos, 'guard');
                     AudioSynth.playBlock();
@@ -2862,7 +3272,7 @@ function checkHits(attacker, defender) {
                 updateHealthBars();
             } else {
                 // UNPROTECTED DIRECT HIT
-                defender.health = Math.max(0, defender.health - attacker.currentAttack.damage);
+                defender.health = Math.max(0, defender.health - (attacker.currentAttack.damage * (attacker.damageMultiplier || 1)));
                 updateHealthBars();
 
                 hitStopTime = attacker.currentAttack.strength === 'heavy' ? 0.12 : 0.08;
@@ -2934,7 +3344,15 @@ function triggerDeath(player) {
     attackInputBuffer[player.id] = null;
     reconcileGroundedState(player, 'death');
     player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
-    endRound(player.id === 1 ? 2 : 1);
+    if (isStoryMode()) {
+        if (player.role === 'enemy') {
+            endRound('heroes');
+        } else if (getLivingHeroes().length === 0) {
+            endRound('enemy');
+        }
+    } else {
+        endRound(player.id === 1 ? 2 : 1);
+    }
 }
 
 function getHealthColor(health) {
@@ -2953,36 +3371,40 @@ function getHealthColor(health) {
 }
 
 function updateHealthBars() {
+    const leftActor = isStoryMode()
+        ? ((isStoryCoopMode() && !isHost) ? players[1] : players[0])
+        : players[0];
+    const rightActor = isStoryMode() ? storyEnemy : players[1];
     const p1Bar = document.getElementById('p1-bar');
     const p2Bar = document.getElementById('p2-bar');
     const p1Guard = document.getElementById('p1-guard-bar');
     const p2Guard = document.getElementById('p2-guard-bar');
 
-    if (p1Bar && players[0]) {
-        const h1 = Math.max(0, Math.min(100, players[0].health));
+    if (p1Bar && leftActor) {
+        const h1 = Math.max(0, Math.min(100, leftActor.health));
         p1Bar.style.width = h1 + '%';
         const color1 = getHealthColor(h1);
         p1Bar.style.background = `linear-gradient(90deg, ${color1.dark}, ${color1.bright})`;
         p1Bar.style.boxShadow = `0 0 10px ${color1.bright}`;
 
         if (p1Guard) {
-            const g1 = Math.max(0, Math.min(100, players[0].guardHealth));
+            const g1 = Math.max(0, Math.min(100, leftActor.guardHealth));
             p1Guard.style.width = g1 + '%';
-            p1Guard.style.backgroundColor = players[0].isStunned ? '#ff0000' : (g1 < 30 ? '#ff8800' : '#ffffff');
+            p1Guard.style.backgroundColor = leftActor.isStunned ? '#ff0000' : (g1 < 30 ? '#ff8800' : '#ffffff');
         }
     }
 
-    if (p2Bar && players[1]) {
-        const h2 = Math.max(0, Math.min(100, players[1].health));
+    if (p2Bar && rightActor) {
+        const h2 = Math.max(0, Math.min(100, rightActor.health));
         p2Bar.style.width = h2 + '%';
         const color2 = getHealthColor(h2);
         p2Bar.style.background = `linear-gradient(270deg, ${color2.dark}, ${color2.bright})`;
         p2Bar.style.boxShadow = `0 0 10px ${color2.bright}`;
 
         if (p2Guard) {
-            const g2 = Math.max(0, Math.min(100, players[1].guardHealth));
+            const g2 = Math.max(0, Math.min(100, rightActor.guardHealth));
             p2Guard.style.width = g2 + '%';
-            p2Guard.style.backgroundColor = players[1].isStunned ? '#ff0000' : (g2 < 30 ? '#ff8800' : '#ffffff');
+            p2Guard.style.backgroundColor = rightActor.isStunned ? '#ff0000' : (g2 < 30 ? '#ff8800' : '#ffffff');
         }
     }
 }
@@ -3019,9 +3441,10 @@ function updateCameraDirector() {
         targetCamY = 2.75;
         targetCamZ = 6.35;
         lookTarget = new THREE.Vector3(0, 1.42, 1.02);
-    } else if (players.length === 2) {
-        const p1 = players[0];
-        const p2 = players[1];
+    } else if (getActiveCombatants().length >= 2) {
+        const cast = getActiveCombatants().sort((a, b) => a.mesh.position.x - b.mesh.position.x);
+        const p1 = cast[0];
+        const p2 = cast[cast.length - 1];
         const midX = (p1.mesh.position.x + p2.mesh.position.x) / 2;
         const distance = Math.abs(p1.mesh.position.x - p2.mesh.position.x);
         const shotProgress = cameraDirector.shotDurationMs > 0
@@ -3029,7 +3452,7 @@ function updateCameraDirector() {
             : 1;
 
         if (cameraDirector.mode === 'intro') {
-            const focus = players[Math.max(0, cameraDirector.focusPlayerId - 1)] || p1;
+            const focus = findCombatantById(cameraDirector.focusPlayerId) || p1;
             const sideBias = focus.id === 1 ? -0.15 : 0.15;
             const isSliding = focus.introPhase === 'slide';
 
@@ -3054,7 +3477,7 @@ function updateCameraDirector() {
                 );
             }
         } else if (cameraDirector.mode === 'taunt') {
-            const focus = players[Math.max(0, cameraDirector.focusPlayerId - 1)] || p1;
+            const focus = findCombatantById(cameraDirector.focusPlayerId) || p1;
             const sideBias = focus.id === 1 ? -0.45 : 0.45;
             targetCamX = focus.mesh.position.x + sideBias;
             targetCamY = THREE.MathUtils.lerp(2.55, 2.95, shotProgress);
@@ -3066,7 +3489,7 @@ function updateCameraDirector() {
             targetCamZ = 8.0;
             lookTarget = new THREE.Vector3(midX, 1.25, 0);
         } else if (cameraDirector.mode === 'victory' && cameraDirector.winnerId > 0) {
-            const winner = players[cameraDirector.winnerId - 1] || p1;
+            const winner = findCombatantById(cameraDirector.winnerId) || p1;
             const sideBias = winner.id === 1 ? -0.42 : 0.42;
             targetCamX = winner.mesh.position.x + THREE.MathUtils.lerp(sideBias * 2.1, sideBias, shotProgress);
             targetCamY = THREE.MathUtils.lerp(2.8, 3.35, shotProgress);
@@ -3112,7 +3535,7 @@ function startCountdownSequence() {
     const announce = document.getElementById('announcement');
 
     // Prefight: both players snap to combat facing and play Standing Idle To Fight Idle
-    players.forEach((player) => {
+    getActiveCombatants().forEach((player) => {
         if (!player) return;
         player.introMotion = null;
         reconcileGroundedState(player, 'countdown');
@@ -3352,17 +3775,74 @@ function playPreFightSequence() {
     });
 }
 
+function getStoryProgressPayload(status = storyRun.status) {
+    return {
+        chapterIndex: storyRun.chapterIndex,
+        encounterIndex: storyRun.encounterIndex,
+        player1CharId: storyRun.player1CharId,
+        player2CharId: storyRun.player2CharId,
+        onlineEnabled: storyRun.onlineEnabled,
+        status
+    };
+}
+
+function spawnStoryEncounter() {
+    const enemyId = getCurrentStoryEnemyId();
+    const enemyProfile = ENEMIES[enemyId];
+    const isCoop = isStoryCoopMode();
+
+    const hero1 = spawnFighter(selections[1], isCoop ? -5.0 : -3.4, true, {
+        id: 1,
+        team: 'hero',
+        role: 'hero'
+    });
+    players.push(hero1);
+
+    if (isCoop) {
+        const hero2 = spawnFighter(selections[2], -2.8, false, {
+            id: 2,
+            team: 'hero',
+            role: 'hero'
+        });
+        hero2.direction = 1;
+        players.push(hero2);
+    }
+
+    storyEnemy = spawnFighter(enemyId, 3.8, false, {
+        id: 99,
+        profile: enemyProfile,
+        animationProfileId: enemyProfile.animationProfileId,
+        displayName: enemyProfile.name,
+        team: 'enemy',
+        role: 'enemy',
+        isBoss: enemyId === 'thug4'
+    });
+    storyEnemy.aiState = 'idle';
+    storyEnemy.aiTargetPlayerId = 1;
+    storyEnemy.aiNextActionTime = 0;
+    storyEnemy.pendingRemoteBuffer = null;
+    storyEnemy.direction = -1;
+}
+
 window.startFight = function (isNetworkCommand = false) {
-    if (gameMode === 'online' && !isNetworkCommand) {
+    if ((isOnlineVersusMode() || isStoryCoopMode()) && !isNetworkCommand) {
         if (conn && conn.open) conn.send({ type: 'fight' });
     }
 
-    if (gameMode === 'single') {
+    if (isArcadeMode()) {
         if (!tournamentRun.playerCharId || tournamentRun.status === 'idle') {
             startSinglePlayerRun(selections[1]);
         }
         selections[2] = getCurrentLadderOpponent();
         isBossMatch = selections[2] === selections[1];
+    } else if (isStoryMode()) {
+        if (storyRun.status === 'idle') {
+            initializeStoryRun();
+        }
+        isBossMatch = getCurrentStoryEnemyId() === 'thug4';
+        if (isStoryCoopMode() && isHost && conn && conn.open) {
+            conn.send({ type: 'storyProgress', payload: getStoryProgressPayload('in_progress') });
+        }
     } else {
         isBossMatch = false;
     }
@@ -3381,16 +3861,25 @@ window.startFight = function (isNetworkCommand = false) {
 
     removeFighterList(previewFighters);
     removeFighterList(players);
+    removeStoryEnemy();
 
-    const p1 = spawnFighter(selections[1], -3.4, true);
-    const p2 = spawnFighter(selections[2], 3.4, false);
-    players.push(p1, p2);
+    if (isStoryMode()) {
+        spawnStoryEncounter();
+    } else {
+        const p1 = spawnFighter(selections[1], -3.4, true);
+        const p2 = spawnFighter(selections[2], 3.4, false);
+        players.push(p1, p2);
+    }
     attackInputBuffer[1] = null;
     attackInputBuffer[2] = null;
     resetAllTouchMovementStates();
 
-    document.getElementById('p1-name-display').textContent = p1.name;
-    document.getElementById('p2-name-display').textContent = p2.name;
+    const leftHudActor = isStoryMode()
+        ? ((isStoryCoopMode() && !isHost) ? players[1] : players[0])
+        : players[0];
+    const rightHudActor = isStoryMode() ? storyEnemy : players[1];
+    document.getElementById('p1-name-display').textContent = leftHudActor?.name || 'Player 1';
+    document.getElementById('p2-name-display').textContent = rightHudActor?.name || 'Player 2';
 
     injectGuardBars();
     updateHealthBars();
@@ -3407,8 +3896,13 @@ window.startFight = function (isNetworkCommand = false) {
     setSelectEnvironmentVisible(false);
     roundTime = 99;
     document.getElementById('timer').textContent = roundTime;
-    setCameraMode('intro', { focusPlayerId: 1, winnerId: 0 });
-    playPreFightSequence();
+    if (isStoryMode()) {
+        setCameraMode('countdown', { focusPlayerId: 1, winnerId: 0 });
+        startCountdownSequence();
+    } else {
+        setCameraMode('intro', { focusPlayerId: 1, winnerId: 0 });
+        playPreFightSequence();
+    }
 }
 
 function startTimer() {
@@ -3420,14 +3914,26 @@ function startTimer() {
 
         if (roundTime <= 0) {
             clearInterval(timerInterval);
-            const p1Health = players[0].health;
-            const p2Health = players[1].health;
-            if (p1Health > p2Health) {
-                endRound(1);
-            } else if (p2Health > p1Health) {
-                endRound(2);
+            if (isStoryMode()) {
+                const heroHealth = getLivingHeroes().reduce((sum, hero) => sum + Math.max(hero.health, 0), 0);
+                const enemyHealth = Math.max(storyEnemy?.health || 0, 0);
+                if (heroHealth > enemyHealth) {
+                    endRound('heroes');
+                } else if (enemyHealth > heroHealth) {
+                    endRound('enemy');
+                } else {
+                    endRound('draw');
+                }
             } else {
-                endRound(0);
+                const p1Health = players[0].health;
+                const p2Health = players[1].health;
+                if (p1Health > p2Health) {
+                    endRound(1);
+                } else if (p2Health > p1Health) {
+                    endRound(2);
+                } else {
+                    endRound(0);
+                }
             }
         }
     }, 1000);
@@ -3443,6 +3949,79 @@ function endRound(winnerNum) {
     const winnerText = document.getElementById('winner-title');
     const primaryBtn = document.getElementById('gameover-primary-btn');
     const secondaryBtn = document.getElementById('gameover-secondary-btn');
+    if (isStoryMode()) {
+        const storyWinner = winnerNum === 'heroes' ? players.find((hero) => hero && !hero.isDead) || players[0] : storyEnemy;
+        const storyLoser = winnerNum === 'heroes' ? storyEnemy : players.find((hero) => hero && !hero.isDead);
+        const victoryShowcaseMs = 4200;
+
+        if (storyWinner) {
+            storyWinner.isAttacking = false;
+            storyWinner.isHit = false;
+            storyWinner.attackTravel = 0;
+            storyWinner.reactionTravel = 0;
+            storyWinner.reactionDistance = 0;
+            storyWinner.reactionDirection = 0;
+            sanitizeGroundedState(storyWinner);
+            playPreferredAction(storyWinner, winnerNum === 'heroes' ? 'victory' : 'idle', 'idle', 0.1);
+        }
+        if (storyLoser && !storyLoser.isDead) {
+            playPreferredAction(storyLoser, 'idle', 'idle', 0.15);
+        }
+
+        scheduleEvent(() => {
+            if (winnerNum === 'heroes') {
+                winnerText.textContent = 'CHAPTER CLEAR';
+                winnerText.className = 'win-p1';
+                AudioSynth.playWin();
+                const advanceState = advanceStoryRun();
+                if (isStoryCoopMode() && isHost && conn && conn.open) {
+                    conn.send({ type: 'storyProgress', payload: getStoryProgressPayload(storyRun.status) });
+                }
+                if (advanceState === 'complete') {
+                    primaryBtn.textContent = 'Story Board';
+                    primaryBtn.onclick = () => showStoryProgressScreen('complete');
+                    secondaryBtn.textContent = 'Main Menu';
+                    secondaryBtn.onclick = () => quitToMainMenu();
+                } else {
+                    primaryBtn.textContent = 'Continue Story';
+                    primaryBtn.onclick = () => showStoryProgressScreen('advance');
+                    secondaryBtn.textContent = 'Fighter Select';
+                    secondaryBtn.onclick = () => backToSelect();
+                }
+            } else if (winnerNum === 'enemy') {
+                storyRun.status = 'failed';
+                winnerText.textContent = `${storyEnemy?.name || 'Enemy'} WINS`;
+                winnerText.className = 'win-p2';
+                primaryBtn.textContent = 'Retry Chapter';
+                primaryBtn.onclick = () => {
+                    storyRun.status = 'in_progress';
+                    document.getElementById('gameover-screen').style.display = 'none';
+                    startFight();
+                };
+                secondaryBtn.textContent = 'Main Menu';
+                secondaryBtn.onclick = () => quitToMainMenu();
+            } else {
+                winnerText.textContent = 'DRAW SEQUENCE';
+                winnerText.className = '';
+                primaryBtn.textContent = 'Retry';
+                primaryBtn.onclick = () => {
+                    document.getElementById('gameover-screen').style.display = 'none';
+                    startFight();
+                };
+                secondaryBtn.textContent = 'Fighter Select';
+                secondaryBtn.onclick = () => backToSelect();
+            }
+
+            overlay.style.transition = 'opacity 600ms ease';
+            overlay.style.opacity = '0';
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+            });
+        }, victoryShowcaseMs);
+        return;
+    }
+
     const winner = winnerNum > 0 ? players[winnerNum - 1] : null;
     const loser  = winnerNum > 0 ? players[winnerNum === 1 ? 1 : 0] : null;
     const victoryShowcaseMs = 8000;
@@ -3492,7 +4071,7 @@ function endRound(winnerNum) {
             AudioSynth.playWin();
         }
 
-        if (gameMode === 'single') {
+        if (isArcadeMode()) {
             if (winnerNum === 1) {
                 const hasNextFight = advanceTournamentRun();
                 if (hasNextFight) {
@@ -3532,17 +4111,295 @@ function endRound(winnerNum) {
 function rematch() {
     document.getElementById('gameover-screen').style.display = 'none';
     resetAllTouchMovementStates();
+    if (isStoryMode() && storyRun.status === 'complete') {
+        resetStoryRun();
+        initializeStoryRun();
+    }
     startFight();
 }
 
 function backToSelect() {
     document.getElementById('gameover-screen').style.display = 'none';
     resetAllTouchMovementStates();
-    if (gameMode === 'single' && tournamentRun.status === 'between_rounds') {
+    if (isArcadeMode() && tournamentRun.status === 'between_rounds') {
         showTournamentLadderScreen('advance');
         return;
     }
+    if (isStoryMode() && storyRun.status === 'between_encounters') {
+        showStoryProgressScreen('advance');
+        return;
+    }
     showCharacterSelect();
+}
+
+function updateCombatantLifecycle(p, opp, frameDt) {
+    if (!p) return;
+
+    if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
+        p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
+        updateHealthBars();
+    }
+
+    if (p.isStunned) {
+        p.stunTimer -= frameDt;
+        if (p.stunTimer <= 0) {
+            p.isStunned = false;
+            p.guardHealth = 100;
+            reconcileGroundedState(p, 'stun-recovery');
+            p.fadeTo('idle', 0.2);
+        }
+    }
+
+    if (p.isJumping) {
+        p.velocityY -= 20.0 * frameDt;
+        p.mesh.position.y += p.velocityY * frameDt;
+
+        if (p.velocityY < 0 && p.currentState !== 'jumpDown' && !p.isAttacking && !p.isHit && !p.isStunned) {
+            p.fadeTo('jumpDown', 0.2);
+        }
+
+        if (p.mesh.position.y <= GROUND_Y) {
+            sanitizeGroundedState(p);
+            if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
+            spawnParticles(p.mesh.position, 'landing');
+        }
+    }
+
+    if (!p.isAttacking && !p.isHit && !p.isDead && p.comboTimer > 0) {
+        p.comboTimer = Math.max(0, p.comboTimer - frameDt);
+        if (p.comboTimer === 0) {
+            resetCombo(p);
+        }
+    }
+
+    if (p.isAttacking) {
+        p.actionTimer += frameDt;
+        const clipDur = getClipDuration(p, p.currentAttack ? p.currentAttack.animation : p.currentState);
+        const animPercent = p.actionTimer / clipDur;
+
+        applyAttackTravel(p, opp, animPercent);
+        if (opp) checkHits(p, opp);
+
+        if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder && animPercent >= p.currentAttack.chainAt) {
+            startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
+            return;
+        }
+
+        if (p.actionTimer >= clipDur) {
+            if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder) {
+                startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
+                return;
+            }
+
+            const finishedAttack = p.currentAttack;
+            p.isAttacking = false;
+            p.actionTimer = 0;
+            p.currentAttack = null;
+            p.queuedAttackType = null;
+            p.attackTravel = 0;
+
+            if (finishedAttack && finishedAttack.comboEnder) {
+                resetCombo(p);
+            } else {
+                p.comboTimer = COMBO_RESET_DELAY;
+            }
+
+            if (!p.isJumping) p.fadeTo('idle', 0.2);
+        }
+    }
+
+    if (p.isHit) {
+        p.actionTimer += frameDt;
+
+        let clipDur = 0.5;
+        const reactionKey = p.currentState;
+        if (!isFallbackMode && p.actions[reactionKey]) {
+            clipDur = p.actions[reactionKey].getClip().duration;
+        }
+        const reactionProgress = p.actionTimer / clipDur;
+        applyReactionTravel(p, reactionProgress);
+        if (p.actionTimer >= clipDur) {
+            if (p.currentState === 'knockdown') {
+                sanitizeGroundedState(p, { preserveHitState: true });
+                p.fadeTo('getUp', GET_UP_FADE_DURATION);
+                p.actionTimer = 0;
+                p.reactionTravel = 0;
+                p.reactionDistance = 0;
+                p.reactionDirection = 0;
+            } else if (p.currentState === 'getUp') {
+                p.isHit = false;
+                p.actionTimer = 0;
+                p.reactionTravel = 0;
+                p.reactionDistance = 0;
+                p.reactionDirection = 0;
+                sanitizeGroundedState(p);
+                p.fadeTo('idle', 0.16);
+            } else {
+                p.isHit = false;
+                p.actionTimer = 0;
+                p.reactionTravel = 0;
+                p.reactionDistance = 0;
+                p.reactionDirection = 0;
+                sanitizeGroundedState(p);
+                if (!p.isJumping) p.fadeTo('idle', 0.2);
+            }
+        }
+    }
+}
+
+function updateHumanControl(player, controlBindings, opponent, frameDt) {
+    if (!player) return;
+    const { left, right, up, down } = controlBindings;
+
+    player.velocity = 0;
+    player.isBlocking = false;
+
+    if (!player.isAttacking && !player.isHit && !player.isDead && !player.isStunned) {
+        const currentUpPressed = keys[up];
+        const upLatchKey = up === 'KeyW' ? 'wWasPressed' : 'upWasPressed';
+        if (currentUpPressed && !player[upLatchKey] && player.jumps < 2) {
+            player.isJumping = true;
+            player.velocityY = up === 'KeyW' ? 5.0 : 4.0;
+            player.jumps++;
+            if (player.jumps > 1) {
+                player.fadeTo('doubleJump', 0.1);
+                spawnParticles(player.mesh.position, 'dash');
+                AudioSynth.playSwing();
+            } else {
+                player.fadeTo('jumpUp', 0.1);
+            }
+        }
+        player[upLatchKey] = currentUpPressed;
+
+        if (keys[down] && !player.isJumping && !player.isDashing) {
+            player.isBlocking = true;
+            resetCombo(player);
+            player.fadeTo('block', 0.1);
+        } else if (!player.isDashing) {
+            if (keys[left]) player.velocity = -2.5;
+            if (keys[right]) player.velocity = 2.5;
+
+            if (!player.isJumping) {
+                if (player.velocity !== 0) {
+                    player.fadeTo(getLocomotionAnimation(player, opponent), 0.12);
+                } else {
+                    player.fadeTo('idle', 0.15);
+                }
+            }
+        }
+    }
+
+    if (player.isDashing) {
+        player.velocity = player.dashDir * 8.0;
+        player.dashTimer -= frameDt;
+        if (player.dashTimer <= 0) player.isDashing = false;
+    }
+}
+
+function updateStoryEnemyControl(frameDt) {
+    if (!storyEnemy) return;
+
+    if (storyEnemy.pendingRemoteBuffer) {
+        attackInputBuffer[storyEnemy.id] = storyEnemy.pendingRemoteBuffer;
+        storyEnemy.pendingRemoteBuffer = null;
+    }
+
+    storyEnemy.velocity = 0;
+    storyEnemy.isBlocking = false;
+    const target = resolveStoryEnemyTarget();
+    if (!target) return;
+
+    if ((isStoryCoopMode() && isHost) || gameMode === MODE.STORY_SOLO) {
+        if (!storyEnemy.isAttacking && !storyEnemy.isHit && !storyEnemy.isDead && !storyEnemy.isStunned) {
+            if (performance.now() > storyEnemy.aiNextActionTime && !storyEnemy.isJumping && !storyEnemy.isDashing) {
+                const dist = Math.abs(storyEnemy.mesh.position.x - target.mesh.position.x);
+                let nextState = 'idle';
+                let nextDelay = 500;
+                let buffer = null;
+
+                if (dist > 2.2) {
+                    nextState = 'forward';
+                    nextDelay = 320 + Math.random() * 300;
+                } else if (dist < 1.0) {
+                    nextState = 'backward';
+                    nextDelay = 260 + Math.random() * 220;
+                } else if (Math.random() < 0.8) {
+                    buffer = Math.random() < 0.5 ? 'punch' : 'kick';
+                    nextState = 'idle';
+                    nextDelay = 540 + Math.random() * 480;
+                } else {
+                    nextState = 'block';
+                    nextDelay = 420 + Math.random() * 260;
+                }
+
+                storyEnemy.aiState = nextState;
+                storyEnemy.aiTargetPlayerId = target.id;
+                storyEnemy.aiNextActionTime = performance.now() + nextDelay;
+                if (buffer) {
+                    attackInputBuffer[storyEnemy.id] = buffer;
+                }
+                broadcastStoryEnemyState(nextState, target.id, nextDelay, buffer);
+            }
+        }
+    }
+
+    if (storyEnemy.aiState === 'block') {
+        storyEnemy.isBlocking = true;
+        resetCombo(storyEnemy);
+        storyEnemy.fadeTo('block', 0.1);
+    } else if (storyEnemy.aiState === 'forward') {
+        storyEnemy.velocity = storyEnemy.direction * 2.4;
+    } else if (storyEnemy.aiState === 'backward') {
+        storyEnemy.velocity = storyEnemy.direction * -2.0;
+    }
+
+    if (!storyEnemy.isBlocking && !storyEnemy.isJumping && storyEnemy.velocity !== 0) {
+        storyEnemy.fadeTo(getLocomotionAnimation(storyEnemy, target), 0.12);
+    } else if (!storyEnemy.isBlocking && !storyEnemy.isJumping && !storyEnemy.isAttacking && !storyEnemy.isHit) {
+        storyEnemy.fadeTo('idle', 0.15);
+    }
+
+    if (storyEnemy.isDashing) {
+        storyEnemy.velocity = storyEnemy.dashDir * 8.0;
+        storyEnemy.dashTimer -= frameDt;
+        if (storyEnemy.dashTimer <= 0) storyEnemy.isDashing = false;
+    }
+}
+
+function updateStoryModeFrame(frameDt) {
+    const enemy = storyEnemy;
+    const hero1 = players[0];
+    const hero2 = players[1];
+
+    updateHumanControl(hero1, touchMovementBindings[1], enemy, frameDt);
+    if (hero2) updateHumanControl(hero2, touchMovementBindings[2], enemy, frameDt);
+    updateStoryEnemyControl(frameDt);
+
+    processBufferedAttack(hero1);
+    if (hero2) processBufferedAttack(hero2);
+    if (enemy) processBufferedAttack(enemy);
+
+    [hero1, hero2, enemy].filter(Boolean).forEach((actor) => {
+        actor.mesh.position.x = Math.max(-9.5, Math.min(9.5, actor.mesh.position.x + actor.velocity * frameDt));
+    });
+
+    const targetForEnemy = resolveStoryEnemyTarget();
+    [hero1, hero2].filter(Boolean).forEach((hero) => {
+        if (!enemy) return;
+        const shouldFaceRight = hero.mesh.position.x < enemy.mesh.position.x;
+        hero.mesh.rotation.y = THREE.MathUtils.lerp(hero.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
+        hero.direction = shouldFaceRight ? 1 : -1;
+    });
+
+    if (enemy && targetForEnemy) {
+        const shouldFaceRight = enemy.mesh.position.x < targetForEnemy.mesh.position.x;
+        enemy.mesh.rotation.y = THREE.MathUtils.lerp(enemy.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
+        enemy.direction = shouldFaceRight ? 1 : -1;
+    }
+
+    updateCombatantLifecycle(hero1, enemy, frameDt);
+    if (hero2) updateCombatantLifecycle(hero2, enemy, frameDt);
+    if (enemy) updateCombatantLifecycle(enemy, targetForEnemy, frameDt);
 }
 
 // --- 14. TICK RUNTIME ENGINE LOOP ---
@@ -3578,7 +4435,13 @@ function animate() {
         updateIntroMotion(player, frameDt);
     });
 
-    if (gameActive && players.length === 2) {
+    if (storyEnemy) {
+        updateIntroMotion(storyEnemy, frameDt);
+    }
+
+    if (gameActive && isStoryMode()) {
+        updateStoryModeFrame(frameDt);
+    } else if (gameActive && players.length === 2) {
         const p1 = players[0];
         const p2 = players[1];
 
@@ -3633,7 +4496,7 @@ function animate() {
         p2.velocity = 0;
         p2.isBlocking = false;
         if (!p2.isAttacking && !p2.isHit && !p2.isDead && !p2.isStunned) {
-            if (gameMode === 'single') {
+            if (isArcadeMode()) {
                 // Primitive AI
                 if (performance.now() > aiNextActionTime && !p2.isJumping && !p2.isDashing) {
                     const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
@@ -3868,6 +4731,16 @@ function animate() {
             }
         }
     });
+    if (storyEnemy) {
+        if (storyEnemy.mixer) storyEnemy.mixer.update(frameDt);
+        if (storyEnemy.mesh) {
+            if (!storyEnemy.isJumping || storyEnemy.isHit || storyEnemy.currentState === 'knockdown' || storyEnemy.currentState === 'getUp' || storyEnemy.isDead) {
+                reconcileGroundedState(storyEnemy, 'post-mixer');
+            } else if (storyEnemy.mesh.position.y < GROUND_Y) {
+                reconcileGroundedState(storyEnemy, 'below-ground');
+            }
+        }
+    }
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
         if (fighter.mesh && fighter.mesh.position.y < GROUND_Y) fighter.mesh.position.y = GROUND_Y;
@@ -3896,6 +4769,8 @@ window.addEventListener('resize', () => {
 
 animate();
 
+window.openStoryMenu = openStoryMenu;
+window.closeStoryMenu = closeStoryMenu;
 window.openLobby = openLobby;
 window.closeLobby = closeLobby;
 window.hostGame = hostGame;

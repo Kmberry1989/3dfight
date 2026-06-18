@@ -1293,6 +1293,7 @@ body.touch-landscape #instructions {
 
 /* --- NEW MENUS --- */
 #main-menu,
+#story-menu,
 #lobby-screen,
 #options-menu,
 #pause-screen {
@@ -1322,6 +1323,13 @@ body.touch-landscape #instructions {
     letter-spacing: 3px;
     color: var(--neon-blue);
     text-shadow: 0 0 10px var(--neon-blue);
+}
+
+.menu-copy {
+    margin: -8px 0 10px 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.72);
 }
 
 .menu-btn {
