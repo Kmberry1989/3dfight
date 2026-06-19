@@ -2370,6 +2370,35 @@ function stripRootMotionFromClip(clip, referenceRootY = 0) {
     });
 }
 
+function retargetClipForModel(clip, model) {
+    if (!clip || !model) return clip;
+
+    const availableNodes = new Set();
+    model.traverse((child) => {
+        if (child.name) availableNodes.add(child.name);
+    });
+
+    const retargetedTracks = [];
+    clip.tracks.forEach((track) => {
+        const [rawNodeName, propertyPath = ''] = track.name.split('.');
+        if (!rawNodeName) return;
+
+        let nodeName = rawNodeName;
+        if (!availableNodes.has(nodeName)) {
+            nodeName = nodeName.replace(/^mixamorig(?=[A-Z])/, 'mixamorig:');
+        }
+        if (!availableNodes.has(nodeName)) return;
+
+        const clonedTrack = track.clone();
+        clonedTrack.name = propertyPath ? `${nodeName}.${propertyPath}` : nodeName;
+        retargetedTracks.push(clonedTrack);
+    });
+
+    const nextClip = clip.clone();
+    nextClip.tracks = retargetedTracks;
+    return nextClip;
+}
+
 function groundFighter(player) {
     if (!player || !player.mesh) return;
     player.mesh.position.y = GROUND_Y;
@@ -2616,7 +2645,7 @@ function createPlayerMesh(charId, isPlayer1, options = {}) {
             const clip = loadedAnims[clipKey];
             if (!clip) return;
 
-            const clonedClip = clip.clone();
+            const clonedClip = retargetClipForModel(clip, model);
             clonedClip.name = actionName;
             let referenceRootY = 0;
             clonedClip.tracks.forEach((track) => {
