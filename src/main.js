@@ -2595,6 +2595,12 @@ function createPlayerMesh(charId, isPlayer1, options = {}) {
         const originalModel = loadedModels[charId];
         const model = cloneSkinnedMesh(originalModel);
 
+        // FBX2glTF exports these fighter rigs laying along +Z. Rotate once into
+        // the engine's Y-up combat space before sizing or grounding them.
+        if ((profile?.path || '').endsWith('.glb')) {
+            model.rotation.x = -Math.PI / 2;
+        }
+
         model.traverse(child => {
             if (child.isMesh) {
                 child.visible = true;
