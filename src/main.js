@@ -4,6 +4,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import Peer from 'peerjs';
 
 // --- 1. SAMPLE-BASED AUDIO ---
@@ -2099,38 +2100,7 @@ function getFighterProfile(fighterId, options = {}) {
 }
 
 function cloneSkinnedMesh(source) {
-    function parallelTraverse(a, b, callback) {
-        callback(a, b);
-        for (let i = 0; i < a.children.length; i++) {
-            parallelTraverse(a.children[i], b.children[i], callback);
-        }
-    }
-
-    const sourceLookup = new Map();
-    const cloneLookup = new Map();
-    const clone = source.clone();
-
-    parallelTraverse(source, clone, function (sourceNode, clonedNode) {
-        sourceLookup.set(clonedNode, sourceNode);
-        cloneLookup.set(sourceNode, clonedNode);
-    });
-
-    clone.traverse(function (node) {
-        if (!node.isSkinnedMesh) return;
-        const clonedMesh = node;
-        const sourceMesh = sourceLookup.get(node);
-        const sourceBones = sourceMesh.skeleton.bones;
-
-        clonedMesh.skeleton = sourceMesh.skeleton.clone();
-        clonedMesh.bindMatrix.copy(sourceMesh.bindMatrix);
-        clonedMesh.skeleton.bones = sourceBones.map(function (bone) {
-            return cloneLookup.get(bone);
-        });
-
-        clonedMesh.bind(clonedMesh.skeleton, clonedMesh.bindMatrix);
-    });
-
-    return clone;
+    return cloneSkeleton(source);
 }
 
 let players = [];
@@ -2383,14 +2353,18 @@ function stripRootMotionFromClip(clip, referenceRootY = 0) {
         if (!isVectorPositionTrack || !track.values || track.values.length < 3) return;
 
         const nodeName = track.name.split('.')[0] || '';
-        const isRootNode = /(^|:)(hips|root|pelvis)$/i.test(nodeName) || /mixamorig:hips/i.test(nodeName);
+        const isRootNode =
+            /(^|:)(hips|root|pelvis|armature)$/i.test(nodeName) ||
+            /mixamorig:hips/i.test(nodeName) ||
+            /(^|\/)(rootnode|armature)$/i.test(nodeName);
         if (!isRootNode) return;
 
         const baseX = track.values[0];
+        const baseY = track.values[1];
         const baseZ = track.values[2];
         for (let i = 0; i < track.values.length; i += 3) {
             track.values[i] = baseX;
-            track.values[i + 1] = referenceRootY;
+            track.values[i + 1] = Number.isFinite(referenceRootY) ? referenceRootY : baseY;
             track.values[i + 2] = baseZ;
         }
     });
