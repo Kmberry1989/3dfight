@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "run_dir": "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry",
+  "spritesheet": "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/final/spritesheet.webp",
+  "validation": "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/final/validation.json",
+  "contact_sheet": "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/qa/contact-sheet.png",
+  "review": "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/qa/review.json",
+  "package": "/Users/kyleberry/.codex/pets/byteberry"
+}

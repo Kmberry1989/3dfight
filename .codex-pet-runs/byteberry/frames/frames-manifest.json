@@ -1,0 +1,125 @@
+{
+  "ok": true,
+  "chroma_key": {
+    "hex": "#FF00FF",
+    "rgb": [
+      255,
+      0,
+      255
+    ],
+    "threshold": 96.0
+  },
+  "rows": [
+    {
+      "state": "idle",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/idle/05.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "running-right",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/05.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/06.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-right/07.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "running-left",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/05.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/06.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running-left/07.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "waving",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waving/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waving/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waving/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waving/03.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "jumping",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/jumping/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/jumping/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/jumping/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/jumping/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/jumping/04.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "failed",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/05.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/06.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/failed/07.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "waiting",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/waiting/05.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "running",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/running/05.png"
+      ],
+      "method": "components"
+    },
+    {
+      "state": "review",
+      "frames": [
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/00.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/01.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/02.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/03.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/04.png",
+        "/Users/kyleberry/3dfight/.codex-pet-runs/byteberry/frames/review/05.png"
+      ],
+      "method": "components"
+    }
+  ]
+}
