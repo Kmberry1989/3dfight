@@ -100,7 +100,7 @@ const SHARED_ANIMATIONS = {
 const CHARACTERS = {
     kyle: {
         name: 'Kyle',
-        path: '/characters_glb/kyle.glb',
+        path: '/characters/kyle.fbx',
         color: 0x00f0ff,
         animations: {
             idle: '/animations/kyle/Kyle Idle.fbx',
@@ -112,7 +112,7 @@ const CHARACTERS = {
     },
     jonah: {
         name: 'Jonah',
-        path: '/characters_glb/jonah.glb',
+        path: '/characters/jonah.fbx',
         color: 0xff2e63,
         animations: {
             idle: '/animations/jonah/Jonah Idle.fbx',
@@ -124,7 +124,7 @@ const CHARACTERS = {
     },
     rochelle: {
         name: 'Rochelle',
-        path: '/characters_glb/rochelle.glb',
+        path: '/characters/rochelle.fbx',
         color: 0x00ff87,
         animations: {
             idle: '/animations/rochelle/Rochelle Idle.fbx',
@@ -136,7 +136,7 @@ const CHARACTERS = {
     },
     vickie: {
         name: 'Vickie',
-        path: '/characters_glb/vickie.glb',
+        path: '/characters/vickie.fbx',
         color: 0xff00ff,
         animations: {
             idle: '/animations/vickie/Vickie Idle.fbx',
@@ -148,7 +148,7 @@ const CHARACTERS = {
     },
     donald: {
         name: 'Donald',
-        path: '/characters_glb/donald.glb',
+        path: '/characters/donald.fbx',
         color: 0xffd44d,
         animations: {
             idle: '/animations/donald/Donald Idle.fbx',
@@ -163,7 +163,7 @@ const CHARACTERS = {
     },
     eric: {
         name: 'Eric',
-        path: '/characters_glb/eric.glb',
+        path: '/characters/eric.fbx',
         color: 0xff8c00,
         animations: {
             idle: '/animations/Fighting Idle.fbx',
@@ -175,7 +175,7 @@ const CHARACTERS = {
     },
     kristen: {
         name: 'Kristen',
-        path: '/characters_glb/kristen.glb',
+        path: '/characters/kristen.fbx',
         color: 0x00ffcc,
         animations: {
             idle: '/animations/Bouncing Fight Idle.fbx',
@@ -1071,15 +1071,15 @@ async function loadAssets() {
     // Load all characters
     const charPromises = charKeys.map(key => {
         return new Promise((resolve) => {
-            gltfLoader.load(CHARACTERS[key].path,
-                (gltf) => {
-                    loadedModels[key] = gltf.scene;
+            fbxLoader.load(CHARACTERS[key].path,
+                (fbx) => {
+                    loadedModels[key] = fbx;
                     updateProgress(CHARACTERS[key].name);
                     resolve(true);
                 },
                 undefined,
                 (err) => {
-                    console.warn(`Could not load character GLB: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
+                    console.warn(`Could not load character FBX: ${key}. Path: ${CHARACTERS[key].path}. Falling back...`, err);
                     updateProgress(CHARACTERS[key].name);
                     resolve(false);
                 }
