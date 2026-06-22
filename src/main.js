@@ -939,6 +939,11 @@ const DOUBLE_TAP_WINDOW = 250;
 const lastTaps = { KeyA: 0, KeyD: 0, ArrowLeft: 0, ArrowRight: 0 };
 
 window.addEventListener('keydown', (e) => {
+    if (isZoomShortcut(e)) {
+        e.preventDefault();
+        return;
+    }
+
     if (e.code === 'Escape' && (gameActive || gamePaused)) {
         togglePause();
     }
@@ -999,6 +1004,31 @@ window.addEventListener('keyup', (e) => {
         }
     }
 });
+
+function isZoomShortcut(event) {
+    if (!(event.ctrlKey || event.metaKey)) return false;
+
+    const key = (event.key || '').toLowerCase();
+    return key === '+' || key === '=' || key === '-' || key === '_' || key === '0';
+}
+
+window.addEventListener('wheel', (event) => {
+    if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+    }
+}, { passive: false });
+
+window.addEventListener('gesturestart', (event) => {
+    event.preventDefault();
+}, { passive: false });
+
+window.addEventListener('gesturechange', (event) => {
+    event.preventDefault();
+}, { passive: false });
+
+window.addEventListener('gestureend', (event) => {
+    event.preventDefault();
+}, { passive: false });
 
 let isFallbackMode = false;
 const loadedModels = {};
