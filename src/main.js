@@ -2365,7 +2365,17 @@ function getRandomDeathAction(actor) {
     return available[Math.floor(Math.random() * available.length)];
 }
 
-function stripRootMotionFromClip(clip, referenceRootY = 0) {
+function isRootMotionNode(nodeName = '') {
+    const normalizedName = nodeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalizedName === 'hips' ||
+        normalizedName === 'root' ||
+        normalizedName === 'pelvis' ||
+        normalizedName === 'armature' ||
+        normalizedName === 'mixamorighips' ||
+        /(^|\/)(rootnode|armature)$/i.test(nodeName);
+}
+
+function stripRootMotionFromClip(clip, model, referenceRootY = 0) {
     if (!clip) return;
 
     clip.tracks.forEach((track) => {
@@ -2375,19 +2385,22 @@ function stripRootMotionFromClip(clip, referenceRootY = 0) {
         if (!isVectorPositionTrack || !track.values || track.values.length < 3) return;
 
         const nodeName = track.name.split('.')[0] || '';
-        const isRootNode =
-            /(^|:)(hips|root|pelvis|armature)$/i.test(nodeName) ||
-            /mixamorig:hips/i.test(nodeName) ||
-            /(^|\/)(rootnode|armature)$/i.test(nodeName);
-        if (!isRootNode) return;
+        if (!isRootMotionNode(nodeName)) return;
 
         const baseX = track.values[0];
         const baseY = track.values[1];
         const baseZ = track.values[2];
+        // Mixamo clips store absolute root coordinates from their authoring
+        // skeleton. Apply the target rig's rest pose instead, otherwise a
+        // compact FBX enemy inherits an offset meant for a 50+ unit rig.
+        const targetRoot = model?.getObjectByName(nodeName);
+        const rootX = targetRoot?.position.x ?? baseX;
+        const rootY = targetRoot?.position.y ?? (Number.isFinite(referenceRootY) ? referenceRootY : baseY);
+        const rootZ = targetRoot?.position.z ?? baseZ;
         for (let i = 0; i < track.values.length; i += 3) {
-            track.values[i] = baseX;
-            track.values[i + 1] = Number.isFinite(referenceRootY) ? referenceRootY : baseY;
-            track.values[i + 2] = baseZ;
+            track.values[i] = rootX;
+            track.values[i + 1] = rootY;
+            track.values[i + 2] = rootZ;
         }
     });
 }
@@ -2683,10 +2696,10 @@ function createPlayerMesh(charId, isPlayer1, options = {}) {
                 if (!isVectorPositionTrack || !track.values || track.values.length < 2) return;
 
                 const nodeName = track.name.split('.')[0] || '';
-                const isRootNode = /(^|:)(hips|root|pelvis)$/i.test(nodeName) || /mixamorig:hips/i.test(nodeName);
+                const isRootNode = isRootMotionNode(nodeName);
                 if (isRootNode) referenceRootY = track.values[1];
             });
-            stripRootMotionFromClip(clonedClip, referenceRootY);
+            stripRootMotionFromClip(clonedClip, model, referenceRootY);
 
             const action = mixer.clipAction(clonedClip);
             actions[actionName] = action;
@@ -4486,6 +4499,19 @@ function updateStoryModeFrame(frameDt) {
     });
 
     const targetForEnemy = resolveStoryEnemyTarget();
+    if (enemy && targetForEnemy) {
+        const minimumSpacing = 1.05;
+        const separation = enemy.mesh.position.x - targetForEnemy.mesh.position.x;
+        if (Math.abs(separation) < minimumSpacing) {
+            const side = Math.sign(separation) || (enemy.direction || 1);
+            enemy.mesh.position.x = THREE.MathUtils.clamp(
+                targetForEnemy.mesh.position.x + side * minimumSpacing,
+                -9.5,
+                9.5
+            );
+        }
+    }
+
     [hero1, hero2].filter(Boolean).forEach((hero) => {
         if (!enemy) return;
         const shouldFaceRight = hero.mesh.position.x < enemy.mesh.position.x;
