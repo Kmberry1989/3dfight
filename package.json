@@ -16,6 +16,7 @@
     "url": "git+https://github.com/Kmberry1989/3dfight.git"
   },
   "dependencies": {
+    "archiver": "^8.0.0",
     "peer": "^1.0.2",
     "peerjs": "^1.5.4",
     "three": "^0.170.0",

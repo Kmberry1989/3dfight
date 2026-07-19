@@ -97,6 +97,11 @@ const SHARED_ANIMATIONS = {
     standingIdleToFightIdle: '/animations/Standing Idle To Fight Idle.fbx'
 };
 
+// Keep authored story enemies together. Vite serves `public/` from the site root,
+// so the loader converts this source-folder path to the runtime asset URL below.
+const ENEMY_FOLDER_PATH = "public/characters/story_enemies/";
+const toPublicAssetUrl = (path) => `/${path.replace(/^public\//, '')}`;
+
 const CHARACTERS = {
     kyle: {
         name: 'Kyle',
@@ -191,7 +196,7 @@ const ENEMIES = {
     thug1: {
         id: 'thug1',
         name: 'South Alley Bruiser',
-        path: '/enemies/thug1.glb',
+        path: `${ENEMY_FOLDER_PATH}Slic.fbx`,
         color: 0xf78b54,
         animationProfileId: 'eric',
         stats: { healthMultiplier: 0.95, damageMultiplier: 0.92, guardMultiplier: 0.95 },
@@ -203,7 +208,7 @@ const ENEMIES = {
     thug2: {
         id: 'thug2',
         name: 'Parking Lot Enforcer',
-        path: '/enemies/thug2.glb',
+        path: `${ENEMY_FOLDER_PATH}Chic.fbx`,
         color: 0xffd44d,
         animationProfileId: 'donald',
         stats: { healthMultiplier: 1.05, damageMultiplier: 1.02, guardMultiplier: 1.05 },
@@ -215,7 +220,7 @@ const ENEMIES = {
     thug3: {
         id: 'thug3',
         name: 'Boardwalk Technician',
-        path: '/enemies/thug3.glb',
+        path: `${ENEMY_FOLDER_PATH}Rick.fbx`,
         color: 0x64d6ff,
         animationProfileId: 'jonah',
         stats: { healthMultiplier: 1.08, damageMultiplier: 1.08, guardMultiplier: 1.1 },
@@ -227,7 +232,7 @@ const ENEMIES = {
     thug4: {
         id: 'thug4',
         name: 'Carousel Boss',
-        path: '/enemies/thug4.glb',
+        path: `${ENEMY_FOLDER_PATH}Bric.fbx`,
         color: 0xff4666,
         animationProfileId: 'donald',
         stats: { healthMultiplier: 1.25, damageMultiplier: 1.18, guardMultiplier: 1.2 },
@@ -1117,23 +1122,7 @@ async function loadAssets() {
         });
     });
 
-    const enemyPromises = enemyKeys.map(key => {
-        return new Promise((resolve) => {
-            gltfLoader.load(ENEMIES[key].path,
-                (gltf) => {
-                    loadedModels[key] = gltf.scene;
-                    updateProgress(ENEMIES[key].name);
-                    resolve(true);
-                },
-                undefined,
-                (err) => {
-                    console.warn(`Could not load enemy GLB: ${key}. Path: ${ENEMIES[key].path}. Falling back...`, err);
-                    updateProgress(ENEMIES[key].name);
-                    resolve(false);
-                }
-            );
-        });
-    });
+    const enemyPromises = storyEnemyManager.preload(ENEMIES, updateProgress);
 
     // Load the carousel stage environment (scene.glb)
     const stagePromise = new Promise((resolve) => {
@@ -2136,6 +2125,7 @@ function cloneSkinnedMesh(source) {
 let players = [];
 let previewFighters = [];
 let storyEnemy = null;
+const activeEnemies = [];
 const scheduledEvents = [];
 const cameraDirector = {
     mode: 'select',
@@ -2329,8 +2319,10 @@ function removeFighterList(list) {
 }
 
 function removeStoryEnemy() {
-    if (!storyEnemy) return;
-    if (storyEnemy.mesh) scene.remove(storyEnemy.mesh);
+    // A defeated enemy has already left activeEnemies, but its mesh stays for
+    // the victory beat. Remove that retained scene object before the next wave.
+    if (storyEnemy?.mesh) scene.remove(storyEnemy.mesh);
+    storyEnemyManager.clear();
     storyEnemy = null;
 }
 
@@ -2833,6 +2825,83 @@ function spawnFighter(charId, startX, isPlayer1, options = {}) {
 
     return player;
 }
+
+/**
+ * Owns Story Mode's FBX templates and live enemy instances. Each call to spawn
+ * creates a skeleton clone through spawnFighter and a dedicated AnimationMixer.
+ */
+class StoryEnemyManager {
+    preload(enemyDefinitions, onProgress) {
+        const fbxLoader = new FBXLoader();
+        return Object.entries(enemyDefinitions).map(([enemyId, definition]) => new Promise((resolve) => {
+            fbxLoader.load(
+                toPublicAssetUrl(definition.path),
+                (fbx) => {
+                    loadedModels[enemyId] = fbx;
+                    onProgress(definition.name);
+                    resolve(true);
+                },
+                undefined,
+                (error) => {
+                    console.warn(`Could not load story enemy FBX: ${enemyId}. Path: ${definition.path}.`, error);
+                    onProgress(definition.name);
+                    resolve(false);
+                }
+            );
+        }));
+    }
+
+    spawn(enemyId, startX, options = {}) {
+        const profile = ENEMIES[enemyId];
+        const enemy = spawnFighter(enemyId, startX, false, {
+            id: 99,
+            profile,
+            animationProfileId: profile.animationProfileId,
+            displayName: profile.name,
+            team: 'enemy',
+            role: 'enemy',
+            isBoss: enemyId === 'thug4',
+            ...options
+        });
+
+        activeEnemies.push(enemy);
+        return enemy;
+    }
+
+    remove(enemy, { removeMesh = false } = {}) {
+        const index = activeEnemies.indexOf(enemy);
+        if (index !== -1) activeEnemies.splice(index, 1);
+        if (removeMesh && enemy?.mesh) scene.remove(enemy.mesh);
+    }
+
+    clear() {
+        activeEnemies.splice(0).forEach((enemy) => {
+            if (enemy?.mesh) scene.remove(enemy.mesh);
+        });
+    }
+
+    update(deltaTime) {
+        activeEnemies.slice().forEach((enemy) => {
+            // This also catches scripted or networked HP changes that did not
+            // originate in the local hit check.
+            if (enemy.health <= 0) {
+                this.remove(enemy);
+                if (!enemy.isDead) triggerDeath(enemy);
+                return;
+            }
+
+            enemy.mixer?.update(deltaTime);
+            if (!enemy.mesh) return;
+            if (!enemy.isJumping || enemy.isHit || enemy.currentState === 'knockdown' || enemy.currentState === 'getUp') {
+                reconcileGroundedState(enemy, 'story-enemy-mixer');
+            } else if (enemy.mesh.position.y < GROUND_Y) {
+                reconcileGroundedState(enemy, 'story-enemy-below-ground');
+            }
+        });
+    }
+}
+
+const storyEnemyManager = new StoryEnemyManager();
 
 // --- 9. DYNAMIC CONTROL SYSTEM ---
 const keys = {};
@@ -3385,6 +3454,9 @@ function triggerDeath(player) {
     player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
     if (isStoryMode()) {
         if (player.role === 'enemy') {
+            // Remove defeated enemies from the active update set immediately.
+            // Keep the mesh in-scene for the short death/victory presentation.
+            storyEnemyManager.remove(player);
             endRound('heroes');
         } else if (getLivingHeroes().length === 0) {
             endRound('enemy');
@@ -3827,7 +3899,6 @@ function getStoryProgressPayload(status = storyRun.status) {
 
 function spawnStoryEncounter() {
     const enemyId = getCurrentStoryEnemyId();
-    const enemyProfile = ENEMIES[enemyId];
     const isCoop = isStoryCoopMode();
 
     const hero1 = spawnFighter(selections[1], isCoop ? -5.0 : -3.4, true, {
@@ -3847,15 +3918,7 @@ function spawnStoryEncounter() {
         players.push(hero2);
     }
 
-    storyEnemy = spawnFighter(enemyId, 3.8, false, {
-        id: 99,
-        profile: enemyProfile,
-        animationProfileId: enemyProfile.animationProfileId,
-        displayName: enemyProfile.name,
-        team: 'enemy',
-        role: 'enemy',
-        isBoss: enemyId === 'thug4'
-    });
+    storyEnemy = storyEnemyManager.spawn(enemyId, 3.8);
     storyEnemy.aiState = 'idle';
     storyEnemy.aiTargetPlayerId = 1;
     storyEnemy.aiNextActionTime = 0;
@@ -4770,16 +4833,7 @@ function animate() {
             }
         }
     });
-    if (storyEnemy) {
-        if (storyEnemy.mixer) storyEnemy.mixer.update(frameDt);
-        if (storyEnemy.mesh) {
-            if (!storyEnemy.isJumping || storyEnemy.isHit || storyEnemy.currentState === 'knockdown' || storyEnemy.currentState === 'getUp' || storyEnemy.isDead) {
-                reconcileGroundedState(storyEnemy, 'post-mixer');
-            } else if (storyEnemy.mesh.position.y < GROUND_Y) {
-                reconcileGroundedState(storyEnemy, 'below-ground');
-            }
-        }
-    }
+    storyEnemyManager.update(frameDt);
     previewFighters.forEach((fighter) => {
         if (fighter.mixer) fighter.mixer.update(frameDt);
         if (fighter.mesh && fighter.mesh.position.y < GROUND_Y) fighter.mesh.position.y = GROUND_Y;
@@ -4820,3 +4874,18 @@ window.updateAudioOptions = updateAudioOptions;
 window.selectCharacter = selectCharacter;
 window.quitToMainMenu = quitToMainMenu;
 window.togglePause = togglePause;
+window.render_game_to_text = () => JSON.stringify({
+    mode: gameMode,
+    active: gameActive,
+    story: isStoryMode() ? {
+        chapter: storyRun.chapterIndex + 1,
+        wave: storyRun.encounterIndex + 1,
+        status: storyRun.status
+    } : null,
+    heroes: players.map((hero) => ({ id: hero.id, health: Math.max(0, Math.round(hero.health)) })),
+    activeEnemies: activeEnemies.map((enemy) => ({
+        id: enemy.charId,
+        health: Math.max(0, Math.round(enemy.health)),
+        position: Number(enemy.mesh?.position.x.toFixed(2) || 0)
+    }))
+});
