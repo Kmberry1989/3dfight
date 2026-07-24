@@ -801,6 +801,11 @@ canvas {
     background-image: url('/touch%20controls%20ui/uibuttonspecial-pressed.svg');
 }
 
+.touch-icon-throw {
+    background-image: url('/touch%20controls%20ui/uibuttonpunch-.svg');
+    filter: hue-rotate(285deg) saturate(1.4);
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -1443,6 +1448,26 @@ body.touch-landscape #instructions {
     background: #ffffff;
     transition: width 0.15s ease-out, background-color 0.2s;
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+}
+
+.meter-bar-outer {
+    width: 80%;
+    height: 5px;
+    margin-top: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(115, 229, 255, .55);
+    border-radius: 4px;
+    background: rgba(0, 18, 35, .8);
+}
+
+.p2-hud .meter-bar-outer { margin-left: auto; }
+
+.meter-bar-inner {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #12b8ff, #effcff);
+    box-shadow: 0 0 8px #39d6ff;
+    transition: width .12s linear;
 }
 
 /* --- MOBILE/TOUCH DEVICE VIEWPORT SCALING --- */

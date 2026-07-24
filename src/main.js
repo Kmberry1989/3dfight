@@ -6,6 +6,9 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import Peer from 'peerjs';
+import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
+import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
+import { getMove } from './combat/frameData.js';
 
 // --- 1. SAMPLE-BASED AUDIO ---
 const AudioSynth = {
@@ -71,6 +74,7 @@ const SHARED_ANIMATIONS = {
     specialLight: '/animations/Spin Flip Kick.fbx',
     specialMedium: '/animations/Leg Sweep.fbx',
     specialHeavy: '/animations/Big Body Blow.fbx',
+    grabSlam: '/animations/Grab And Slam.fbx',
     block: '/animations/Blocking.fbx',
     hitHighLight: '/animations/Reaction highlight.fbx',
     hitHighMedium: '/animations/Reaction highmedium.fbx',
@@ -292,6 +296,7 @@ const KNOCKDOWN_REACTION_DISTANCE = 2.35;
 const HIT_FADE_DURATION = 0.08;
 const KNOCKDOWN_FADE_DURATION = 0.12;
 const GET_UP_FADE_DURATION = 0.14;
+let showCombatHitboxes = false;
 
 const ATTACKS = {
     punch: {
@@ -745,11 +750,25 @@ function injectGuardBars() {
         p1Hud.appendChild(guardContainer1);
     }
 
+    if (p1Hud && !document.getElementById('p1-meter-bar')) {
+        const meterContainer1 = document.createElement('div');
+        meterContainer1.className = 'meter-bar-outer';
+        meterContainer1.innerHTML = '<div id="p1-meter-bar" class="meter-bar-inner"></div>';
+        p1Hud.appendChild(meterContainer1);
+    }
+
     if (p2Hud && !document.getElementById('p2-guard-bar')) {
         const guardContainer2 = document.createElement('div');
         guardContainer2.className = 'guard-bar-outer';
         guardContainer2.innerHTML = '<div id="p2-guard-bar" class="guard-bar-inner"></div>';
         p2Hud.appendChild(guardContainer2);
+    }
+
+    if (p2Hud && !document.getElementById('p2-meter-bar')) {
+        const meterContainer2 = document.createElement('div');
+        meterContainer2.className = 'meter-bar-outer';
+        meterContainer2.innerHTML = '<div id="p2-meter-bar" class="meter-bar-inner"></div>';
+        p2Hud.appendChild(meterContainer2);
     }
 }
 
@@ -955,6 +974,12 @@ window.addEventListener('keydown', (e) => {
 
     if (e.code) keys[e.code] = true;
 
+    if (!e.repeat && e.code === 'KeyH') {
+        showCombatHitboxes = !showCombatHitboxes;
+        [...players, ...activeEnemies].forEach((fighter) => !showCombatHitboxes && hideCombatHelpers(fighter));
+        return;
+    }
+
     // --- DOUBLE-TAP DASH LOGIC ---
     if (!e.repeat && gameActive) {
         const now = performance.now();
@@ -962,9 +987,14 @@ window.addEventListener('keydown', (e) => {
             if (now - lastTaps[e.code] < DOUBLE_TAP_WINDOW) {
                 const player = (e.code === 'KeyA' || e.code === 'KeyD') ? players[0] : players[1];
                 if (player && !player.isAttacking && !player.isHit && !player.isDead && !player.isStunned && !player.isJumping && !player.isDashing) {
-                    player.isDashing = true;
                     player.dashDir = (e.code === 'KeyA' || e.code === 'ArrowLeft') ? -1 : 1;
-                    player.dashTimer = 0.25;
+                    if (player.combat) {
+                        changeCombatState(player, FIGHTER_STATE.DASH);
+                        player.combat.dashIFrames = player.dashDir !== player.direction ? 6 : 0;
+                    } else {
+                        player.isDashing = true;
+                        player.dashTimer = 0.25;
+                    }
                     const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
                     player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
                     spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
@@ -979,15 +1009,17 @@ window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
         if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
         if (e.code === 'KeyC') { bufferAttackInput(1, 'special'); bufferHit = 'special'; }
+        if (e.code === 'KeyE') { bufferAttackInput(1, 'throw'); bufferHit = 'throw'; }
         if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
         if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
         if (e.code === 'KeyI') { bufferAttackInput(2, 'special'); bufferHit = 'special'; }
+        if (e.code === 'KeyU') { bufferAttackInput(2, 'throw'); bufferHit = 'throw'; }
     }
 
     if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
             sendNetworkInput('keydown', e.code, bufferHit);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
             sendNetworkInput('keydown', e.code, bufferHit);
         }
     }
@@ -1002,9 +1034,9 @@ window.addEventListener('keyup', (e) => {
     if (e.code) keys[e.code] = false;
 
     if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC')) {
+        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
             sendNetworkInput('keyup', e.code);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI')) {
+        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
             sendNetworkInput('keyup', e.code);
         }
     }
@@ -1907,6 +1939,18 @@ scene.add(leftWall, rightWall);
 
 // --- 6. COMIC PARTICLE EFFECTS FACTORY ---
 const particles = [];
+const hitRings = [];
+
+function spawnHitRing(position, damage) {
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(.06, .095, 20),
+        new THREE.MeshBasicMaterial({ color: damage >= 11 ? 0xff4aa8 : 0xffdf45, transparent: true, opacity: .95, side: THREE.DoubleSide })
+    );
+    ring.position.copy(position);
+    ring.lookAt(camera.position);
+    scene.add(ring);
+    hitRings.push({ mesh: ring, life: .1, maxLife: .1 });
+}
 
 /**
  * Spawn comic-style hit particles.
@@ -2109,6 +2153,19 @@ function updateParticles(dt) {
             p.mesh.geometry.dispose();
             p.mesh.material.dispose();
             particles.splice(i, 1);
+        }
+    }
+    for (let index = hitRings.length - 1; index >= 0; index--) {
+        const ring = hitRings[index];
+        ring.life -= dt;
+        const progress = 1 - Math.max(0, ring.life) / ring.maxLife;
+        ring.mesh.scale.setScalar(1 + progress * 8);
+        ring.mesh.material.opacity = Math.max(0, 1 - progress);
+        if (ring.life <= 0) {
+            scene.remove(ring.mesh);
+            ring.mesh.geometry.dispose();
+            ring.mesh.material.dispose();
+            hitRings.splice(index, 1);
         }
     }
 }
@@ -2836,6 +2893,9 @@ function spawnFighter(charId, startX, isPlayer1, options = {}) {
         player.actions.idle.play();
     }
 
+    initializeCombatFighter(player);
+    attachCombatHitboxes(player, scene);
+
     return player;
 }
 
@@ -2925,6 +2985,8 @@ const attackInputBuffer = {
 
 function bufferAttackInput(playerId, attackType) {
     attackInputBuffer[playerId] = attackType;
+    const fighter = [...players, ...activeEnemies].find((actor) => actor?.id === playerId) || (storyEnemy?.id === playerId ? storyEnemy : null);
+    if (fighter?.combat) queueCombatInput(fighter, attackType);
 }
 
 let aiNextActionTime = 0;
@@ -2990,16 +3052,28 @@ function resetCombo(player) {
     player.comboTimer = 0;
     player.queuedAttackType = null;
     player.currentAttack = null;
+    if (player.combat) player.combat.chain = 0;
 }
 
 function getAttackDefinition(type, comboIndex) {
-    const strength = COMBO_SEQUENCE[Math.min(comboIndex, COMBO_SEQUENCE.length - 1)];
-    const attack = ATTACKS[type][strength];
+    const index = type === 'special' || type === 'throw' ? 0 : Math.min(comboIndex, COMBO_SEQUENCE.length - 1);
+    const attack = getMove(type, index);
+    if (!attack) return null;
+    const strength = COMBO_SEQUENCE[Math.min(index, COMBO_SEQUENCE.length - 1)];
     return {
         ...attack,
         type,
         strength,
-        comboIndex: Math.min(comboIndex, COMBO_SEQUENCE.length - 1)
+        comboIndex: index,
+        hitWindow: [attack.startup / (attack.startup + attack.active + attack.recovery), (attack.startup + attack.active) / (attack.startup + attack.active + attack.recovery)],
+        chainAt: (attack.startup + attack.active + Math.floor(attack.recovery * .45)) / (attack.startup + attack.active + attack.recovery),
+        queueWindowStart: attack.startup / (attack.startup + attack.active + attack.recovery),
+        comboEnder: index >= 2 || type === 'special' || type === 'throw',
+        reaction: attack.damage >= 11 ? 'hitMidHeavy' : attack.damage >= 7 ? 'hitMidMedium' : 'hitMidLight',
+        reactionTravel: attack.pushback,
+        blockKnockback: attack.blockPushback,
+        forwardTravel: attack.lunge,
+        minSpacing: .82
     };
 }
 
@@ -3213,6 +3287,8 @@ function updateIntroMotion(player, dt) {
 }
 
 function startAttack(player, attackDef) {
+    if (!attackDef || !startCombatMove(player, attackDef.type)) return false;
+    attackDef = player.combat.move;
     player.isAttacking = true;
     player.hasDealtDamage = false;
     player.actionTimer = 0;
@@ -3220,54 +3296,32 @@ function startAttack(player, attackDef) {
     player.currentAttack = attackDef;
     player.queuedAttackType = null;
     player.comboTimer = 0;
-    player.comboCount = Math.min(attackDef.comboIndex + 1, COMBO_SEQUENCE.length - 1);
+    player.comboCount = Math.min((player.combat.chain || 0) + 1, COMBO_SEQUENCE.length - 1);
     player.attackTravel = 0;
     player.reactionTravel = 0;
     player.reactionDistance = 0;
     player.reactionDirection = 0;
     player.isDashing = false; // Attacking cancels dash
 
-    player.fadeTo(attackDef.animation, attackDef.comboIndex === 0 ? 0.1 : 0.07);
-    AudioSynth.playSwing();
-}
-
-function requestAttack(player, type) {
-    if (player.isHit || player.isDead || player.isStunned) return true;
-    if (player.isBlocking && !player.isAttacking) return true;
-
-    if (player.isJumping || player.mesh.position.y > 0) {
-        if (!player.isAttacking) {
-            startAttack(player, getAttackDefinition('jumpAttack', 0));
-        }
-        return true;
-    }
-
-    if (!player.isAttacking && player.comboTimer <= 0 && player.comboCount !== 0) {
-        resetCombo(player);
-    }
-
-    if (player.isAttacking) {
-        if (!player.currentAttack || player.currentAttack.comboEnder || player.queuedAttackType) return true;
-
-        const animPercent = player.actionTimer / getClipDuration(player, player.currentAttack.animation);
-        if (animPercent < player.currentAttack.queueWindowStart) {
-            return false;
-        }
-
-        player.queuedAttackType = type;
-        return true;
-    }
-
-    startAttack(player, getAttackDefinition(type, player.comboCount));
+    const actionDuration = getClipDuration(player, attackDef.animation);
+    const moveDuration = (attackDef.startup + attackDef.active + attackDef.recovery) / FRAME_RATE;
+    player.fadeTo(attackDef.animation, player.comboCount === 0 ? 0.1 : 0.07, actionDuration / moveDuration);
     return true;
 }
 
-function processBufferedAttack(player) {
-    const bufferedType = attackInputBuffer[player.id];
-    if (!bufferedType) return;
+function requestAttack(player, type) {
+    if (!player?.combat || !canAcceptMove(player, type)) return false;
+    return startAttack(player, getAttackDefinition(type, player.combat.chain));
+}
 
-    if (requestAttack(player, bufferedType)) {
-        attackInputBuffer[player.id] = null;
+function processBufferedAttack(player) {
+    if (!player?.combat) return;
+    player.combat.buffer = player.combat.buffer.filter((entry) => entry.expiresAt >= performance.now());
+    const buffered = player.combat.buffer[0];
+    if (!buffered) return;
+    if (requestAttack(player, buffered.type)) {
+        player.combat.buffer.shift();
+        attackInputBuffer[player.id] = player.combat.buffer[0]?.type || null;
     }
 }
 
@@ -3340,87 +3394,47 @@ function updateComboUI() {
 }
 
 function checkHits(attacker, defender) {
-    if (attacker.hasDealtDamage || !attacker.isAttacking || defender.isDead || !attacker.currentAttack) return;
+    const move = attacker?.combat?.move;
+    if (!move || attacker.combat.state !== FIGHTER_STATE.ACTIVE || defender.isDead || attacker.combat.hitIds.has(defender.id)) return;
+    if (defender.combat?.dashIFrames > 0 || (move.throw && defender.combat?.state === FIGHTER_STATE.ACTIVE)) return;
+    updateCombatHitboxes(attacker, showCombatHitboxes);
+    updateCombatHitboxes(defender, showCombatHitboxes);
+    if (!attackIntersects(attacker, defender)) return;
 
-    const clipDuration = getClipDuration(attacker, attacker.currentAttack.animation);
-    const animPercent = attacker.actionTimer / clipDuration;
-    const [hitStart, hitEnd] = attacker.currentAttack.hitWindow;
-
-    if (animPercent >= hitStart && animPercent <= hitEnd) {
-        const limbPos = getLimbWorldPos(attacker, attacker.attackLimbKeywords);
-        const defenderPos = new THREE.Vector3();
-        defender.mesh.getWorldPosition(defenderPos);
-
-        const dx = Math.abs(limbPos.x - defenderPos.x);
-        const dy = Math.abs(limbPos.y - (defenderPos.y + 1.1));
-
-        const reachX = attacker.currentAttack.reachX || 0.8;
-        const reachY = attacker.currentAttack.reachY || 1.0;
-
-        if (dx < reachX && dy < reachY) {
-            attacker.hasDealtDamage = true;
-
-            if (defender.isBlocking) {
-                // GUARD DAMAGE (STAMINA)
-                const damageToGuard = attacker.currentAttack.damage * (attacker.damageMultiplier || 1) * 4.5; // Scale heavy hits to drain fast
-                defender.guardHealth -= damageToGuard;
-
-                if (defender.guardHealth <= 0) {
-                    // --- GUARD BREAK ACTIVATED ---
-                    defender.isBlocking = false;
-                    defender.isStunned = true;
-                    defender.stunTimer = 2.0; // Stunned for 2 seconds
-                    defender.guardHealth = 0; // Force empty
-
-                    resetCombo(defender);
-                    attackInputBuffer[defender.id] = null;
-                    defender.fadeTo('dizzy', 0.1);
-
-                    hitStopTime = 0.15;
-                    spawnParticles(limbPos, 'guardbreak'); // Shatter explosion
-                    AudioSynth.playHit();
-                    triggerScreenShake(0.5, 0.3);
-
-                    defender.mesh.position.x += attacker.direction * 0.6; // Heavy pushback
-                } else {
-                    // Standard block Mitigated
-                    defender.health = Math.max(0, defender.health - (attacker.currentAttack.blockDamage * (attacker.damageMultiplier || 1)));
-                    hitStopTime = 0.05;
-                    spawnParticles(limbPos, 'guard');
-                    AudioSynth.playBlock();
-                    defender.mesh.position.x += attacker.direction * attacker.currentAttack.blockKnockback;
-                }
-                updateHealthBars();
-            } else {
-                // UNPROTECTED DIRECT HIT
-                defender.health = Math.max(0, defender.health - (attacker.currentAttack.damage * (attacker.damageMultiplier || 1)));
-                updateHealthBars();
-
-                hitStopTime = attacker.currentAttack.strength === 'heavy' ? 0.12 : 0.08;
-                flashFighter(defender);
-
-                globalHitComboCount++;
-                updateComboUI();
-
-                // Comic hit effect — super burst for heavy KOs, regular stars for normal hits
-                const isKO = defender.health <= 0;
-                const isHeavy = attacker.currentAttack.strength === 'heavy';
-                spawnParticles(limbPos, isKO ? 'super' : (isHeavy ? 'super' : 'hit'));
-                AudioSynth.playHit();
-
-                triggerScreenShake(attacker.currentAttack.strength === 'heavy' ? 0.35 : 0.22, 0.25);
-
-                if (defender.health <= 0) {
-                    triggerDeath(defender);
-                    globalTimeScale = 0.25;
-                    slowMoTimer = 0.5;
-                    triggerScreenShake(0.6, 0.4);
-                } else {
-                    triggerHitReaction(defender, attacker.currentAttack, attacker.direction);
-                }
-            }
+    attacker.combat.hitIds.add(defender.id);
+    attacker.combat.whiff = false;
+    const hitPoint = new THREE.Vector3();
+    attacker.combat.hitboxes.attack.getCenter(hitPoint);
+    const blocked = defender.combat?.state === FIGHTER_STATE.BLOCK && !move.throw;
+    const armored = !blocked && defender.combat?.state === FIGHTER_STATE.STARTUP && defender.combat.armor > 0 && !move.throw;
+    const scale = attacker.damageMultiplier || 1;
+    if (blocked) {
+        defender.guardHealth = Math.max(0, defender.guardHealth - move.damage * 4.5 * scale);
+        defender.health = Math.max(0, defender.health - move.blockDamage * scale);
+        attacker.meter = Math.min(100, attacker.meter + Math.max(3, move.meterGain / 2));
+        applyCombatHit(defender, attacker, move, true);
+        spawnParticles(hitPoint, defender.guardHealth <= 0 ? 'guardbreak' : 'guard');
+        AudioSynth.playBlock();
+        if (defender.guardHealth <= 0) { changeCombatState(defender, FIGHTER_STATE.GUARD_BREAK); defender.fadeTo('dizzy', .1); }
+    } else {
+        defender.health = Math.max(0, defender.health - move.damage * scale);
+        defender.meter = Math.min(100, defender.meter + 4);
+        attacker.meter = Math.min(100, attacker.meter + move.meterGain);
+        if (armored) defender.combat.armor--;
+        else {
+            applyCombatHit(defender, attacker, move, false);
+            defender.fadeTo(move.damage >= 11 || move.throw ? 'knockdown' : move.damage >= 7 ? 'hitMidMedium' : 'hitMidLight', move.throw ? .12 : HIT_FADE_DURATION);
         }
+        flashFighter(defender);
+        globalHitComboCount++; updateComboUI();
+        spawnParticles(hitPoint, move.damage >= 11 ? 'super' : 'hit');
+        spawnHitRing(hitPoint, move.damage);
+        AudioSynth.playHit();
     }
+    hitStopTime = move.hitstop / FRAME_RATE;
+    triggerScreenShake(move.damage * .02, .12);
+    updateHealthBars();
+    if (defender.health <= 0) triggerDeath(defender);
 }
 
 function triggerHitReaction(player, attackDef, incomingDirection = 0) {
@@ -3503,6 +3517,8 @@ function updateHealthBars() {
     const p2Bar = document.getElementById('p2-bar');
     const p1Guard = document.getElementById('p1-guard-bar');
     const p2Guard = document.getElementById('p2-guard-bar');
+    const p1Meter = document.getElementById('p1-meter-bar');
+    const p2Meter = document.getElementById('p2-meter-bar');
 
     if (p1Bar && leftActor) {
         const h1 = Math.max(0, Math.min(100, leftActor.health));
@@ -3516,6 +3532,7 @@ function updateHealthBars() {
             p1Guard.style.width = g1 + '%';
             p1Guard.style.backgroundColor = leftActor.isStunned ? '#ff0000' : (g1 < 30 ? '#ff8800' : '#ffffff');
         }
+        if (p1Meter) p1Meter.style.width = `${Math.max(0, Math.min(100, leftActor.meter || 0))}%`;
     }
 
     if (p2Bar && rightActor) {
@@ -3530,6 +3547,7 @@ function updateHealthBars() {
             p2Guard.style.width = g2 + '%';
             p2Guard.style.backgroundColor = rightActor.isStunned ? '#ff0000' : (g2 < 30 ? '#ff8800' : '#ffffff');
         }
+        if (p2Meter) p2Meter.style.width = `${Math.max(0, Math.min(100, rightActor.meter || 0))}%`;
     }
 }
 
@@ -3544,9 +3562,7 @@ function triggerScreenShake(intensity = 0.22, duration = 0.25) {
 
 function updateCameraShake(dt) {
     if (shakeTime > 0) {
-        const dx = (Math.random() - 0.5) * shakeIntensity;
         const dy = (Math.random() - 0.5) * shakeIntensity;
-        camera.position.x += dx;
         camera.position.y += dy;
 
         shakeTime -= dt;
@@ -4247,8 +4263,46 @@ function backToSelect() {
     showCharacterSelect();
 }
 
+function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
+    if (!p?.combat) return;
+    const c = p.combat;
+        updateCombatHitboxes(p, showCombatHitboxes);
+        if (!showCombatHitboxes) hideCombatHelpers(p);
+        c.pushVelocity = THREE.MathUtils.lerp(c.pushVelocity, 0, 0.22);
+        p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.pushVelocity * frameDt, -9.5, 9.5);
+        c.dashIFrames = Math.max(0, c.dashIFrames - 1);
+
+        if (c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN || c.state === FIGHTER_STATE.KNOCKDOWN || c.state === FIGHTER_STATE.GETUP || c.state === FIGHTER_STATE.GUARD_BREAK) {
+            c.stateFrame++;
+            tickStunState(p);
+        } else if (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) {
+            const phase = advanceCombatState(p);
+            const move = c.move;
+            if (phase.startedActive) AudioSynth.playSwing();
+            if (move && (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE)) {
+                // Startup/active commitment: only the authored lunge moves the fighter.
+                const lungeStep = (move.lunge || 0) / Math.max(1, move.startup + move.active);
+                p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + lungeStep * p.direction, -9.5, 9.5);
+            }
+            if (c.state === FIGHTER_STATE.ACTIVE && opp) checkHits(p, opp);
+            if (c.state === FIGHTER_STATE.IDLE) p.fadeTo('idle', .12);
+        } else if (c.state === FIGHTER_STATE.DASH) {
+            c.stateFrame++;
+            p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + p.dashDir * .05, -9.5, 9.5);
+            if (c.stateFrame >= 12) changeCombatState(p, FIGHTER_STATE.IDLE);
+        }
+
+        if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN) processBufferedAttack(p);
+        if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
+}
+
 function updateCombatantLifecycle(p, opp, frameDt) {
     if (!p) return;
+
+    // Fixed-frame combat is advanced once for every simulation tick before
+    // this visual/frame lifecycle runs. Legacy fallback actors keep using the
+    // original animation-duration path below.
+    if (p.combat) return;
 
     if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
         p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
@@ -4409,13 +4463,34 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
         player.dashTimer -= frameDt;
         if (player.dashTimer <= 0) player.isDashing = false;
     }
+    syncCombatIntent(player, keys[down]);
+}
+
+function syncCombatIntent(player, blockHeld = false) {
+    if (!player?.combat) return;
+    const c = player.combat;
+    if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(c.state)) {
+        if (blockHeld && !player.isJumping) {
+            if (c.state !== FIGHTER_STATE.BLOCK) { changeCombatState(player, FIGHTER_STATE.BLOCK); player.fadeTo('block', .08); }
+        } else if (player.velocity !== 0) {
+            if (c.state !== FIGHTER_STATE.WALK) changeCombatState(player, FIGHTER_STATE.WALK);
+            c.motionVelocity = THREE.MathUtils.lerp(c.motionVelocity || 0, player.velocity, .32);
+            player.velocity = c.motionVelocity;
+        } else {
+            c.motionVelocity = THREE.MathUtils.lerp(c.motionVelocity || 0, 0, .28);
+            player.velocity = Math.abs(c.motionVelocity) < .025 ? 0 : c.motionVelocity;
+            if (c.state !== FIGHTER_STATE.IDLE && player.velocity === 0) { changeCombatState(player, FIGHTER_STATE.IDLE); player.fadeTo('idle', .12); }
+        }
+    } else {
+        player.velocity = 0;
+    }
 }
 
 function updateStoryEnemyControl(frameDt) {
     if (!storyEnemy) return;
 
     if (storyEnemy.pendingRemoteBuffer) {
-        attackInputBuffer[storyEnemy.id] = storyEnemy.pendingRemoteBuffer;
+        bufferAttackInput(storyEnemy.id, storyEnemy.pendingRemoteBuffer);
         storyEnemy.pendingRemoteBuffer = null;
     }
 
@@ -4451,7 +4526,7 @@ function updateStoryEnemyControl(frameDt) {
                 storyEnemy.aiTargetPlayerId = target.id;
                 storyEnemy.aiNextActionTime = performance.now() + nextDelay;
                 if (buffer) {
-                    attackInputBuffer[storyEnemy.id] = buffer;
+                    bufferAttackInput(storyEnemy.id, buffer);
                 }
                 broadcastStoryEnemyState(nextState, target.id, nextDelay, buffer);
             }
@@ -4532,6 +4607,23 @@ function updateStoryModeFrame(frameDt) {
 
 // --- 14. TICK RUNTIME ENGINE LOOP ---
 const clock = new THREE.Clock();
+const COMBAT_STEP = 1 / FRAME_RATE;
+let combatAccumulator = 0;
+
+function advanceCombatSimulation(step = COMBAT_STEP) {
+    if (!gameActive) return;
+    if (isStoryMode()) {
+        const enemy = storyEnemy;
+        const heroes = players.filter(Boolean);
+        heroes.forEach((hero) => advanceCombatFighterStep(hero, enemy, step));
+        if (enemy) advanceCombatFighterStep(enemy, resolveStoryEnemyTarget(), step);
+        return;
+    }
+    if (players.length === 2) {
+        advanceCombatFighterStep(players[0], players[1], step);
+        advanceCombatFighterStep(players[1], players[0], step);
+    }
+}
 
 function animate() {
     requestAnimationFrame(animate);
@@ -4556,6 +4648,12 @@ function animate() {
     }
 
     const frameDt = realDt * globalTimeScale;
+
+    combatAccumulator = Math.min(combatAccumulator + frameDt, COMBAT_STEP * 4);
+    while (combatAccumulator >= COMBAT_STEP) {
+        advanceCombatSimulation(COMBAT_STEP);
+        combatAccumulator -= COMBAT_STEP;
+    }
 
     updateParticles(frameDt);
 
@@ -4709,6 +4807,9 @@ function animate() {
             if (p2.dashTimer <= 0) p2.isDashing = false;
         }
 
+        syncCombatIntent(p1, keys['KeyS']);
+        syncCombatIntent(p2, keys['ArrowDown']);
+
         processBufferedAttack(p1);
         processBufferedAttack(p2);
 
@@ -4732,6 +4833,10 @@ function animate() {
         // --- Combat Actions & Physics States ---
         players.forEach(p => {
             const opp = p.id === 1 ? p2 : p1;
+            if (p.combat) {
+                updateCombatantLifecycle(p, opp, frameDt);
+                return;
+            }
 
             // Guard Regen
             if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
@@ -4900,6 +5005,13 @@ window.updateAudioOptions = updateAudioOptions;
 window.selectCharacter = selectCharacter;
 window.quitToMainMenu = quitToMainMenu;
 window.togglePause = togglePause;
+window.advanceTime = (ms) => {
+    const steps = Math.max(1, Math.round(ms / (1000 / FRAME_RATE)));
+    for (let index = 0; index < steps; index++) advanceCombatSimulation(COMBAT_STEP);
+    updateHealthBars();
+    updateCameraDirector();
+    renderer.render(scene, camera);
+};
 window.render_game_to_text = () => JSON.stringify({
     mode: gameMode,
     active: gameActive,
@@ -4908,10 +5020,24 @@ window.render_game_to_text = () => JSON.stringify({
         wave: storyRun.encounterIndex + 1,
         status: storyRun.status
     } : null,
-    heroes: players.map((hero) => ({ id: hero.id, health: Math.max(0, Math.round(hero.health)) })),
+    coordinateSystem: 'x increases right; y increases upward; z is stage depth',
+    heroes: players.map((hero) => ({
+        id: hero.id,
+        health: Math.max(0, Math.round(hero.health)),
+        meter: Math.round(hero.meter || 0),
+        position: Number(hero.mesh?.position.x.toFixed(2) || 0),
+        velocity: Number((hero.velocity || 0).toFixed(2)),
+        state: hero.combat?.state || hero.currentState,
+        frame: hero.combat?.frame || 0,
+        buffered: hero.combat?.buffer.map((entry) => entry.type) || [],
+        hitboxActive: !!hero.combat?.hitboxes?.attack
+    })),
     activeEnemies: activeEnemies.map((enemy) => ({
         id: enemy.charId,
         health: Math.max(0, Math.round(enemy.health)),
-        position: Number(enemy.mesh?.position.x.toFixed(2) || 0)
+        position: Number(enemy.mesh?.position.x.toFixed(2) || 0),
+        state: enemy.combat?.state || enemy.currentState,
+        meter: Math.round(enemy.meter || 0),
+        hitboxActive: !!enemy.combat?.hitboxes?.attack
     }))
 });
