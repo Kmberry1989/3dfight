@@ -6,7 +6,7 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import Peer from 'peerjs';
-import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
+import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, startCombatDash, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
 import { getMove } from './combat/frameData.js';
 
@@ -786,6 +786,7 @@ function showMainMenu() {
 
     setFightEnvironmentVisible(false);
     setSelectEnvironmentVisible(true);
+    updateViewportState();
 }
 
 function openStoryMenu() {
@@ -941,6 +942,7 @@ function togglePause() {
         clearInterval(timerInterval);
         timerInterval = null;
     }
+    updateViewportState();
 }
 
 function quitToMainMenu() {
@@ -986,15 +988,9 @@ window.addEventListener('keydown', (e) => {
         if (['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
             if (now - lastTaps[e.code] < DOUBLE_TAP_WINDOW) {
                 const player = (e.code === 'KeyA' || e.code === 'KeyD') ? players[0] : players[1];
-                if (player && !player.isAttacking && !player.isHit && !player.isDead && !player.isStunned && !player.isJumping && !player.isDashing) {
+                if (player && player.combat && !player.isDead && player.combat.state !== FIGHTER_STATE.DASH && !player.isJumping) {
                     player.dashDir = (e.code === 'KeyA' || e.code === 'ArrowLeft') ? -1 : 1;
-                    if (player.combat) {
-                        changeCombatState(player, FIGHTER_STATE.DASH);
-                        player.combat.dashIFrames = player.dashDir !== player.direction ? 6 : 0;
-                    } else {
-                        player.isDashing = true;
-                        player.dashTimer = 0.25;
-                    }
+                    startCombatDash(player, player.dashDir);
                     const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
                     player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
                     spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
@@ -1055,17 +1051,48 @@ window.addEventListener('wheel', (event) => {
     }
 }, { passive: false });
 
-window.addEventListener('gesturestart', (event) => {
-    event.preventDefault();
-}, { passive: false });
+function isGameplayInteractionLocked() {
+    return document.documentElement.classList.contains('gameplay-touch-lock');
+}
 
-window.addEventListener('gesturechange', (event) => {
-    event.preventDefault();
-}, { passive: false });
+const DOUBLE_TAP_ZOOM_WINDOW = 320;
+const DOUBLE_TAP_ZOOM_DISTANCE = 32;
+let lastGameplayTap = null;
 
-window.addEventListener('gestureend', (event) => {
-    event.preventDefault();
-}, { passive: false });
+function preventGameplayGesture(event) {
+    if (isGameplayInteractionLocked()) event.preventDefault();
+}
+
+// Safari's gesture events are non-standard, but remain the most direct way to
+// cancel a pinch on iPhone. Capture the gesture before it reaches the game UI.
+['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => {
+    document.addEventListener(type, preventGameplayGesture, { capture: true, passive: false });
+});
+
+document.addEventListener('touchstart', (event) => {
+    if (!isGameplayInteractionLocked()) return;
+
+    // Do not suppress the second pointer: combat still needs stick + button input.
+    // This only prevents Safari from claiming the native multi-touch gesture.
+    if (event.touches.length > 1) event.preventDefault();
+}, { capture: true, passive: false });
+
+document.addEventListener('touchmove', (event) => {
+    if (isGameplayInteractionLocked()) event.preventDefault();
+}, { capture: true, passive: false });
+
+document.addEventListener('touchend', (event) => {
+    if (!isGameplayInteractionLocked() || event.changedTouches.length !== 1) return;
+
+    const touch = event.changedTouches[0];
+    const now = performance.now();
+    const previous = lastGameplayTap;
+    const isRapidRepeat = previous && now - previous.time < DOUBLE_TAP_ZOOM_WINDOW &&
+        Math.hypot(touch.clientX - previous.x, touch.clientY - previous.y) < DOUBLE_TAP_ZOOM_DISTANCE;
+
+    if (isRapidRepeat) event.preventDefault();
+    lastGameplayTap = { time: now, x: touch.clientX, y: touch.clientY };
+}, { capture: true, passive: false });
 
 let isFallbackMode = false;
 const loadedModels = {};
@@ -2277,8 +2304,13 @@ function updateViewportState() {
     }
 
     const isGameplayActive =
+        gameActive &&
+        !gamePaused &&
         document.getElementById('selector-screen').classList.contains('hidden') &&
         document.getElementById('hud').style.display !== 'none';
+
+    document.documentElement.classList.toggle('gameplay-touch-lock', isGameplayActive);
+    if (!isGameplayActive) lastGameplayTap = null;
 
     const shouldShowTouchControls = isTouchDevice && isGameplayActive;
 
@@ -2350,8 +2382,15 @@ function initTouchControls() {
         button.addEventListener('contextmenu', (event) => event.preventDefault());
     });
 
-    window.addEventListener('resize', updateViewportState);
-    window.addEventListener('orientationchange', updateViewportState);
+    const refreshTouchViewport = () => {
+        resetAllTouchMovementStates();
+        updateViewportState();
+    };
+
+    window.addEventListener('resize', refreshTouchViewport);
+    window.addEventListener('orientationchange', refreshTouchViewport);
+    window.visualViewport?.addEventListener('resize', refreshTouchViewport);
+    window.visualViewport?.addEventListener('scroll', refreshTouchViewport);
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) resetAllTouchMovementStates();
     });
@@ -2502,7 +2541,7 @@ function sanitizeGroundedState(player, { preserveHitState = false } = {}) {
     player.isJumping = false;
     player.jumps = 0;
     groundFighter(player);
-    if (!preserveHitState) {
+    if (!preserveHitState && !player.combat) {
         player.isHit = false;
     }
 }
@@ -2515,7 +2554,10 @@ function reconcileGroundedState(player, reason = '') {
         player.currentState === 'doubleJump'
     );
     if (airborneByJump) return;
-    sanitizeGroundedState(player, { preserveHitState: player.isHit });
+    const preserveHitState = player.combat
+        ? [FIGHTER_STATE.HITSTUN, FIGHTER_STATE.KNOCKDOWN, FIGHTER_STATE.GETUP].includes(player.combat.state)
+        : player.isHit;
+    sanitizeGroundedState(player, { preserveHitState });
 }
 
 function resetTouchMovementState(playerSide) {
@@ -2815,31 +2857,15 @@ function spawnFighter(charId, startX, isPlayer1, options = {}) {
         direction: isPlayer1 ? 1 : -1,
 
         currentState: 'idle',
-        isAttacking: false,
-        isBlocking: false,
-        isHit: false,
         isDead: false,
-        isStunned: false, // NEW: Guard Break State
-        stunTimer: 0,
         isJumping: false, // NEW: Airborne State
         jumps: 0,
         wWasPressed: false,
         upWasPressed: false,
         velocityY: 0,
-        isDashing: false, // NEW: Double-Tap Dash State
-        dashTimer: 0,
         dashDir: 0,
 
-        actionTimer: 0,
         hasDealtDamage: false,
-        comboCount: 0,
-        comboTimer: 0,
-        queuedAttackType: null,
-        currentAttack: null,
-        attackTravel: 0,
-        reactionTravel: 0,
-        reactionDistance: 0,
-        reactionDirection: 0,
         introMotion: null,
         attackLimbKeywords: [],
 
@@ -2978,13 +3004,7 @@ const storyEnemyManager = new StoryEnemyManager();
 
 // --- 9. DYNAMIC CONTROL SYSTEM ---
 const keys = {};
-const attackInputBuffer = {
-    1: null,
-    2: null
-};
-
 function bufferAttackInput(playerId, attackType) {
-    attackInputBuffer[playerId] = attackType;
     const fighter = [...players, ...activeEnemies].find((actor) => actor?.id === playerId) || (storyEnemy?.id === playerId ? storyEnemy : null);
     if (fighter?.combat) queueCombatInput(fighter, attackType);
 }
@@ -3048,10 +3068,6 @@ function resolveStoryEnemyTarget() {
 }
 
 function resetCombo(player) {
-    player.comboCount = 0;
-    player.comboTimer = 0;
-    player.queuedAttackType = null;
-    player.currentAttack = null;
     if (player.combat) player.combat.chain = 0;
 }
 
@@ -3289,23 +3305,12 @@ function updateIntroMotion(player, dt) {
 function startAttack(player, attackDef) {
     if (!attackDef || !startCombatMove(player, attackDef.type)) return false;
     attackDef = player.combat.move;
-    player.isAttacking = true;
     player.hasDealtDamage = false;
-    player.actionTimer = 0;
     player.attackLimbKeywords = attackDef.limbKeywords;
-    player.currentAttack = attackDef;
-    player.queuedAttackType = null;
-    player.comboTimer = 0;
-    player.comboCount = Math.min((player.combat.chain || 0) + 1, COMBO_SEQUENCE.length - 1);
-    player.attackTravel = 0;
-    player.reactionTravel = 0;
-    player.reactionDistance = 0;
-    player.reactionDirection = 0;
-    player.isDashing = false; // Attacking cancels dash
 
     const actionDuration = getClipDuration(player, attackDef.animation);
     const moveDuration = (attackDef.startup + attackDef.active + attackDef.recovery) / FRAME_RATE;
-    player.fadeTo(attackDef.animation, player.comboCount === 0 ? 0.1 : 0.07, actionDuration / moveDuration);
+    player.fadeTo(attackDef.animation, player.combat.chain === 0 ? 0.1 : 0.07, actionDuration / moveDuration);
     return true;
 }
 
@@ -3316,12 +3321,11 @@ function requestAttack(player, type) {
 
 function processBufferedAttack(player) {
     if (!player?.combat) return;
-    player.combat.buffer = player.combat.buffer.filter((entry) => entry.expiresAt >= performance.now());
+    player.combat.buffer = player.combat.buffer.filter((entry) => entry.expiresAtFrame >= player.combat.simFrame);
     const buffered = player.combat.buffer[0];
     if (!buffered) return;
     if (requestAttack(player, buffered.type)) {
         player.combat.buffer.shift();
-        attackInputBuffer[player.id] = player.combat.buffer[0]?.type || null;
     }
 }
 
@@ -3437,46 +3441,10 @@ function checkHits(attacker, defender) {
     if (defender.health <= 0) triggerDeath(defender);
 }
 
-function triggerHitReaction(player, attackDef, incomingDirection = 0) {
-    const wasAirborne = player.mesh.position.y > GROUND_Y || player.isJumping;
-    player.isHit = true;
-    player.isAttacking = false;
-    player.actionTimer = 0;
-    player.attackTravel = 0;
-    player.reactionTravel = 0;
-    player.reactionDistance = attackDef ? (attackDef.reactionTravel || attackDef.knockback || 0) : 0;
-    player.reactionDirection = incomingDirection;
-
-    // Clear stun and airborne flags if interrupted
-    player.isStunned = false;
-    player.velocityY = 0;
-    player.isJumping = false;
-    player.jumps = 0;
-    reconcileGroundedState(player, 'hit-start');
-
-    resetCombo(player);
-    attackInputBuffer[player.id] = null;
-    
-    let reactionAnim = attackDef ? attackDef.reaction : 'hitMidMedium';
-    if ((attackDef && attackDef.strength === 'heavy') || wasAirborne) {
-        reactionAnim = 'knockdown';
-        player.reactionDistance = Math.max(player.reactionDistance * 1.9, KNOCKDOWN_REACTION_DISTANCE);
-        sanitizeGroundedState(player, { preserveHitState: true });
-    }
-    
-    player.fadeTo(reactionAnim, reactionAnim === 'knockdown' ? KNOCKDOWN_FADE_DURATION : HIT_FADE_DURATION);
-}
-
 function triggerDeath(player) {
     player.isDead = true;
-    player.isHit = false;
-    player.isAttacking = false;
-    player.attackTravel = 0;
-    player.reactionTravel = 0;
-    player.reactionDistance = 0;
-    player.reactionDirection = 0;
     resetCombo(player);
-    attackInputBuffer[player.id] = null;
+    changeCombatState(player, FIGHTER_STATE.DEAD);
     reconcileGroundedState(player, 'death');
     player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
     if (isStoryMode()) {
@@ -3718,6 +3686,7 @@ function startCountdownSequence() {
                 announce.classList.remove('active');
                 setCameraMode('fight', { shotDurationMs: 2600 });
                 gameActive = true;
+                updateViewportState();
                 startTimer();
             }, 1000);
         }
@@ -4001,8 +3970,6 @@ window.startFight = function (isNetworkCommand = false) {
         const p2 = spawnFighter(selections[2], 3.4, false);
         players.push(p1, p2);
     }
-    attackInputBuffer[1] = null;
-    attackInputBuffer[2] = null;
     resetAllTouchMovementStates();
 
     const leftHudActor = isStoryMode()
@@ -4086,12 +4053,7 @@ function endRound(winnerNum) {
         const victoryShowcaseMs = 4200;
 
         if (storyWinner) {
-            storyWinner.isAttacking = false;
-            storyWinner.isHit = false;
-            storyWinner.attackTravel = 0;
-            storyWinner.reactionTravel = 0;
-            storyWinner.reactionDistance = 0;
-            storyWinner.reactionDirection = 0;
+            if (storyWinner.combat && !storyWinner.isDead) changeCombatState(storyWinner, FIGHTER_STATE.IDLE);
             sanitizeGroundedState(storyWinner);
             playPreferredAction(storyWinner, winnerNum === 'heroes' ? 'victory' : 'idle', 'idle', 0.1);
         }
@@ -4159,21 +4121,12 @@ function endRound(winnerNum) {
 
     if (winner) {
         setCameraMode('victory', { winnerId: winnerNum, shotDurationMs: victoryShowcaseMs });
-        winner.isAttacking = false;
-        winner.isHit = false;
-        winner.attackTravel = 0;
-        winner.reactionTravel = 0;
-        winner.reactionDistance = 0;
-        winner.reactionDirection = 0;
+        if (winner.combat) changeCombatState(winner, FIGHTER_STATE.IDLE);
         sanitizeGroundedState(winner);
         playPreferredAction(winner, 'victory', 'idle', 0.1);
 
         if (loser && !loser.isDead) {
-            loser.isAttacking = false;
-            loser.attackTravel = 0;
-            loser.reactionTravel = 0;
-            loser.reactionDistance = 0;
-            loser.reactionDirection = 0;
+            if (loser.combat) changeCombatState(loser, FIGHTER_STATE.IDLE);
             sanitizeGroundedState(loser);
             playPreferredAction(loser, 'idle', 'idle', 0.15);
         }
@@ -4266,170 +4219,74 @@ function backToSelect() {
 function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     if (!p?.combat) return;
     const c = p.combat;
-        updateCombatHitboxes(p, showCombatHitboxes);
-        if (!showCombatHitboxes) hideCombatHelpers(p);
-        c.pushVelocity = THREE.MathUtils.lerp(c.pushVelocity, 0, 0.22);
-        p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.pushVelocity * frameDt, -9.5, 9.5);
-        c.dashIFrames = Math.max(0, c.dashIFrames - 1);
+    c.simFrame++;
+    updateCombatHitboxes(p, showCombatHitboxes);
+    if (!showCombatHitboxes) hideCombatHelpers(p);
 
-        if (c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN || c.state === FIGHTER_STATE.KNOCKDOWN || c.state === FIGHTER_STATE.GETUP || c.state === FIGHTER_STATE.GUARD_BREAK) {
-            c.stateFrame++;
-            tickStunState(p);
-        } else if (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) {
-            const phase = advanceCombatState(p);
-            const move = c.move;
-            if (phase.startedActive) AudioSynth.playSwing();
-            if (move && (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE)) {
-                // Startup/active commitment: only the authored lunge moves the fighter.
-                const lungeStep = (move.lunge || 0) / Math.max(1, move.startup + move.active);
-                p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + lungeStep * p.direction, -9.5, 9.5);
-            }
-            if (c.state === FIGHTER_STATE.ACTIVE && opp) checkHits(p, opp);
-            if (c.state === FIGHTER_STATE.IDLE) p.fadeTo('idle', .12);
-        } else if (c.state === FIGHTER_STATE.DASH) {
-            c.stateFrame++;
-            p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + p.dashDir * .05, -9.5, 9.5);
-            if (c.stateFrame >= 12) changeCombatState(p, FIGHTER_STATE.IDLE);
+    c.pushVelocity = THREE.MathUtils.lerp(c.pushVelocity, 0, 0.22);
+    c.dashIFrames = Math.max(0, c.dashIFrames - 1);
+
+    if (c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN || c.state === FIGHTER_STATE.KNOCKDOWN || c.state === FIGHTER_STATE.GETUP || c.state === FIGHTER_STATE.GUARD_BREAK) {
+        tickStunState(p);
+    } else if (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) {
+        const phase = advanceCombatState(p);
+        const move = c.move;
+        if (phase.startedActive) AudioSynth.playSwing();
+        if (move && (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE)) {
+            const lungeStep = (move.lunge || 0) / Math.max(1, move.startup + move.active);
+            p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + lungeStep * p.direction, -9.5, 9.5);
         }
-
-        if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN) processBufferedAttack(p);
-        if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
-}
-
-function updateCombatantLifecycle(p, opp, frameDt) {
-    if (!p) return;
-
-    // Fixed-frame combat is advanced once for every simulation tick before
-    // this visual/frame lifecycle runs. Legacy fallback actors keep using the
-    // original animation-duration path below.
-    if (p.combat) return;
-
-    if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
-        p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
-        updateHealthBars();
+    } else if (c.state === FIGHTER_STATE.DASH) {
+        c.stateFrame++;
+        p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.dashDir * .05, -9.5, 9.5);
+        if (c.stateFrame >= 12) changeCombatState(p, FIGHTER_STATE.IDLE);
     }
 
-    if (p.isStunned) {
-        p.stunTimer -= frameDt;
-        if (p.stunTimer <= 0) {
-            p.isStunned = false;
-            p.guardHealth = 100;
-            reconcileGroundedState(p, 'stun-recovery');
-            p.fadeTo('idle', 0.2);
-        }
+    // Only the fixed-step state owns committed horizontal movement.
+    if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.JUMP) {
+        p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.motionVelocity * frameDt, -9.5, 9.5);
     }
+    p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.pushVelocity * frameDt, -9.5, 9.5);
 
-    if (p.isJumping) {
+    if (c.state === FIGHTER_STATE.JUMP && p.isJumping) {
         p.velocityY -= 20.0 * frameDt;
         p.mesh.position.y += p.velocityY * frameDt;
-
-        if (p.velocityY < 0 && p.currentState !== 'jumpDown' && !p.isAttacking && !p.isHit && !p.isStunned) {
-            p.fadeTo('jumpDown', 0.2);
-        }
-
+        if (p.velocityY < 0 && p.currentState !== 'jumpDown') p.fadeTo('jumpDown', 0.2);
         if (p.mesh.position.y <= GROUND_Y) {
             sanitizeGroundedState(p);
-            if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
+            if (!p.isDead) {
+                changeCombatState(p, FIGHTER_STATE.IDLE);
+                p.fadeTo('idle', 0.1);
+            }
             spawnParticles(p.mesh.position, 'landing');
         }
     }
 
-    if (!p.isAttacking && !p.isHit && !p.isDead && p.comboTimer > 0) {
-        p.comboTimer = Math.max(0, p.comboTimer - frameDt);
-        if (p.comboTimer === 0) {
-            resetCombo(p);
-        }
+    if (c.state === FIGHTER_STATE.ACTIVE && opp) checkHits(p, opp);
+    if (c.state === FIGHTER_STATE.IDLE) p.fadeTo('idle', .12);
+    if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN) processBufferedAttack(p);
+    if (c.state !== FIGHTER_STATE.BLOCK && c.state !== FIGHTER_STATE.BLOCKSTUN && c.state !== FIGHTER_STATE.GUARD_BREAK && p.guardHealth < 100) {
+        p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
     }
-
-    if (p.isAttacking) {
-        p.actionTimer += frameDt;
-        const clipDur = getClipDuration(p, p.currentAttack ? p.currentAttack.animation : p.currentState);
-        const animPercent = p.actionTimer / clipDur;
-
-        applyAttackTravel(p, opp, animPercent);
-        if (opp) checkHits(p, opp);
-
-        if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder && animPercent >= p.currentAttack.chainAt) {
-            startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
-            return;
-        }
-
-        if (p.actionTimer >= clipDur) {
-            if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder) {
-                startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
-                return;
-            }
-
-            const finishedAttack = p.currentAttack;
-            p.isAttacking = false;
-            p.actionTimer = 0;
-            p.currentAttack = null;
-            p.queuedAttackType = null;
-            p.attackTravel = 0;
-
-            if (finishedAttack && finishedAttack.comboEnder) {
-                resetCombo(p);
-            } else {
-                p.comboTimer = COMBO_RESET_DELAY;
-            }
-
-            if (!p.isJumping) p.fadeTo('idle', 0.2);
-        }
-    }
-
-    if (p.isHit) {
-        p.actionTimer += frameDt;
-
-        let clipDur = 0.5;
-        const reactionKey = p.currentState;
-        if (!isFallbackMode && p.actions[reactionKey]) {
-            clipDur = p.actions[reactionKey].getClip().duration;
-        }
-        const reactionProgress = p.actionTimer / clipDur;
-        applyReactionTravel(p, reactionProgress);
-        if (p.actionTimer >= clipDur) {
-            if (p.currentState === 'knockdown') {
-                sanitizeGroundedState(p, { preserveHitState: true });
-                p.fadeTo('getUp', GET_UP_FADE_DURATION);
-                p.actionTimer = 0;
-                p.reactionTravel = 0;
-                p.reactionDistance = 0;
-                p.reactionDirection = 0;
-            } else if (p.currentState === 'getUp') {
-                p.isHit = false;
-                p.actionTimer = 0;
-                p.reactionTravel = 0;
-                p.reactionDistance = 0;
-                p.reactionDirection = 0;
-                sanitizeGroundedState(p);
-                p.fadeTo('idle', 0.16);
-            } else {
-                p.isHit = false;
-                p.actionTimer = 0;
-                p.reactionTravel = 0;
-                p.reactionDistance = 0;
-                p.reactionDirection = 0;
-                sanitizeGroundedState(p);
-                if (!p.isJumping) p.fadeTo('idle', 0.2);
-            }
-        }
-    }
+    p.velocity = c.state === FIGHTER_STATE.DASH ? c.dashDir * 3 : c.motionVelocity;
+    updateCombatHitboxes(p, showCombatHitboxes);
 }
 
 function updateHumanControl(player, controlBindings, opponent, frameDt) {
     if (!player) return;
     const { left, right, up, down } = controlBindings;
+    const combat = player.combat;
 
     player.velocity = 0;
-    player.isBlocking = false;
 
-    if (!player.isAttacking && !player.isHit && !player.isDead && !player.isStunned) {
+    if (combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state) && !player.isDead) {
         const currentUpPressed = keys[up];
         const upLatchKey = up === 'KeyW' ? 'wWasPressed' : 'upWasPressed';
         if (currentUpPressed && !player[upLatchKey] && player.jumps < 2) {
             player.isJumping = true;
             player.velocityY = up === 'KeyW' ? 5.0 : 4.0;
             player.jumps++;
+            changeCombatState(player, FIGHTER_STATE.JUMP);
             if (player.jumps > 1) {
                 player.fadeTo('doubleJump', 0.1);
                 spawnParticles(player.mesh.position, 'dash');
@@ -4440,15 +4297,14 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
         }
         player[upLatchKey] = currentUpPressed;
 
-        if (keys[down] && !player.isJumping && !player.isDashing) {
-            player.isBlocking = true;
-            resetCombo(player);
-            player.fadeTo('block', 0.1);
-        } else if (!player.isDashing) {
+        if (!player.isJumping && combat.state !== FIGHTER_STATE.DASH) {
+            if (keys[down]) {
+                resetCombo(player);
+                player.fadeTo('block', 0.1);
+            } else {
             if (keys[left]) player.velocity = -2.5;
             if (keys[right]) player.velocity = 2.5;
 
-            if (!player.isJumping) {
                 if (player.velocity !== 0) {
                     player.fadeTo(getLocomotionAnimation(player, opponent), 0.12);
                 } else {
@@ -4457,21 +4313,23 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
             }
         }
     }
-
-    if (player.isDashing) {
-        player.velocity = player.dashDir * 8.0;
-        player.dashTimer -= frameDt;
-        if (player.dashTimer <= 0) player.isDashing = false;
-    }
     syncCombatIntent(player, keys[down]);
 }
 
 function syncCombatIntent(player, blockHeld = false) {
     if (!player?.combat) return;
     const c = player.combat;
+    if (player.isJumping) {
+        if (c.state !== FIGHTER_STATE.JUMP) changeCombatState(player, FIGHTER_STATE.JUMP);
+        c.motionVelocity = 0;
+        player.velocity = 0;
+        return;
+    }
+    if (c.state === FIGHTER_STATE.JUMP) changeCombatState(player, FIGHTER_STATE.IDLE);
     if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(c.state)) {
-        if (blockHeld && !player.isJumping) {
+        if (blockHeld) {
             if (c.state !== FIGHTER_STATE.BLOCK) { changeCombatState(player, FIGHTER_STATE.BLOCK); player.fadeTo('block', .08); }
+            c.motionVelocity = 0;
         } else if (player.velocity !== 0) {
             if (c.state !== FIGHTER_STATE.WALK) changeCombatState(player, FIGHTER_STATE.WALK);
             c.motionVelocity = THREE.MathUtils.lerp(c.motionVelocity || 0, player.velocity, .32);
@@ -4482,6 +4340,7 @@ function syncCombatIntent(player, blockHeld = false) {
             if (c.state !== FIGHTER_STATE.IDLE && player.velocity === 0) { changeCombatState(player, FIGHTER_STATE.IDLE); player.fadeTo('idle', .12); }
         }
     } else {
+        c.motionVelocity = 0;
         player.velocity = 0;
     }
 }
@@ -4495,13 +4354,13 @@ function updateStoryEnemyControl(frameDt) {
     }
 
     storyEnemy.velocity = 0;
-    storyEnemy.isBlocking = false;
     const target = resolveStoryEnemyTarget();
     if (!target) return;
+    const combat = storyEnemy.combat;
 
     if ((isStoryCoopMode() && isHost) || gameMode === MODE.STORY_SOLO) {
-        if (!storyEnemy.isAttacking && !storyEnemy.isHit && !storyEnemy.isDead && !storyEnemy.isStunned) {
-            if (performance.now() > storyEnemy.aiNextActionTime && !storyEnemy.isJumping && !storyEnemy.isDashing) {
+        if (combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state) && !storyEnemy.isDead) {
+            if (performance.now() > storyEnemy.aiNextActionTime && !storyEnemy.isJumping && combat.state !== FIGHTER_STATE.DASH) {
                 const dist = Math.abs(storyEnemy.mesh.position.x - target.mesh.position.x);
                 let nextState = 'idle';
                 let nextDelay = 500;
@@ -4534,7 +4393,6 @@ function updateStoryEnemyControl(frameDt) {
     }
 
     if (storyEnemy.aiState === 'block') {
-        storyEnemy.isBlocking = true;
         resetCombo(storyEnemy);
         storyEnemy.fadeTo('block', 0.1);
     } else if (storyEnemy.aiState === 'forward') {
@@ -4543,16 +4401,11 @@ function updateStoryEnemyControl(frameDt) {
         storyEnemy.velocity = storyEnemy.direction * -2.0;
     }
 
-    if (!storyEnemy.isBlocking && !storyEnemy.isJumping && storyEnemy.velocity !== 0) {
+    syncCombatIntent(storyEnemy, storyEnemy.aiState === 'block');
+    if (combat?.state === FIGHTER_STATE.WALK && storyEnemy.velocity !== 0) {
         storyEnemy.fadeTo(getLocomotionAnimation(storyEnemy, target), 0.12);
-    } else if (!storyEnemy.isBlocking && !storyEnemy.isJumping && !storyEnemy.isAttacking && !storyEnemy.isHit) {
+    } else if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.BLOCK].includes(combat?.state)) {
         storyEnemy.fadeTo('idle', 0.15);
-    }
-
-    if (storyEnemy.isDashing) {
-        storyEnemy.velocity = storyEnemy.dashDir * 8.0;
-        storyEnemy.dashTimer -= frameDt;
-        if (storyEnemy.dashTimer <= 0) storyEnemy.isDashing = false;
     }
 }
 
@@ -4564,14 +4417,6 @@ function updateStoryModeFrame(frameDt) {
     updateHumanControl(hero1, touchMovementBindings[1], enemy, frameDt);
     if (hero2) updateHumanControl(hero2, touchMovementBindings[2], enemy, frameDt);
     updateStoryEnemyControl(frameDt);
-
-    processBufferedAttack(hero1);
-    if (hero2) processBufferedAttack(hero2);
-    if (enemy) processBufferedAttack(enemy);
-
-    [hero1, hero2, enemy].filter(Boolean).forEach((actor) => {
-        actor.mesh.position.x = Math.max(-9.5, Math.min(9.5, actor.mesh.position.x + actor.velocity * frameDt));
-    });
 
     const targetForEnemy = resolveStoryEnemyTarget();
     if (enemy && targetForEnemy) {
@@ -4600,9 +4445,57 @@ function updateStoryModeFrame(frameDt) {
         enemy.direction = shouldFaceRight ? 1 : -1;
     }
 
-    updateCombatantLifecycle(hero1, enemy, frameDt);
-    if (hero2) updateCombatantLifecycle(hero2, enemy, frameDt);
-    if (enemy) updateCombatantLifecycle(enemy, targetForEnemy, frameDt);
+}
+
+function updateVersusModeFrame(frameDt) {
+    const p1 = players[0];
+    const p2 = players[1];
+    if (!p1 || !p2) return;
+
+    updateHumanControl(p1, { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' }, p2, frameDt);
+
+    p2.velocity = 0;
+    const p2Combat = p2.combat;
+    if (isArcadeMode() && p2Combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(p2Combat.state) && !p2.isDead) {
+        if (performance.now() > aiNextActionTime && !p2.isJumping && p2Combat.state !== FIGHTER_STATE.DASH) {
+            const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
+            if (aiHitCount >= 3 && Math.random() < 0.5) {
+                aiHitCount = 0;
+                aiCurrentAction = 'backward';
+                aiNextActionTime = performance.now() + 800;
+            } else if (dist > 1.8) {
+                aiCurrentAction = 'forward';
+                aiNextActionTime = performance.now() + 300 + Math.random() * 400;
+            } else if (Math.random() < 0.85) {
+                bufferAttackInput(2, Math.random() < 0.5 ? 'punch' : 'kick');
+                aiCurrentAction = 'idle';
+                aiNextActionTime = performance.now() + 600 + Math.random() * 600;
+            } else {
+                aiCurrentAction = 'block';
+                aiNextActionTime = performance.now() + 500 + Math.random() * 500;
+            }
+        }
+        if (aiCurrentAction === 'forward') p2.velocity = p2.direction * 2.5;
+        if (aiCurrentAction === 'backward') p2.velocity = p2.direction * -2.5;
+        syncCombatIntent(p2, aiCurrentAction === 'block');
+        if (p2Combat.state === FIGHTER_STATE.WALK) p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
+        if (p2Combat.state === FIGHTER_STATE.BLOCK) p2.fadeTo('block', 0.1);
+        if (p2Combat.state === FIGHTER_STATE.IDLE) p2.fadeTo('idle', 0.15);
+    } else {
+        updateHumanControl(p2, { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' }, p1, frameDt);
+    }
+
+    if (p1.mesh.position.x < p2.mesh.position.x) {
+        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, Math.PI / 2, 0.15);
+        p1.direction = 1;
+        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, -Math.PI / 2, 0.15);
+        p2.direction = -1;
+    } else {
+        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, -Math.PI / 2, 0.15);
+        p1.direction = -1;
+        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, Math.PI / 2, 0.15);
+        p2.direction = 1;
+    }
 }
 
 // --- 14. TICK RUNTIME ENGINE LOOP ---
@@ -4615,11 +4508,13 @@ function advanceCombatSimulation(step = COMBAT_STEP) {
     if (isStoryMode()) {
         const enemy = storyEnemy;
         const heroes = players.filter(Boolean);
+        updateStoryModeFrame(step);
         heroes.forEach((hero) => advanceCombatFighterStep(hero, enemy, step));
         if (enemy) advanceCombatFighterStep(enemy, resolveStoryEnemyTarget(), step);
         return;
     }
     if (players.length === 2) {
+        updateVersusModeFrame(step);
         advanceCombatFighterStep(players[0], players[1], step);
         advanceCombatFighterStep(players[1], players[0], step);
     }
@@ -4665,6 +4560,11 @@ function animate() {
         updateIntroMotion(storyEnemy, frameDt);
     }
 
+    /*
+     * Legacy render-loop control/lifecycle path retained as a reference while
+     * the fixed-step combat controller owns every live fighter. It is
+     * intentionally isolated from execution so attacks, guards, movement,
+     * hitstun, and recovery cannot be advanced by two clocks.
     if (gameActive && isStoryMode()) {
         updateStoryModeFrame(frameDt);
     } else if (gameActive && players.length === 2) {
@@ -4954,6 +4854,8 @@ function animate() {
         });
     }
 
+    */
+
     players.forEach(p => {
         if (p.mixer) p.mixer.update(frameDt);
         if (p.mesh) {
@@ -4981,15 +4883,18 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-window.addEventListener('resize', () => {
-    const isPortrait = window.innerHeight > window.innerWidth;
-    const w = isPortrait ? window.innerHeight : window.innerWidth;
-    const h = isPortrait ? window.innerWidth : window.innerHeight;
-
+function resizeRendererToViewport() {
+    const viewport = window.visualViewport;
+    const w = Math.round(viewport?.width || window.innerWidth);
+    const h = Math.round(viewport?.height || window.innerHeight);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
-});
+}
+
+window.addEventListener('resize', resizeRendererToViewport);
+window.visualViewport?.addEventListener('resize', resizeRendererToViewport);
+window.visualViewport?.addEventListener('scroll', resizeRendererToViewport);
 
 animate();
 
@@ -5012,6 +4917,13 @@ window.advanceTime = (ms) => {
     updateCameraDirector();
     renderer.render(scene, camera);
 };
+function summarizeCombatBox(box) {
+    if (!box || !box.min || !box.max || !Number.isFinite(box.min.x)) return null;
+    return {
+        min: [Number(box.min.x.toFixed(2)), Number(box.min.y.toFixed(2)), Number(box.min.z.toFixed(2))],
+        max: [Number(box.max.x.toFixed(2)), Number(box.max.y.toFixed(2)), Number(box.max.z.toFixed(2))]
+    };
+}
 window.render_game_to_text = () => JSON.stringify({
     mode: gameMode,
     active: gameActive,
@@ -5029,14 +4941,22 @@ window.render_game_to_text = () => JSON.stringify({
         velocity: Number((hero.velocity || 0).toFixed(2)),
         state: hero.combat?.state || hero.currentState,
         frame: hero.combat?.frame || 0,
+        stateFrame: hero.combat?.stateFrame || 0,
+        move: hero.combat?.move?.id || null,
+        armor: hero.combat?.armor || 0,
         buffered: hero.combat?.buffer.map((entry) => entry.type) || [],
-        hitboxActive: !!hero.combat?.hitboxes?.attack
+        hitboxActive: !!hero.combat?.hitboxes?.attack,
+        attackBox: summarizeCombatBox(hero.combat?.hitboxes?.attack),
+        hurtBox: summarizeCombatBox(hero.combat?.hitboxes?.hurt?.[1]?.box)
     })),
     activeEnemies: activeEnemies.map((enemy) => ({
         id: enemy.charId,
         health: Math.max(0, Math.round(enemy.health)),
         position: Number(enemy.mesh?.position.x.toFixed(2) || 0),
         state: enemy.combat?.state || enemy.currentState,
+        stateFrame: enemy.combat?.stateFrame || 0,
+        move: enemy.combat?.move?.id || null,
+        armor: enemy.combat?.armor || 0,
         meter: Math.round(enemy.meter || 0),
         hitboxActive: !!enemy.combat?.hitboxes?.attack
     }))

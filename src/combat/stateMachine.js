@@ -4,21 +4,48 @@ export { FIGHTER_STATE, FRAME_RATE };
 
 export function initializeCombatFighter(fighter) {
   fighter.meter = 0;
-  fighter.combat = { state: FIGHTER_STATE.IDLE, frame: 0, stateFrame: 0, move: null, chain: 0, buffer: [], hitIds: new Set(), whiff: false, armor: 0, pushVelocity: 0, dashIFrames: 0, activeHitbox: false };
+  fighter.combat = {
+    state: FIGHTER_STATE.IDLE,
+    frame: 0,
+    stateFrame: 0,
+    simFrame: 0,
+    move: null,
+    chain: 0,
+    buffer: [],
+    hitIds: new Set(),
+    whiff: false,
+    armor: 0,
+    pushVelocity: 0,
+    motionVelocity: 0,
+    dashDir: 0,
+    dashIFrames: 0,
+    activeHitbox: false
+  };
   mirrorLegacyFlags(fighter);
 }
 
 export function queueCombatInput(fighter, type, now = performance.now()) {
   if (!fighter?.combat) return;
-  fighter.combat.buffer.push({ type, expiresAt: now + 200 });
+  fighter.combat.buffer.push({ type, expiresAtFrame: fighter.combat.simFrame + 12 });
   fighter.combat.buffer = fighter.combat.buffer.slice(-4);
 }
 
 export function changeCombatState(fighter, state, { move = null, resetMove = false } = {}) {
   const c = fighter.combat; if (!c) return;
   c.state = state; c.stateFrame = 0; c.move = move; c.activeHitbox = false;
+  if (state !== FIGHTER_STATE.WALK && state !== FIGHTER_STATE.DASH) c.motionVelocity = 0;
   if (move && resetMove) { c.frame = 0; c.hitIds.clear(); c.whiff = true; c.armor = move.armor || 0; }
   mirrorLegacyFlags(fighter);
+}
+
+export function startCombatDash(fighter, direction) {
+  const c = fighter?.combat;
+  if (!c || fighter.isDead || fighter.isJumping) return false;
+  if (![FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(c.state)) return false;
+  c.dashDir = direction || fighter.direction || 1;
+  c.dashIFrames = c.dashDir !== fighter.direction ? 6 : 0;
+  changeCombatState(fighter, FIGHTER_STATE.DASH);
+  return true;
 }
 
 export function startCombatMove(fighter, type) {
@@ -45,7 +72,7 @@ export function canAcceptMove(fighter, type) {
 
 export function consumeBufferedMove(fighter, now = performance.now()) {
   const c = fighter.combat; if (!c) return false;
-  c.buffer = c.buffer.filter((entry) => entry.expiresAt >= now);
+  c.buffer = c.buffer.filter((entry) => entry.expiresAtFrame >= c.simFrame);
   const entry = c.buffer[0];
   if (!entry || !canAcceptMove(fighter, entry.type)) return false;
   if (startCombatMove(fighter, entry.type)) { c.buffer.shift(); return true; }
@@ -77,6 +104,7 @@ export function applyCombatHit(defender, attacker, move, blocked) {
 
 export function tickStunState(fighter) {
   const c = fighter.combat; if (!c) return;
+  c.stateFrame++;
   const limit = c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN ? (c.stunFrames || 8) : c.state === FIGHTER_STATE.KNOCKDOWN ? 42 : c.state === FIGHTER_STATE.GUARD_BREAK ? 90 : 0;
   if (limit && c.stateFrame >= limit) changeCombatState(fighter, c.state === FIGHTER_STATE.KNOCKDOWN ? FIGHTER_STATE.GETUP : FIGHTER_STATE.IDLE);
   if (c.state === FIGHTER_STATE.GETUP && c.stateFrame >= 28) changeCombatState(fighter, FIGHTER_STATE.IDLE);
