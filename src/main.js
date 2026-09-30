@@ -8,7 +8,12 @@ import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.j
 import Peer from 'peerjs';
 import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, startCombatDash, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
-import { getMove } from './combat/frameData.js';
+import { getMove, ATTACK_ANIMATION_NAMES } from './combat/frameData.js';
+import { ACTION, ACTION_BY_NAME, HELD_ACTIONS, ATTACK_ACTIONS, ACTION_ATTACK_TYPE, KEYBOARD_BINDINGS, keyCodeToAction, createActionState, pressAction, releaseAction, setActionHeld, isActionHeld, clearActionState, drainPressedActions, heldActionBitmask, applyActionBitmask, bitmaskToActionNames } from './input/actions.js';
+import { reseedSim, getSimSeed, simRandom, simPick } from './simulation/rng.js';
+import { COMBAT_EVENT, onCombatEvent, emitCombatEvent } from './simulation/events.js';
+import { fnv1a, hashSimFrame, createReplayRecorder, firstDivergentFrame } from './simulation/replay.js';
+import { perfBeginSim, perfEndSim, perfNoteHitboxCheck, perfNoteRender, formatPerfStats } from './debug/perf.js';
 
 // --- 1. SAMPLE-BASED AUDIO ---
 const AudioSynth = {
@@ -283,7 +288,8 @@ const MODE = {
     LOCAL_VERSUS: 'local_versus',
     ONLINE_VERSUS: 'online_versus',
     STORY_SOLO: 'story_solo',
-    STORY_COOP_ONLINE: 'story_coop_online'
+    STORY_COOP_ONLINE: 'story_coop_online',
+    TRAINING: 'training'
 };
 
 const COMBO_SEQUENCE = ['light', 'medium', 'heavy'];
@@ -298,243 +304,6 @@ const KNOCKDOWN_FADE_DURATION = 0.12;
 const GET_UP_FADE_DURATION = 0.14;
 let showCombatHitboxes = false;
 
-const ATTACKS = {
-    punch: {
-        light: {
-            animation: 'punchLight',
-            limbKeywords: ['righthand', 'hand'],
-            hitWindow: [0.20, 0.45],
-            queueWindowStart: 0.42,
-            chainAt: 0.72,
-            damage: 4,
-            blockDamage: 1,
-            knockback: 0.45,
-            blockKnockback: 0.14,
-            reactionTravel: 0.45,
-            forwardTravel: 0.50,
-            settleBack: 0.05,
-            minSpacing: 0.92,
-            reaction: 'hitMidLight',
-            comboEnder: false
-        },
-        medium: {
-            animation: 'punchMedium',
-            limbKeywords: ['righthand', 'hand'],
-            hitWindow: [0.26, 0.54],
-            queueWindowStart: 0.46,
-            chainAt: 0.76,
-            damage: 7,
-            blockDamage: 2,
-            knockback: 0.70,
-            blockKnockback: 0.18,
-            reactionTravel: 0.70,
-            forwardTravel: 0.70,
-            settleBack: 0.06,
-            minSpacing: 0.88,
-            reaction: 'hitMidMedium',
-            comboEnder: false
-        },
-        heavy: {
-            animation: 'punchHeavy',
-            limbKeywords: ['righthand', 'hand'],
-            hitWindow: [0.32, 0.62],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 11,
-            blockDamage: 3,
-            knockback: 1.10,
-            blockKnockback: 0.22,
-            reactionTravel: 1.10,
-            forwardTravel: 0.95,
-            settleBack: 0.08,
-            windupBackstep: 0.12,
-            minSpacing: 0.84,
-            reaction: 'hitMidHeavy',
-            comboEnder: true
-        }
-    },
-    kick: {
-        light: {
-            animation: 'kickLight',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.24, 0.48],
-            queueWindowStart: 0.42,
-            chainAt: 0.74,
-            damage: 5,
-            blockDamage: 1,
-            reachX: 1.4,
-            reachY: 1.2,
-            knockback: 0.55,
-            blockKnockback: 0.16,
-            reactionTravel: 0.55,
-            forwardTravel: 0.65,
-            settleBack: 0.05,
-            minSpacing: 0.98,
-            reaction: 'hitLowLight',
-            comboEnder: false
-        },
-        medium: {
-            animation: 'kickMedium',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.30, 0.56],
-            queueWindowStart: 0.48,
-            chainAt: 0.80,
-            damage: 8,
-            blockDamage: 2,
-            knockback: 0.85,
-            blockKnockback: 0.20,
-            reactionTravel: 0.85,
-            forwardTravel: 0.85,
-            settleBack: 0.07,
-            minSpacing: 0.94,
-            reaction: 'hitLowMedium',
-            comboEnder: false
-        },
-        heavy: {
-            animation: 'kickHeavy',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.36, 0.66],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 13,
-            blockDamage: 3,
-            knockback: 1.30,
-            blockKnockback: 0.24,
-            reactionTravel: 1.30,
-            forwardTravel: 1.10,
-            settleBack: 0.10,
-            windupBackstep: 0.16,
-            minSpacing: 0.90,
-            reaction: 'hitLowHeavy',
-            comboEnder: true
-        }
-    },
-    special: {
-        light: {
-            animation: 'specialLight',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.24, 0.48],
-            queueWindowStart: 0.42,
-            chainAt: 0.74,
-            damage: 6,
-            blockDamage: 2,
-            reachX: 1.6,
-            reachY: 1.2,
-            knockback: 0.65,
-            blockKnockback: 0.20,
-            reactionTravel: 0.65,
-            forwardTravel: 0.65,
-            settleBack: 0.05,
-            minSpacing: 0.98,
-            reaction: 'hitMidLight',
-            comboEnder: false
-        },
-        medium: {
-            animation: 'specialMedium',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.30, 0.56],
-            queueWindowStart: 0.48,
-            chainAt: 0.80,
-            damage: 9,
-            blockDamage: 3,
-            reachX: 1.6,
-            reachY: 1.2,
-            knockback: 0.90,
-            blockKnockback: 0.25,
-            reactionTravel: 0.90,
-            forwardTravel: 0.85,
-            settleBack: 0.07,
-            minSpacing: 0.94,
-            reaction: 'hitLowMedium',
-            comboEnder: false
-        },
-        heavy: {
-            animation: 'specialHeavy',
-            limbKeywords: ['rightarm', 'arm', 'hand'],
-            hitWindow: [0.36, 0.66],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 15,
-            blockDamage: 4,
-            reachX: 1.6,
-            reachY: 1.2,
-            knockback: 1.50,
-            blockKnockback: 0.3,
-            reactionTravel: 1.50,
-            forwardTravel: 1.10,
-            settleBack: 0.10,
-            windupBackstep: 0.16,
-            minSpacing: 0.90,
-            reaction: 'hitHighHeavy',
-            comboEnder: true
-        }
-    },
-    jumpAttack: {
-        light: {
-            animation: 'jumpDown',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.10, 0.80],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 8,
-            blockDamage: 2,
-            reachX: 1.6,
-            reachY: 1.6,
-            knockback: 0.90,
-            blockKnockback: 0.2,
-            reactionTravel: 0.90,
-            forwardTravel: 0.30,
-            settleBack: 0,
-            minSpacing: 0.9,
-            reaction: 'hitMidHeavy',
-            comboEnder: true
-        },
-        medium: {
-            animation: 'jumpDown',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.10, 0.80],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 8,
-            blockDamage: 2,
-            reachX: 1.6,
-            reachY: 1.6,
-            knockback: 0.90,
-            blockKnockback: 0.2,
-            reactionTravel: 0.90,
-            forwardTravel: 0.30,
-            settleBack: 0,
-            minSpacing: 0.9,
-            reaction: 'hitMidHeavy',
-            comboEnder: true
-        },
-        heavy: {
-            animation: 'jumpDown',
-            limbKeywords: ['rightfoot', 'foot', 'leg'],
-            hitWindow: [0.10, 0.80],
-            queueWindowStart: 1,
-            chainAt: 1,
-            damage: 8,
-            blockDamage: 2,
-            reachX: 1.6,
-            reachY: 1.6,
-            knockback: 0.90,
-            blockKnockback: 0.2,
-            reactionTravel: 0.90,
-            forwardTravel: 0.30,
-            settleBack: 0,
-            minSpacing: 0.9,
-            reaction: 'hitMidHeavy',
-            comboEnder: true
-        }
-    }
-};
-
-const ATTACK_ACTION_KEYS = new Set(
-    Object.values(ATTACKS).flatMap(branch =>
-        Object.values(branch).map(attack => attack.animation)
-    )
-);
 const HIT_REACTION_KEYS = new Set([
     'hitHighLight',
     'hitHighMedium',
@@ -596,6 +365,7 @@ function normalizeGameMode(mode) {
     if (mode === 'single') return MODE.ARCADE_SINGLE;
     if (mode === 'local') return MODE.LOCAL_VERSUS;
     if (mode === 'online') return MODE.ONLINE_VERSUS;
+    if (mode === 'training') return MODE.TRAINING;
     return mode || MODE.LOCAL_VERSUS;
 }
 
@@ -613,6 +383,10 @@ function isStoryMode() {
 
 function isStoryCoopMode() {
     return gameMode === MODE.STORY_COOP_ONLINE;
+}
+
+function isTrainingMode() {
+    return gameMode === MODE.TRAINING;
 }
 
 let gameMode = MODE.LOCAL_VERSUS;
@@ -867,12 +641,7 @@ function setupConnection() {
             showCharacterSelect();
         } else if (data.type === 'input' && gameActive) {
             const remotePlayerId = isHost ? 2 : 1;
-            if (data.action === 'keydown') {
-                keys[data.key] = true;
-                if (data.buffer) bufferAttackInput(remotePlayerId, data.buffer);
-            } else if (data.action === 'keyup') {
-                keys[data.key] = false;
-            }
+            applyRemoteActionInput(remotePlayerId, data.action, data.key, data.buffer);
         } else if (data.type === 'select') {
             selectCharacter(data.player, data.charId, true);
         } else if (data.type === 'lockIn') {
@@ -895,9 +664,27 @@ function setupConnection() {
     }
 }
 
-function sendNetworkInput(action, key, buffer = null) {
+// Sends an action-based input over the wire. `key` carries an action name on
+// current clients; the receiver also accepts legacy raw key codes.
+function sendNetworkInput(type, actionName, bufferAttack = null) {
     if ((isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
-        conn.send({ type: 'input', action, key, buffer });
+        conn.send({ type: 'input', action: type, key: actionName, buffer: bufferAttack });
+    }
+}
+
+// Applies a network input to the remote player's action state. Accepts both
+// the current action-name format and the legacy key-code format.
+function applyRemoteActionInput(remotePlayerId, netAction, keyOrAction, bufferAttack) {
+    let actionName = ACTION_BY_NAME[keyOrAction] || null;
+    if (!actionName) actionName = keyCodeToAction(remotePlayerId, keyOrAction);
+    if (!actionName) return;
+    const state = playerActionState(remotePlayerId);
+    if (netAction === 'keydown') {
+        pressAction(state, actionName);
+        const attackType = bufferAttack || ACTION_ATTACK_TYPE[actionName] || null;
+        if (attackType) bufferAttackInput(remotePlayerId, attackType);
+    } else if (netAction === 'keyup') {
+        releaseAction(state, actionName);
     }
 }
 
@@ -952,6 +739,7 @@ function quitToMainMenu() {
     clearInterval(timerInterval);
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
+    setTrainingHudVisible(false);
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('ladder-screen').classList.add('hidden');
     if (comboUI) comboUI.classList.remove('show');
@@ -962,7 +750,66 @@ function quitToMainMenu() {
 }
 
 const DOUBLE_TAP_WINDOW = 250;
-const lastTaps = { KeyA: 0, KeyD: 0, ArrowLeft: 0, ArrowRight: 0 };
+const lastActionTaps = {};
+
+function resolveKeyBinding(code) {
+    for (const playerId of [1, 2]) {
+        const action = keyCodeToAction(playerId, code);
+        if (action) return { playerId, action };
+    }
+    return null;
+}
+
+function triggerDash(player, dir) {
+    if (!player || !player.combat || player.isDead) return false;
+    if (player.combat.state === FIGHTER_STATE.DASH || player.isJumping) return false;
+    player.dashDir = dir;
+    if (!startCombatDash(player, dir)) return false;
+    const anim = (dir === player.direction) ? 'stepForwardLong' : 'stepBackward';
+    player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
+    spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
+    return true;
+}
+
+// Edge effects for a pressed action. `fromReplay` replays a recorded stream:
+// discrete actions (attacks, recorded dashes) are dispatched, but live-only
+// derivations such as double-tap detection are skipped.
+function handleActionPress(playerId, action, fromReplay = false, data = null) {
+    const player = players[playerId - 1];
+    let bufferAttack = null;
+    if ((action === ACTION.MOVE_LEFT || action === ACTION.MOVE_RIGHT) && gameActive && !fromReplay) {
+        const now = performance.now();
+        const tapKey = playerId + ':' + action;
+        if (now - (lastActionTaps[tapKey] || 0) < DOUBLE_TAP_WINDOW) {
+            const dir = action === ACTION.MOVE_LEFT ? -1 : 1;
+            if (triggerDash(player, dir)) {
+                pressAction(playerActionState(playerId), ACTION.DASH, { dir });
+            }
+        }
+        lastActionTaps[tapKey] = now;
+    } else if (action === ACTION.DASH && fromReplay) {
+        const dir = (data && typeof data.dir === 'number') ? data.dir : (player ? player.direction : 1) || 1;
+        triggerDash(player, dir);
+    }
+    const attackType = ACTION_ATTACK_TYPE[action];
+    if (attackType) {
+        bufferAttackInput(playerId, attackType);
+        bufferAttack = attackType;
+        // Live-only: also drop the press into the action queue so the
+        // per-step drain (beginSimFrame) captures it for recordings. The
+        // replay path re-buffers at the same simFrame, so expiry matches.
+        if (!fromReplay) pressAction(playerActionState(playerId), action);
+    }
+    if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
+}
+
+// Each peer only transmits its own fighter's inputs (host: player 1, guest: player 2).
+function sendActionNetworkInput(playerId, type, action, bufferAttack = null) {
+    if (!(isOnlineVersusMode() || isStoryCoopMode())) return;
+    if (isHost && playerId !== 1) return;
+    if (!isHost && playerId !== 2) return;
+    sendNetworkInput(type, action, bufferAttack);
+}
 
 window.addEventListener('keydown', (e) => {
     if (isZoomShortcut(e)) {
@@ -970,54 +817,46 @@ window.addEventListener('keydown', (e) => {
         return;
     }
 
-    if (e.code === 'Escape' && (gameActive || gamePaused)) {
-        togglePause();
-    }
-
-    if (e.code) keys[e.code] = true;
-
     if (!e.repeat && e.code === 'KeyH') {
         showCombatHitboxes = !showCombatHitboxes;
         [...players, ...activeEnemies].forEach((fighter) => !showCombatHitboxes && hideCombatHelpers(fighter));
         return;
     }
 
-    // --- DOUBLE-TAP DASH LOGIC ---
-    if (!e.repeat && gameActive) {
-        const now = performance.now();
-        if (['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-            if (now - lastTaps[e.code] < DOUBLE_TAP_WINDOW) {
-                const player = (e.code === 'KeyA' || e.code === 'KeyD') ? players[0] : players[1];
-                if (player && player.combat && !player.isDead && player.combat.state !== FIGHTER_STATE.DASH && !player.isJumping) {
-                    player.dashDir = (e.code === 'KeyA' || e.code === 'ArrowLeft') ? -1 : 1;
-                    startCombatDash(player, player.dashDir);
-                    const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
-                    player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
-                    spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
-                }
-            }
-            lastTaps[e.code] = now;
-        }
+    if (!e.repeat && e.code === 'Backquote') {
+        togglePerfOverlay();
+        return;
     }
 
-    let bufferHit = null;
+    // Training Lab shortcuts.
+    if (!e.repeat && isTrainingMode()) {
+        if (e.code === 'KeyF') { toggleTrainingFreeze(); return; }
+        if (e.code === 'KeyN') { stepTrainingFrame(); return; }
+        if (e.code === 'KeyB') { toggleTrainingDummy(); return; }
+        if (e.code === 'KeyR') { resetTrainingScenario(); return; }
+    }
+
+    const binding = resolveKeyBinding(e.code);
+    if (!binding) {
+        // Prevent scrolling
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+            e.preventDefault();
+        }
+        return;
+    }
+
+    const { playerId, action } = binding;
+    if (action === ACTION.PAUSE) {
+        if (!e.repeat && (gameActive || gamePaused)) togglePause();
+        return;
+    }
+
     if (!e.repeat) {
-        if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
-        if (e.code === 'KeyC') { bufferAttackInput(1, 'special'); bufferHit = 'special'; }
-        if (e.code === 'KeyE') { bufferAttackInput(1, 'throw'); bufferHit = 'throw'; }
-        if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
-        if (e.code === 'KeyI') { bufferAttackInput(2, 'special'); bufferHit = 'special'; }
-        if (e.code === 'KeyU') { bufferAttackInput(2, 'throw'); bufferHit = 'throw'; }
-    }
-
-    if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        }
+        pressAction(playerActionState(playerId), action);
+        handleActionPress(playerId, action, false);
+    } else {
+        // Key repeat: refresh the remote peer's held state, no new press.
+        sendActionNetworkInput(playerId, 'keydown', action);
     }
 
     // Prevent scrolling
@@ -1027,15 +866,10 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.code) keys[e.code] = false;
-
-    if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
-            sendNetworkInput('keyup', e.code);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
-            sendNetworkInput('keyup', e.code);
-        }
-    }
+    const binding = resolveKeyBinding(e.code);
+    if (!binding || binding.action === ACTION.PAUSE) return;
+    releaseAction(playerActionState(binding.playerId), binding.action);
+    sendActionNetworkInput(binding.playerId, 'keyup', binding.action);
 });
 
 function isZoomShortcut(event) {
@@ -1731,6 +1565,10 @@ function showCharacterSelect() {
     clearScheduledEvents();
     clearInterval(timerInterval);
     gameActive = false;
+    simSuspended = false;
+    stopReplayPlayback();
+    stopReplayRecording();
+    setTrainingHudVisible(false);
     resetAllTouchMovementStates();
     p1Locked = false;
     p2Locked = false;
@@ -1745,34 +1583,42 @@ function showCharacterSelect() {
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
-    document.getElementById('select-mode-kicker').textContent = isArcadeMode()
-        ? 'Arcade Tournament Ladder'
-        : isStoryMode()
-            ? (isStoryCoopMode() ? 'Online Co-op Story' : 'Solo Story')
+    document.getElementById('select-mode-kicker').textContent = isTrainingMode()
+        ? 'Training Lab'
+        : isArcadeMode()
+            ? 'Arcade Tournament Ladder'
+            : isStoryMode()
+                ? (isStoryCoopMode() ? 'Online Co-op Story' : 'Solo Story')
+                : isOnlineVersusMode()
+                    ? 'Online Match Setup'
+                    : 'Local Exhibition';
+    document.getElementById('select-rules-title').textContent = isTrainingMode()
+        ? 'Training Lab'
+        : isArcadeMode()
+            ? 'Arcade'
+            : isStoryMode()
+                ? 'Story Mode'
+                : isOnlineVersusMode()
+                    ? 'Online Multiplayer'
+                    : 'Local Multiplayer';
+    document.getElementById('select-rules-desc').textContent = isTrainingMode()
+        ? 'Practice against a configurable dummy. B toggles block, F freezes, N steps a frame, R resets, H shows hitboxes.'
+        : isArcadeMode()
+            ? 'Choose one fighter and climb the full tournament ladder.'
+            : isStoryMode()
+                ? (isStoryCoopMode()
+                    ? 'Both players lock in heroes, then fight through sequential thug encounters online.'
+                    : 'Choose one fighter and clear each chapter of the thug campaign.')
             : isOnlineVersusMode()
-                ? 'Online Match Setup'
-                : 'Local Exhibition';
-    document.getElementById('select-rules-title').textContent = isArcadeMode()
-        ? 'Arcade'
-        : isStoryMode()
-            ? 'Story Mode'
-            : isOnlineVersusMode()
-                ? 'Online Multiplayer'
-                : 'Local Multiplayer';
-    document.getElementById('select-rules-desc').textContent = isArcadeMode()
-        ? 'Choose one fighter and climb the full tournament ladder.'
-        : isStoryMode()
-            ? (isStoryCoopMode()
-                ? 'Both players lock in heroes, then fight through sequential thug encounters online.'
-                : 'Choose one fighter and clear each chapter of the thug campaign.')
-        : isOnlineVersusMode()
-            ? 'Each player locks in a fighter before the match starts.'
-            : 'Pick a fighter and jump straight into a local exhibition.';
-    document.getElementById('select-player-state').textContent = isArcadeMode()
-        ? 'Choose your tournament fighter'
-        : isStoryMode()
-            ? 'Choose your story fighter'
-            : (isOnlineVersusMode() ? '' : 'Choose your fighter');
+                ? 'Each player locks in a fighter before the match starts.'
+                : 'Pick a fighter and jump straight into a local exhibition.';
+    document.getElementById('select-player-state').textContent = isTrainingMode()
+        ? 'Choose your fighter (Player 2 is the dummy)'
+        : isArcadeMode()
+            ? 'Choose your tournament fighter'
+            : isStoryMode()
+                ? 'Choose your story fighter'
+                : (isOnlineVersusMode() ? '' : 'Choose your fighter');
 
     selectSpotlightP1.visible = true;
     selectSpotlightP2.visible = true;
@@ -2357,6 +2203,7 @@ function initTouchControls() {
 
     const touchButtons = document.querySelectorAll('#touch-controls .touch-btn');
     touchButtons.forEach((button) => {
+        const actionName = button.dataset.action || null;
         const keyCode = button.dataset.key;
         const bufferedAttack = button.dataset.buffer;
         const playerId = Number(button.dataset.player || 0);
@@ -2364,14 +2211,31 @@ function initTouchControls() {
         const press = (event) => {
             event.preventDefault();
             if (event.pointerId !== undefined) button.setPointerCapture?.(event.pointerId);
-            if (keyCode) keys[keyCode] = true;
-            if (bufferedAttack && playerId) bufferAttackInput(playerId, bufferedAttack);
+            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
+                const state = playerActionState(playerId);
+                pressAction(state, actionName);
+                handleActionPress(playerId, actionName, false);
+            } else {
+                // Legacy fallback: key-code bindings.
+                const legacy = keyCode ? resolveKeyBinding(keyCode) : null;
+                if (legacy) {
+                    pressAction(playerActionState(legacy.playerId), legacy.action);
+                    handleActionPress(legacy.playerId, legacy.action, false);
+                } else if (bufferedAttack && playerId) {
+                    bufferAttackInput(playerId, bufferedAttack);
+                }
+            }
             button.classList.add('pressed');
         };
 
         const release = (event) => {
             event.preventDefault();
-            if (keyCode) keys[keyCode] = false;
+            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
+                releaseAction(playerActionState(playerId), actionName);
+            } else if (keyCode) {
+                const legacy = resolveKeyBinding(keyCode);
+                if (legacy) releaseAction(playerActionState(legacy.playerId), legacy.action);
+            }
             button.classList.remove('pressed');
         };
 
@@ -2458,7 +2322,7 @@ function getRandomDeathAction(actor) {
     if (!actor || !actor.actions) return null;
     const available = Array.from(DEATH_ACTION_KEYS).filter((actionName) => actor.actions[actionName]);
     if (available.length === 0) return null;
-    return available[Math.floor(Math.random() * available.length)];
+    return available[Math.floor(simRandom() * available.length)];
 }
 
 function isRootMotionNode(nodeName = '') {
@@ -2803,7 +2667,7 @@ function createPlayerMesh(charId, isPlayer1, options = {}) {
             const action = mixer.clipAction(clonedClip);
             actions[actionName] = action;
 
-            if (ATTACK_ACTION_KEYS.has(actionName) || HIT_REACTION_KEYS.has(actionName) || CINEMATIC_ACTION_KEYS.has(actionName) || DEATH_ACTION_KEYS.has(actionName)) {
+            if (ATTACK_ANIMATION_NAMES.has(actionName) || HIT_REACTION_KEYS.has(actionName) || CINEMATIC_ACTION_KEYS.has(actionName) || DEATH_ACTION_KEYS.has(actionName)) {
                 action.setLoop(THREE.LoopOnce);
                 action.clampWhenFinished = true;
             }
@@ -3002,8 +2866,13 @@ class StoryEnemyManager {
 
 const storyEnemyManager = new StoryEnemyManager();
 
-// --- 9. DYNAMIC CONTROL SYSTEM ---
-const keys = {};
+// --- 9. ACTION-BASED INPUT SYSTEM ---
+// Every device feeds named actions (see src/input/actions.js). Combat reads
+// these per-player action states, never raw key codes.
+const playerActionStates = { 1: createActionState(), 2: createActionState() };
+function playerActionState(playerId) {
+    return playerActionStates[playerId] || playerActionStates[1];
+}
 function bufferAttackInput(playerId, attackType) {
     const fighter = [...players, ...activeEnemies].find((actor) => actor?.id === playerId) || (storyEnemy?.id === playerId ? storyEnemy : null);
     if (fighter?.combat) queueCombatInput(fighter, attackType);
@@ -3357,7 +3226,8 @@ function getLimbWorldPos(player, keywords) {
 }
 
 // --- 11. COMBAT COLLISION CHECKS ---
-let hitStopTime = 0;
+// Hitstop is frame-indexed (not wall-clock) so replays stay deterministic.
+let hitStopFrames = 0;
 let globalHitComboCount = 0;
 let comboResetTimeout = null;
 
@@ -3403,6 +3273,7 @@ function checkHits(attacker, defender) {
     if (defender.combat?.dashIFrames > 0 || (move.throw && defender.combat?.state === FIGHTER_STATE.ACTIVE)) return;
     updateCombatHitboxes(attacker, showCombatHitboxes);
     updateCombatHitboxes(defender, showCombatHitboxes);
+    perfNoteHitboxCheck();
     if (!attackIntersects(attacker, defender)) return;
 
     attacker.combat.hitIds.add(defender.id);
@@ -3412,41 +3283,74 @@ function checkHits(attacker, defender) {
     const blocked = defender.combat?.state === FIGHTER_STATE.BLOCK && !move.throw;
     const armored = !blocked && defender.combat?.state === FIGHTER_STATE.STARTUP && defender.combat.armor > 0 && !move.throw;
     const scale = attacker.damageMultiplier || 1;
+    const frame = defender.combat.simFrame;
     if (blocked) {
         defender.guardHealth = Math.max(0, defender.guardHealth - move.damage * 4.5 * scale);
         defender.health = Math.max(0, defender.health - move.blockDamage * scale);
         attacker.meter = Math.min(100, attacker.meter + Math.max(3, move.meterGain / 2));
         applyCombatHit(defender, attacker, move, true);
-        spawnParticles(hitPoint, defender.guardHealth <= 0 ? 'guardbreak' : 'guard');
-        AudioSynth.playBlock();
-        if (defender.guardHealth <= 0) { changeCombatState(defender, FIGHTER_STATE.GUARD_BREAK); defender.fadeTo('dizzy', .1); }
+        if (defender.guardHealth <= 0) {
+            changeCombatState(defender, FIGHTER_STATE.GUARD_BREAK);
+            emitCombatEvent({ type: COMBAT_EVENT.GUARD_BREAK, attacker, defender, move, point: hitPoint.clone(), frame });
+        } else {
+            emitCombatEvent({ type: COMBAT_EVENT.BLOCK, attacker, defender, move, point: hitPoint.clone(), frame });
+        }
     } else {
         defender.health = Math.max(0, defender.health - move.damage * scale);
         defender.meter = Math.min(100, defender.meter + 4);
         attacker.meter = Math.min(100, attacker.meter + move.meterGain);
         if (armored) defender.combat.armor--;
-        else {
-            applyCombatHit(defender, attacker, move, false);
+        else applyCombatHit(defender, attacker, move, false);
+        emitCombatEvent({
+            type: move.throw ? COMBAT_EVENT.THROW : COMBAT_EVENT.HIT,
+            attacker, defender, move, armored,
+            point: hitPoint.clone(), frame,
+        });
+    }
+    hitStopFrames = move.hitstop;
+    if (defender.health <= 0) triggerDeath(defender);
+}
+
+// Presentation subscriber for combat events (item 3). The simulation above
+// only mutates gameplay state and emits events; everything here is visual /
+// audio feedback and must never feed back into the simulation.
+function handleCombatEvent(event) {
+    const { type, attacker, defender, move, point } = event;
+    updateHealthBars();
+    if (move) triggerScreenShake(move.damage * .02, .12);
+    if (type === COMBAT_EVENT.BLOCK) {
+        spawnParticles(point, 'guard');
+        AudioSynth.playBlock();
+    } else if (type === COMBAT_EVENT.GUARD_BREAK) {
+        defender.fadeTo('dizzy', .1);
+        spawnParticles(point, 'guardbreak');
+        AudioSynth.playBlock();
+    } else if (type === COMBAT_EVENT.HIT || type === COMBAT_EVENT.THROW) {
+        if (!event.armored) {
             defender.fadeTo(move.damage >= 11 || move.throw ? 'knockdown' : move.damage >= 7 ? 'hitMidMedium' : 'hitMidLight', move.throw ? .12 : HIT_FADE_DURATION);
         }
         flashFighter(defender);
         globalHitComboCount++; updateComboUI();
-        spawnParticles(hitPoint, move.damage >= 11 ? 'super' : 'hit');
-        spawnHitRing(hitPoint, move.damage);
+        spawnParticles(point, move.damage >= 11 ? 'super' : 'hit');
+        spawnHitRing(point, move.damage);
         AudioSynth.playHit();
+    } else if (type === COMBAT_EVENT.KO) {
+        event.player.fadeTo(event.deathAction || 'deathFall', 0.1);
+        triggerScreenShake(0.4, 0.3);
     }
-    hitStopTime = move.hitstop / FRAME_RATE;
-    triggerScreenShake(move.damage * .02, .12);
-    updateHealthBars();
-    if (defender.health <= 0) triggerDeath(defender);
 }
+
+onCombatEvent(handleCombatEvent);
 
 function triggerDeath(player) {
     player.isDead = true;
     resetCombo(player);
     changeCombatState(player, FIGHTER_STATE.DEAD);
     reconcileGroundedState(player, 'death');
-    player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
+    // The death-animation draw is part of the seeded sim stream; the fadeTo
+    // itself runs in the KO presentation subscriber.
+    const deathAction = getRandomDeathAction(player) || 'deathFall';
+    emitCombatEvent({ type: COMBAT_EVENT.KO, player, deathAction, frame: player.combat?.simFrame ?? 0 });
     if (isStoryMode()) {
         if (player.role === 'enemy') {
             // Remove defeated enemies from the active update set immediately.
@@ -3456,6 +3360,9 @@ function triggerDeath(player) {
         } else if (getLivingHeroes().length === 0) {
             endRound('enemy');
         }
+    } else if (isTrainingMode()) {
+        // Lab rule: the round never ends — reset the scenario shortly after the KO.
+        scheduleEvent(() => { if (isTrainingMode() && gameActive) resetTrainingScenario(); }, 1500);
     } else {
         endRound(player.id === 1 ? 2 : 1);
     }
@@ -3687,7 +3594,8 @@ function startCountdownSequence() {
                 setCameraMode('fight', { shotDurationMs: 2600 });
                 gameActive = true;
                 updateViewportState();
-                startTimer();
+                // Training Lab: the round timer stays frozen.
+                if (!isTrainingMode()) startTimer();
             }, 1000);
         }
     };
@@ -3929,6 +3837,9 @@ window.startFight = function (isNetworkCommand = false) {
         if (conn && conn.open) conn.send({ type: 'fight' });
     }
 
+    // Item 2: reseed the deterministic sim stream every fight.
+    reseedSim((((Date.now() ^ (++fightSeedCounter * 0x9E3779B9)) >>> 0) || 1));
+
     if (isArcadeMode()) {
         if (!tournamentRun.playerCharId || tournamentRun.status === 'idle') {
             startSinglePlayerRun(selections[1]);
@@ -3957,6 +3868,7 @@ window.startFight = function (isNetworkCommand = false) {
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('hud').style.display = 'flex';
+    setTrainingHudVisible(isTrainingMode());
     updateViewportState();
 
     removeFighterList(previewFighters);
@@ -4272,19 +4184,18 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     updateCombatHitboxes(p, showCombatHitboxes);
 }
 
-function updateHumanControl(player, controlBindings, opponent, frameDt) {
+function updateHumanControl(player, playerId, opponent, frameDt) {
     if (!player) return;
-    const { left, right, up, down } = controlBindings;
+    const actions = playerActionState(playerId);
     const combat = player.combat;
 
     player.velocity = 0;
 
     if (combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state) && !player.isDead) {
-        const currentUpPressed = keys[up];
-        const upLatchKey = up === 'KeyW' ? 'wWasPressed' : 'upWasPressed';
-        if (currentUpPressed && !player[upLatchKey] && player.jumps < 2) {
+        const jumpHeld = isActionHeld(actions, ACTION.JUMP);
+        if (jumpHeld && !player.jumpWasHeld && player.jumps < 2) {
             player.isJumping = true;
-            player.velocityY = up === 'KeyW' ? 5.0 : 4.0;
+            player.velocityY = playerId === 1 ? 5.0 : 4.0;
             player.jumps++;
             changeCombatState(player, FIGHTER_STATE.JUMP);
             if (player.jumps > 1) {
@@ -4295,15 +4206,15 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
                 player.fadeTo('jumpUp', 0.1);
             }
         }
-        player[upLatchKey] = currentUpPressed;
+        player.jumpWasHeld = jumpHeld;
 
         if (!player.isJumping && combat.state !== FIGHTER_STATE.DASH) {
-            if (keys[down]) {
+            if (isActionHeld(actions, ACTION.BLOCK)) {
                 resetCombo(player);
                 player.fadeTo('block', 0.1);
             } else {
-            if (keys[left]) player.velocity = -2.5;
-            if (keys[right]) player.velocity = 2.5;
+            if (isActionHeld(actions, ACTION.MOVE_LEFT)) player.velocity = -2.5;
+            if (isActionHeld(actions, ACTION.MOVE_RIGHT)) player.velocity = 2.5;
 
                 if (player.velocity !== 0) {
                     player.fadeTo(getLocomotionAnimation(player, opponent), 0.12);
@@ -4313,7 +4224,7 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
             }
         }
     }
-    syncCombatIntent(player, keys[down]);
+    syncCombatIntent(player, isActionHeld(actions, ACTION.BLOCK));
 }
 
 function syncCombatIntent(player, blockHeld = false) {
@@ -4368,17 +4279,17 @@ function updateStoryEnemyControl(frameDt) {
 
                 if (dist > 2.2) {
                     nextState = 'forward';
-                    nextDelay = 320 + Math.random() * 300;
+                    nextDelay = 320 + simRandom() * 300;
                 } else if (dist < 1.0) {
                     nextState = 'backward';
-                    nextDelay = 260 + Math.random() * 220;
-                } else if (Math.random() < 0.8) {
-                    buffer = Math.random() < 0.5 ? 'punch' : 'kick';
+                    nextDelay = 260 + simRandom() * 220;
+                } else if (simRandom() < 0.8) {
+                    buffer = simRandom() < 0.5 ? 'punch' : 'kick';
                     nextState = 'idle';
-                    nextDelay = 540 + Math.random() * 480;
+                    nextDelay = 540 + simRandom() * 480;
                 } else {
                     nextState = 'block';
-                    nextDelay = 420 + Math.random() * 260;
+                    nextDelay = 420 + simRandom() * 260;
                 }
 
                 storyEnemy.aiState = nextState;
@@ -4414,8 +4325,8 @@ function updateStoryModeFrame(frameDt) {
     const hero1 = players[0];
     const hero2 = players[1];
 
-    updateHumanControl(hero1, touchMovementBindings[1], enemy, frameDt);
-    if (hero2) updateHumanControl(hero2, touchMovementBindings[2], enemy, frameDt);
+    updateHumanControl(hero1, 1, enemy, frameDt);
+    if (hero2) updateHumanControl(hero2, 2, enemy, frameDt);
     updateStoryEnemyControl(frameDt);
 
     const targetForEnemy = resolveStoryEnemyTarget();
@@ -4452,27 +4363,29 @@ function updateVersusModeFrame(frameDt) {
     const p2 = players[1];
     if (!p1 || !p2) return;
 
-    updateHumanControl(p1, { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' }, p2, frameDt);
+    updateHumanControl(p1, 1, p2, frameDt);
 
     p2.velocity = 0;
     const p2Combat = p2.combat;
-    if (isArcadeMode() && p2Combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(p2Combat.state) && !p2.isDead) {
+    if (isTrainingMode()) {
+        updateTrainingDummy(p2, p1, frameDt);
+    } else if (isArcadeMode() && p2Combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(p2Combat.state) && !p2.isDead) {
         if (performance.now() > aiNextActionTime && !p2.isJumping && p2Combat.state !== FIGHTER_STATE.DASH) {
             const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
-            if (aiHitCount >= 3 && Math.random() < 0.5) {
+            if (aiHitCount >= 3 && simRandom() < 0.5) {
                 aiHitCount = 0;
                 aiCurrentAction = 'backward';
                 aiNextActionTime = performance.now() + 800;
             } else if (dist > 1.8) {
                 aiCurrentAction = 'forward';
-                aiNextActionTime = performance.now() + 300 + Math.random() * 400;
-            } else if (Math.random() < 0.85) {
-                bufferAttackInput(2, Math.random() < 0.5 ? 'punch' : 'kick');
+                aiNextActionTime = performance.now() + 300 + simRandom() * 400;
+            } else if (simRandom() < 0.85) {
+                bufferAttackInput(2, simRandom() < 0.5 ? 'punch' : 'kick');
                 aiCurrentAction = 'idle';
-                aiNextActionTime = performance.now() + 600 + Math.random() * 600;
+                aiNextActionTime = performance.now() + 600 + simRandom() * 600;
             } else {
                 aiCurrentAction = 'block';
-                aiNextActionTime = performance.now() + 500 + Math.random() * 500;
+                aiNextActionTime = performance.now() + 500 + simRandom() * 500;
             }
         }
         if (aiCurrentAction === 'forward') p2.velocity = p2.direction * 2.5;
@@ -4482,7 +4395,7 @@ function updateVersusModeFrame(frameDt) {
         if (p2Combat.state === FIGHTER_STATE.BLOCK) p2.fadeTo('block', 0.1);
         if (p2Combat.state === FIGHTER_STATE.IDLE) p2.fadeTo('idle', 0.15);
     } else {
-        updateHumanControl(p2, { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' }, p1, frameDt);
+        updateHumanControl(p2, 2, p1, frameDt);
     }
 
     if (p1.mesh.position.x < p2.mesh.position.x) {
@@ -4498,26 +4411,299 @@ function updateVersusModeFrame(frameDt) {
     }
 }
 
+// --- Performance overlay (item 4) ---
+let perfOverlayVisible = false;
+
+function togglePerfOverlay() {
+    perfOverlayVisible = !perfOverlayVisible;
+    const el = document.getElementById('perf-overlay');
+    if (el) {
+        el.style.display = perfOverlayVisible ? 'block' : 'none';
+        if (perfOverlayVisible) el.textContent = formatPerfStats();
+    }
+}
+
+// --- 13B. DETERMINISTIC REPLAY (item 2) ---
+// The simulation draws randomness from a seeded stream (reseeded every
+// fight in startFight). A recording captures, per sim step, each fighter's
+// held-action bitmask plus the discrete presses that landed during that
+// step, alongside a hash of the resulting sim state. Playing a recording
+// back re-injects those inputs at the top of each step; the exit gate is
+// digest equality across two playbacks of the same recording.
+let fightSeedCounter = 0;
+let replayRecorder = createReplayRecorder();
+let replayPlayback = null; // { frames, index } while a recording plays back
+let simSuspended = false;  // training frame-step: freeze the sim loop
+let replayStepIndex = 0;
+let pendingHeld = { 1: 0, 2: 0 };
+let pendingPressed = { 1: [], 2: [] };
+
+function simFighters() {
+    const list = [...players];
+    if (Array.isArray(activeEnemies)) list.push(...activeEnemies);
+    if (storyEnemy) list.push(storyEnemy);
+    return list.filter(Boolean);
+}
+
+function beginSimFrame() {
+    const s1 = playerActionState(1);
+    const s2 = playerActionState(2);
+    if (replayPlayback) {
+        const rec = replayPlayback.frames[replayPlayback.index];
+        if (!rec) { stopReplayPlayback(); return; }
+        applyActionBitmask(s1, rec.held[1]);
+        applyActionBitmask(s2, rec.held[2]);
+        // Discrete presses, dispatched as replay: attacks buffer and recorded
+        // dashes fire, but live-only derivations (double-tap detection,
+        // network send) are skipped inside handleActionPress.
+        for (const entry of rec.pressed[1]) handleActionPress(1, entry.action, true, entry.data);
+        for (const entry of rec.pressed[2]) handleActionPress(2, entry.action, true, entry.data);
+        replayPlayback.index++;
+        pendingHeld = { 1: rec.held[1], 2: rec.held[2] };
+        pendingPressed = { 1: [], 2: [] };
+    } else {
+        pendingHeld = { 1: heldActionBitmask(s1), 2: heldActionBitmask(s2) };
+        pendingPressed = { 1: drainPressedActions(s1), 2: drainPressedActions(s2) };
+        if (isTrainingMode()) {
+            for (const entry of pendingPressed[1]) logTrainingInput(replayStepIndex, 1, entry.action);
+            for (const entry of pendingPressed[2]) logTrainingInput(replayStepIndex, 2, entry.action);
+        }
+    }
+}
+
+function endSimFrame() {
+    const frameIndex = replayStepIndex++;
+    if (!replayRecorder.active) return;
+    replayRecorder.recordFrame(frameIndex, pendingHeld, pendingPressed, hashSimFrame(simFighters()));
+}
+
+function startReplayRecording() {
+    replayPlayback = null;
+    replayStepIndex = 0;
+    replayRecorder.start(getSimSeed());
+}
+
+function stopReplayRecording() {
+    replayRecorder.stop();
+}
+
+function startReplayPlayback(recording) {
+    replayRecorder.stop();
+    reseedSim(recording.seed);
+    // Drop any live presses queued during the hiatus so they can't leak
+    // into the scenario after playback ends.
+    drainPressedActions(playerActionState(1));
+    drainPressedActions(playerActionState(2));
+    replayPlayback = { frames: recording.frames, index: 0 };
+}
+
+function stopReplayPlayback() {
+    replayPlayback = null;
+}
+
+function isReplayPlaying() {
+    return !!replayPlayback;
+}
+
+// --- 13C. TRAINING LAB (item 6) ---
+// Versus rules with a configurable dummy, frame-step control, an input
+// history panel, and record/verify wiring for the deterministic replay
+// harness above. The round timer stays frozen and KOs reset the scenario
+// instead of ending the round.
+let trainingDummyMode = 'idle'; // 'idle' | 'block'
+let trainingStatusMessage = '';
+const trainingInputLog = [];
+const TRAINING_INPUT_LOG_MAX = 24;
+
+function updateTrainingDummy(dummy, player, frameDt) {
+    dummy.velocity = 0;
+    const combat = dummy.combat;
+    if (!combat || dummy.isDead) { syncCombatIntent(dummy, false); return; }
+    if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state)) {
+        if (trainingDummyMode === 'block') {
+            syncCombatIntent(dummy, true);
+        } else {
+            syncCombatIntent(dummy, false);
+            dummy.fadeTo('idle', 0.15);
+        }
+    } else {
+        syncCombatIntent(dummy, false);
+    }
+}
+
+function resetTrainingScenario() {
+    if (!isTrainingMode()) return;
+    stopReplayPlayback();
+    stopReplayRecording();
+    clearScheduledEvents();
+    simSuspended = false;
+    hitStopFrames = 0;
+    combatAccumulator = 0;
+    removeFighterList(players);
+    const p1 = spawnFighter(selections[1], -3.4, true);
+    const p2 = spawnFighter(selections[2], 3.4, false);
+    players.push(p1, p2);
+    // The intro choreography mutates mesh.position (covered by the replay
+    // hash), so the lab scenario explicitly runs without it: same spawn
+    // pose every reset keeps recordings and verify passes comparable.
+    for (const [fighter, x] of [[p1, -3.4], [p2, 3.4]]) {
+        fighter.introMotion = null;
+        fighter.introPhase = null;
+        fighter.mesh.position.set(x, 0, 0);
+    }
+    clearActionState(playerActionState(1));
+    clearActionState(playerActionState(2));
+    globalHitComboCount = 0;
+    updateComboUI();
+    // Same seed as the current fight, so a re-run of the scenario is identical.
+    reseedSim(getSimSeed());
+    replayStepIndex = 0;
+    trainingInputLog.length = 0;
+    gameActive = true;
+    document.getElementById('gameover-screen').style.display = 'none';
+    updateHealthBars();
+    setTrainingStatus('Scenario reset.');
+    updateTrainingHud();
+}
+
+function toggleTrainingDummy() {
+    if (!isTrainingMode() || !gameActive) return;
+    trainingDummyMode = trainingDummyMode === 'block' ? 'idle' : 'block';
+    setTrainingStatus(`Dummy: ${trainingDummyMode}.`);
+    updateTrainingHud();
+}
+
+function toggleTrainingFreeze() {
+    if (!isTrainingMode() || !gameActive || isReplayPlaying()) return;
+    simSuspended = !simSuspended;
+    setTrainingStatus(simSuspended ? 'Frozen — N steps one frame.' : 'Running.');
+    updateTrainingHud();
+}
+
+function stepTrainingFrame() {
+    if (!isTrainingMode() || !gameActive || !simSuspended || isReplayPlaying()) return;
+    simSuspended = false;
+    advanceCombatSimulation(COMBAT_STEP);
+    simSuspended = true;
+    updateTrainingHud();
+}
+
+function toggleTrainingRecording() {
+    if (!isTrainingMode() || !gameActive || isReplayPlaying()) return;
+    if (replayRecorder.active) {
+        stopReplayRecording();
+        setTrainingStatus(`Recording stopped — ${replayRecorder.frameCount()} frames. Press Verify to check determinism.`);
+    } else {
+        resetTrainingScenario();
+        startReplayRecording();
+        setTrainingStatus('Recording… fight, then press Record again to stop.');
+    }
+    updateTrainingHud();
+}
+
+// Exit gate: reset the scenario, play the recording back twice through the
+// real fixed-step path, and compare per-frame digests (and against the
+// original recording). Runs synchronously; the rAF loop cannot interleave.
+function verifyTrainingRecording() {
+    if (!isTrainingMode()) return;
+    const frames = replayRecorder.frames;
+    if (!frames || frames.length === 0) {
+        setTrainingStatus('Nothing recorded yet — press Record, fight, stop, then Verify.');
+        updateTrainingHud();
+        return;
+    }
+    if (!gameActive) {
+        setTrainingStatus('Start or reset the scenario (R) before verifying.');
+        updateTrainingHud();
+        return;
+    }
+    const seed = replayRecorder.seed;
+    const passes = [];
+    try {
+        for (let pass = 0; pass < 2; pass++) {
+            resetTrainingScenario();
+            reseedSim(seed);
+            startReplayPlayback({ seed, frames });
+            const hashes = [];
+            for (let i = 0; i < frames.length && gameActive; i++) {
+                advanceCombatSimulation(COMBAT_STEP);
+                hashes.push(hashSimFrame(simFighters()));
+            }
+            stopReplayPlayback();
+            passes.push(hashes);
+        }
+    } finally {
+        stopReplayPlayback();
+    }
+    const asFrames = (hashes) => hashes.map((hash) => ({ hash }));
+    const divAB = firstDivergentFrame(asFrames(passes[0]), asFrames(passes[1]));
+    const divRec = firstDivergentFrame(frames, asFrames(passes[0]));
+    let result;
+    if (passes[0].length !== frames.length || passes[1].length !== frames.length) {
+        result = `INCOMPLETE — the round ended early (KO?). Verify needs a KO-free recording of ${frames.length} frames.`;
+    } else if (divAB !== -1) {
+        result = `FAIL — playbacks diverged at frame ${divAB}.`;
+    } else if (divRec !== -1) {
+        result = `FAIL — playback diverged from the recording at frame ${divRec}.`;
+    } else {
+        result = `PASS — ${frames.length} frames, two playbacks identical (digest ${fnv1a(passes[0].join(','))}).`;
+    }
+    resetTrainingScenario();
+    setTrainingStatus(result);
+    updateTrainingHud();
+}
+
+function setTrainingStatus(msg) {
+    trainingStatusMessage = msg;
+    const el = document.getElementById('training-status');
+    if (el) el.textContent = msg;
+}
+
+function logTrainingInput(frameIndex, playerId, action) {
+    trainingInputLog.push({ frame: frameIndex, playerId, action });
+    if (trainingInputLog.length > TRAINING_INPUT_LOG_MAX) trainingInputLog.splice(0, trainingInputLog.length - TRAINING_INPUT_LOG_MAX);
+    const el = document.getElementById('training-input-log');
+    if (el) {
+        el.innerHTML = trainingInputLog.map((e) => `<div><span class="tlog-frame">f${e.frame}</span> P${e.playerId} ${e.action}</div>`).join('');
+        el.scrollTop = el.scrollHeight;
+    }
+}
+
+function updateTrainingHud() {
+    if (!isTrainingMode()) return;
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('training-dummy-mode', `Dummy: ${trainingDummyMode}`);
+    set('training-freeze-state', simSuspended ? 'Frozen (N = step)' : 'Running');
+    set('training-rec-state', replayRecorder.active ? `Recording… ${replayRecorder.frameCount()}f` : (isReplayPlaying() ? 'Playing back…' : 'Idle'));
+    setTrainingStatus(trainingStatusMessage);
+}
+
+function setTrainingHudVisible(visible) {
+    const el = document.getElementById('training-hud');
+    if (el) el.style.display = visible ? 'block' : 'none';
+    if (visible) updateTrainingHud();
+}
+
 // --- 14. TICK RUNTIME ENGINE LOOP ---
 const clock = new THREE.Clock();
 const COMBAT_STEP = 1 / FRAME_RATE;
 let combatAccumulator = 0;
 
 function advanceCombatSimulation(step = COMBAT_STEP) {
-    if (!gameActive) return;
+    if (!gameActive || simSuspended) return;
+    beginSimFrame();
     if (isStoryMode()) {
         const enemy = storyEnemy;
         const heroes = players.filter(Boolean);
         updateStoryModeFrame(step);
         heroes.forEach((hero) => advanceCombatFighterStep(hero, enemy, step));
         if (enemy) advanceCombatFighterStep(enemy, resolveStoryEnemyTarget(), step);
-        return;
-    }
-    if (players.length === 2) {
+    } else if (players.length === 2) {
         updateVersusModeFrame(step);
         advanceCombatFighterStep(players[0], players[1], step);
         advanceCombatFighterStep(players[1], players[0], step);
     }
+    endSimFrame();
 }
 
 function animate() {
@@ -4527,13 +4713,6 @@ function animate() {
 
     const rawDt = clock.getDelta();
     const realDt = Math.min(rawDt, 0.1);
-
-    if (hitStopTime > 0) {
-        hitStopTime -= realDt;
-        updateCameraShake(realDt);
-        renderer.render(scene, camera);
-        return;
-    }
 
     if (slowMoTimer > 0) {
         slowMoTimer -= realDt;
@@ -4545,10 +4724,20 @@ function animate() {
     const frameDt = realDt * globalTimeScale;
 
     combatAccumulator = Math.min(combatAccumulator + frameDt, COMBAT_STEP * 4);
+    const simStart = perfBeginSim();
+    let simSteps = 0;
     while (combatAccumulator >= COMBAT_STEP) {
-        advanceCombatSimulation(COMBAT_STEP);
+        // Frame-indexed hitstop: freeze the simulation for exactly
+        // move.hitstop sim steps while presentation keeps running.
+        if (hitStopFrames > 0) {
+            hitStopFrames--;
+        } else {
+            advanceCombatSimulation(COMBAT_STEP);
+            simSteps++;
+        }
         combatAccumulator -= COMBAT_STEP;
     }
+    perfEndSim(simStart, simSteps);
 
     updateParticles(frameDt);
 
@@ -4560,301 +4749,6 @@ function animate() {
         updateIntroMotion(storyEnemy, frameDt);
     }
 
-    /*
-     * Legacy render-loop control/lifecycle path retained as a reference while
-     * the fixed-step combat controller owns every live fighter. It is
-     * intentionally isolated from execution so attacks, guards, movement,
-     * hitstun, and recovery cannot be advanced by two clocks.
-    if (gameActive && isStoryMode()) {
-        updateStoryModeFrame(frameDt);
-    } else if (gameActive && players.length === 2) {
-        const p1 = players[0];
-        const p2 = players[1];
-
-        // --- P1 LOCOMOTION & STATE ---
-        p1.velocity = 0;
-        p1.isBlocking = false;
-        if (!p1.isAttacking && !p1.isHit && !p1.isDead && !p1.isStunned) {
-
-            // Trigger Jump
-            const currentWPressed = keys['KeyW'];
-            if (currentWPressed && !p1.wWasPressed && p1.jumps < 2) {
-                p1.isJumping = true;
-                p1.velocityY = 5.0;
-                p1.jumps++;
-                if (p1.jumps > 1) {
-                    p1.fadeTo('doubleJump', 0.1);
-                    spawnParticles(p1.mesh.position, 'dash'); // Double jump burst
-                    AudioSynth.playSwing();
-                } else {
-                    p1.fadeTo('jumpUp', 0.1);
-                }
-            }
-            p1.wWasPressed = currentWPressed;
-
-            if (keys['KeyS'] && !p1.isJumping && !p1.isDashing) {
-                p1.isBlocking = true;
-                resetCombo(p1);
-                p1.fadeTo('block', 0.1);
-            } else if (!p1.isDashing) {
-                // Horizontal tracking (allowed slightly in air for classic feel)
-                if (keys['KeyA']) p1.velocity = -2.5;
-                if (keys['KeyD']) p1.velocity = 2.5;
-
-                if (!p1.isJumping) {
-                    if (p1.velocity !== 0) {
-                        p1.fadeTo(getLocomotionAnimation(p1, p2), 0.12);
-                    } else {
-                        p1.fadeTo('idle', 0.15);
-                    }
-                }
-            }
-        }
-
-        // --- DASH OVERRIDE P1 ---
-        if (p1.isDashing) {
-            p1.velocity = p1.dashDir * 8.0;
-            p1.dashTimer -= frameDt;
-            if (p1.dashTimer <= 0) p1.isDashing = false;
-        }
-
-        // --- P2 LOCOMOTION & STATE ---
-        p2.velocity = 0;
-        p2.isBlocking = false;
-        if (!p2.isAttacking && !p2.isHit && !p2.isDead && !p2.isStunned) {
-            if (isArcadeMode()) {
-                // Primitive AI
-                if (performance.now() > aiNextActionTime && !p2.isJumping && !p2.isDashing) {
-                    const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
-
-                    if (aiHitCount >= 3 && Math.random() < 0.5) {
-                        aiHitCount = 0;
-                        aiCurrentAction = 'backward';
-                        aiNextActionTime = performance.now() + 800;
-                    } else if (dist > 1.8) {
-                        aiCurrentAction = 'forward';
-                        aiNextActionTime = performance.now() + 300 + Math.random() * 400;
-                    } else {
-                        if (Math.random() < 0.85) {
-                            const attackType = Math.random() < 0.5 ? 'punch' : 'kick';
-                            bufferAttackInput(2, attackType);
-                            aiCurrentAction = 'idle';
-                            aiNextActionTime = performance.now() + 600 + Math.random() * 600;
-                        } else {
-                            aiCurrentAction = 'block';
-                            aiNextActionTime = performance.now() + 500 + Math.random() * 500;
-                        }
-                    }
-                }
-
-                if (aiCurrentAction === 'block') {
-                    p2.isBlocking = true;
-                } else if (aiCurrentAction === 'forward') {
-                    p2.velocity = p2.direction * 2.5;
-                } else if (aiCurrentAction === 'backward') {
-                    p2.velocity = p2.direction * -2.5;
-                }
-
-                if (p2.isBlocking) {
-                    resetCombo(p2);
-                    p2.fadeTo('block', 0.1);
-                } else if (!p2.isJumping) {
-                    if (p2.velocity !== 0) {
-                        p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
-                    } else {
-                        p2.fadeTo('idle', 0.15);
-                    }
-                }
-            } else {
-                // P2 Human
-                const currentUpPressed = keys['ArrowUp'];
-                if (currentUpPressed && !p2.upWasPressed && p2.jumps < 2) {
-                    p2.isJumping = true;
-                    p2.velocityY = 4.0;
-                    p2.jumps++;
-                    if (p2.jumps > 1) {
-                        p2.fadeTo('doubleJump', 0.1);
-                        spawnParticles(p2.mesh.position, 'dash'); // Double jump burst
-                        AudioSynth.playSwing();
-                    } else {
-                        p2.fadeTo('jumpUp', 0.1);
-                    }
-                }
-                p2.upWasPressed = currentUpPressed;
-
-                if (keys['ArrowDown'] && !p2.isJumping && !p2.isDashing) {                    p2.isBlocking = true;
-                    resetCombo(p2);
-                    p2.fadeTo('block', 0.1);
-                } else if (!p2.isDashing) {
-                    if (keys['ArrowLeft']) p2.velocity = -2.5;
-                    if (keys['ArrowRight']) p2.velocity = 2.5;
-
-                    if (!p2.isJumping) {
-                        if (p2.velocity !== 0) {
-                            p2.fadeTo(getLocomotionAnimation(p2, p1), 0.12);
-                        } else {
-                            p2.fadeTo('idle', 0.15);
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- DASH OVERRIDE P2 ---
-        if (p2.isDashing) {
-            p2.velocity = p2.dashDir * 8.0;
-            p2.dashTimer -= frameDt;
-            if (p2.dashTimer <= 0) p2.isDashing = false;
-        }
-
-        syncCombatIntent(p1, keys['KeyS']);
-        syncCombatIntent(p2, keys['ArrowDown']);
-
-        processBufferedAttack(p1);
-        processBufferedAttack(p2);
-
-        // Clamped Boundary Moving
-        p1.mesh.position.x = Math.max(-9.5, Math.min(9.5, p1.mesh.position.x + p1.velocity * frameDt));
-        p2.mesh.position.x = Math.max(-9.5, Math.min(9.5, p2.mesh.position.x + p2.velocity * frameDt));
-
-        // Face tracking logic
-        if (p1.mesh.position.x < p2.mesh.position.x) {
-            p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, Math.PI / 2, 0.15);
-            p1.direction = 1;
-            p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, -Math.PI / 2, 0.15);
-            p2.direction = -1;
-        } else {
-            p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, -Math.PI / 2, 0.15);
-            p1.direction = -1;
-            p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, Math.PI / 2, 0.15);
-            p2.direction = 1;
-        }
-
-        // --- Combat Actions & Physics States ---
-        players.forEach(p => {
-            const opp = p.id === 1 ? p2 : p1;
-            if (p.combat) {
-                updateCombatantLifecycle(p, opp, frameDt);
-                return;
-            }
-
-            // Guard Regen
-            if (!p.isBlocking && !p.isStunned && p.guardHealth < 100) {
-                p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt); // Regen 15 per sec
-                updateHealthBars();
-            }
-
-            // Stun Recovery
-            if (p.isStunned) {
-                p.stunTimer -= frameDt;
-                if (p.stunTimer <= 0) {
-                    p.isStunned = false;
-                    p.guardHealth = 100;
-                    reconcileGroundedState(p, 'stun-recovery');
-                    p.fadeTo('idle', 0.2);
-                }
-            }
-
-            // Jump Physics Loop
-            if (p.isJumping) {
-                p.velocityY -= 20.0 * frameDt; // Gravity Constant
-                p.mesh.position.y += p.velocityY * frameDt;
-
-                if (p.velocityY < 0 && p.currentState !== 'jumpDown' && !p.isAttacking && !p.isHit && !p.isStunned) {
-                    p.fadeTo('jumpDown', 0.2);
-                }
-
-                if (p.mesh.position.y <= GROUND_Y) {
-                    sanitizeGroundedState(p);
-                    if (!p.isAttacking && !p.isHit && !p.isDead && !p.isStunned) p.fadeTo('idle', 0.1);
-                    spawnParticles(p.mesh.position, 'landing'); // Landing dust
-                }
-            }
-
-            if (!p.isAttacking && !p.isHit && !p.isDead && p.comboTimer > 0) {
-                p.comboTimer = Math.max(0, p.comboTimer - frameDt);
-                if (p.comboTimer === 0) {
-                    resetCombo(p);
-                }
-            }
-
-            if (p.isAttacking) {
-                p.actionTimer += frameDt;
-                const clipDur = getClipDuration(p, p.currentAttack ? p.currentAttack.animation : p.currentState);
-                const animPercent = p.actionTimer / clipDur;
-
-                applyAttackTravel(p, opp, animPercent);
-                checkHits(p, opp);
-
-                if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder && animPercent >= p.currentAttack.chainAt) {
-                    startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
-                    return;
-                }
-
-                if (p.actionTimer >= clipDur) {
-                    if (p.queuedAttackType && p.currentAttack && !p.currentAttack.comboEnder) {
-                        startAttack(p, getAttackDefinition(p.queuedAttackType, p.comboCount));
-                        return;
-                    }
-
-                    const finishedAttack = p.currentAttack;
-                    p.isAttacking = false;
-                    p.actionTimer = 0;
-                    p.currentAttack = null;
-                    p.queuedAttackType = null;
-                    p.attackTravel = 0;
-
-                    if (finishedAttack && finishedAttack.comboEnder) {
-                        resetCombo(p);
-                    } else {
-                        p.comboTimer = COMBO_RESET_DELAY;
-                    }
-
-                    if (!p.isJumping) p.fadeTo('idle', 0.2);
-                }
-            }
-
-            if (p.isHit) {
-                p.actionTimer += frameDt;
-
-                let clipDur = 0.5;
-                const reactionKey = p.currentState;
-                if (!isFallbackMode && p.actions[reactionKey]) {
-                    clipDur = p.actions[reactionKey].getClip().duration;
-                }
-                const reactionProgress = p.actionTimer / clipDur;
-                applyReactionTravel(p, reactionProgress);
-                if (p.actionTimer >= clipDur) {
-                    if (p.currentState === 'knockdown') {
-                        sanitizeGroundedState(p, { preserveHitState: true });
-                        p.fadeTo('getUp', GET_UP_FADE_DURATION);
-                        p.actionTimer = 0;
-                        p.reactionTravel = 0;
-                        p.reactionDistance = 0;
-                        p.reactionDirection = 0;
-                    } else if (p.currentState === 'getUp') {
-                        p.isHit = false;
-                        p.actionTimer = 0;
-                        p.reactionTravel = 0;
-                        p.reactionDistance = 0;
-                        p.reactionDirection = 0;
-                        sanitizeGroundedState(p);
-                        p.fadeTo('idle', 0.16);
-                    } else {
-                        p.isHit = false;
-                        p.actionTimer = 0;
-                        p.reactionTravel = 0;
-                        p.reactionDistance = 0;
-                        p.reactionDirection = 0;
-                        sanitizeGroundedState(p);
-                        if (!p.isJumping) p.fadeTo('idle', 0.2);
-                    }
-                }
-            }
-        });
-    }
-
-    */
 
     players.forEach(p => {
         if (p.mixer) p.mixer.update(frameDt);
@@ -4880,7 +4774,13 @@ function animate() {
     updateCameraDirector();
     updateCameraShake(realDt);
 
+    const renderStart = performance.now();
     renderer.render(scene, camera);
+    perfNoteRender(performance.now() - renderStart, particles.length);
+    if (perfOverlayVisible) {
+        const perfEl = document.getElementById('perf-overlay');
+        if (perfEl) perfEl.textContent = formatPerfStats();
+    }
 }
 
 function resizeRendererToViewport() {
@@ -4910,6 +4810,12 @@ window.updateAudioOptions = updateAudioOptions;
 window.selectCharacter = selectCharacter;
 window.quitToMainMenu = quitToMainMenu;
 window.togglePause = togglePause;
+window.toggleTrainingDummy = toggleTrainingDummy;
+window.toggleTrainingFreeze = toggleTrainingFreeze;
+window.stepTrainingFrame = stepTrainingFrame;
+window.resetTrainingScenario = resetTrainingScenario;
+window.toggleTrainingRecording = toggleTrainingRecording;
+window.verifyTrainingRecording = verifyTrainingRecording;
 window.advanceTime = (ms) => {
     const steps = Math.max(1, Math.round(ms / (1000 / FRAME_RATE)));
     for (let index = 0; index < steps; index++) advanceCombatSimulation(COMBAT_STEP);

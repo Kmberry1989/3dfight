@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 
-  <script type="module" crossorigin src="/assets/index-ESCAmAQZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DvJQshq9.css">
+  <script type="module" crossorigin src="/assets/index-C-EQUMx5.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BLVPxDjd.css">
 </head>
 
 <body>
@@ -27,6 +27,7 @@
             <button id="menu-single-btn" class="menu-btn" onclick="startGameMode('arcade_single')">Arcade</button>
             <button id="menu-local-btn" class="menu-btn" onclick="startGameMode('local')" style="display:none">Local Multiplayer</button>
             <button id="menu-online-btn" class="menu-btn" onclick="openLobby('online_versus')">Online Multiplayer</button>
+            <button id="menu-training-btn" class="menu-btn" onclick="startGameMode('training')">Training Lab</button>
             <button id="menu-options-btn" class="menu-btn" onclick="openOptions()">Options</button>
         </div>
     </div>
@@ -259,6 +260,30 @@
         </div>
     </div>
 
+    <!-- Training Lab overlay (Phase 0, item 6) -->
+    <div id="training-hud" style="display: none;">
+        <div class="training-panel">
+            <div class="training-title">Training Lab</div>
+            <div class="training-row"><span id="training-dummy-mode">Dummy: idle</span><span id="training-freeze-state">Running</span></div>
+            <div class="training-row"><span id="training-rec-state">Idle</span></div>
+            <div id="training-status" class="training-status"></div>
+            <div class="training-buttons">
+                <button onclick="toggleTrainingDummy()">Dummy: Block (B)</button>
+                <button onclick="toggleTrainingFreeze()">Freeze (F)</button>
+                <button onclick="stepTrainingFrame()">Step (N)</button>
+                <button onclick="resetTrainingScenario()">Reset (R)</button>
+                <button onclick="toggleTrainingRecording()">Record</button>
+                <button onclick="verifyTrainingRecording()">Verify</button>
+            </div>
+            <div class="training-keys">WASD move · J/K/L/U/I/O attacks · Space jump · Shift block · H hitboxes · ` perf</div>
+            <div class="training-subtitle">Input history</div>
+            <div id="training-input-log"></div>
+        </div>
+    </div>
+
+    <!-- Sim/render performance overlay (Phase 0, item 4) -->
+    <div id="perf-overlay" style="display: none;"></div>
+
 
     <div id="touch-controls">
         <div id="touch-side-p1" class="touch-side left">
@@ -276,10 +301,10 @@
             </div>
             <div class="touch-action-cluster">
                 <div class="touch-action-fan">
-                    <button class="touch-btn p1 touch-icon-punch" data-key="Space" data-buffer="punch" data-player="1" aria-label="Player 1 punch"><span class="sr-only">Punch</span></button>
-                    <button class="touch-btn p1 touch-icon-kick" data-key="ShiftLeft" data-buffer="kick" data-player="1" aria-label="Player 1 kick"><span class="sr-only">Kick</span></button>
-                    <button class="touch-btn p1 touch-icon-special" data-key="KeyC" data-buffer="special" data-player="1" aria-label="Player 1 special"><span class="sr-only">Special</span></button>
-                    <button class="touch-btn p1 touch-icon-throw" data-key="KeyE" data-buffer="throw" data-player="1" aria-label="Player 1 throw"><span class="sr-only">Throw</span></button>
+                    <button class="touch-btn p1 touch-icon-punch" data-key="Space" data-action="Punch" data-buffer="punch" data-player="1" aria-label="Player 1 punch"><span class="sr-only">Punch</span></button>
+                    <button class="touch-btn p1 touch-icon-kick" data-key="ShiftLeft" data-action="Kick" data-buffer="kick" data-player="1" aria-label="Player 1 kick"><span class="sr-only">Kick</span></button>
+                    <button class="touch-btn p1 touch-icon-special" data-key="KeyC" data-action="Special" data-buffer="special" data-player="1" aria-label="Player 1 special"><span class="sr-only">Special</span></button>
+                    <button class="touch-btn p1 touch-icon-throw" data-key="KeyE" data-action="Throw" data-buffer="throw" data-player="1" aria-label="Player 1 throw"><span class="sr-only">Throw</span></button>
                 </div>
             </div>
         </div>
@@ -298,10 +323,10 @@
             </div>
             <div class="touch-action-cluster">
                 <div class="touch-action-fan">
-                    <button class="touch-btn p2 touch-icon-punch" data-key="KeyP" data-buffer="punch" data-player="2" aria-label="Player 2 punch"><span class="sr-only">Punch</span></button>
-                    <button class="touch-btn p2 touch-icon-kick" data-key="KeyO" data-buffer="kick" data-player="2" aria-label="Player 2 kick"><span class="sr-only">Kick</span></button>
-                    <button class="touch-btn p2 touch-icon-special" data-key="KeyI" data-buffer="special" data-player="2" aria-label="Player 2 special"><span class="sr-only">Special</span></button>
-                    <button class="touch-btn p2 touch-icon-throw" data-key="KeyU" data-buffer="throw" data-player="2" aria-label="Player 2 throw"><span class="sr-only">Throw</span></button>
+                    <button class="touch-btn p2 touch-icon-punch" data-key="KeyP" data-action="Punch" data-buffer="punch" data-player="2" aria-label="Player 2 punch"><span class="sr-only">Punch</span></button>
+                    <button class="touch-btn p2 touch-icon-kick" data-key="KeyO" data-action="Kick" data-buffer="kick" data-player="2" aria-label="Player 2 kick"><span class="sr-only">Kick</span></button>
+                    <button class="touch-btn p2 touch-icon-special" data-key="KeyI" data-action="Special" data-buffer="special" data-player="2" aria-label="Player 2 special"><span class="sr-only">Special</span></button>
+                    <button class="touch-btn p2 touch-icon-throw" data-key="KeyU" data-action="Throw" data-buffer="throw" data-player="2" aria-label="Player 2 throw"><span class="sr-only">Throw</span></button>
                 </div>
             </div>
         </div>

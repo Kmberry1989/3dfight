@@ -1916,3 +1916,105 @@ body.touch-landscape #instructions {
     justify-content: flex-end;
     gap: 12px;
 }
+
+/* Training Lab overlay (Phase 0, item 6) */
+#training-hud {
+    position: fixed;
+    top: 70px;
+    right: 12px;
+    z-index: 40;
+    pointer-events: none;
+}
+.training-panel {
+    pointer-events: auto;
+    width: 240px;
+    background: rgba(8, 12, 24, 0.82);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #dfe9f5;
+    font-family: inherit;
+    font-size: 12px;
+}
+.training-title {
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #00f0ff;
+    margin-bottom: 6px;
+}
+.training-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.training-status {
+    min-height: 28px;
+    margin: 6px 0;
+    color: #9fe8ff;
+    line-height: 1.35;
+}
+.training-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.training-buttons button {
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.45);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 4px;
+    font-size: 11px;
+    cursor: pointer;
+}
+.training-buttons button:hover {
+    background: rgba(0, 240, 255, 0.28);
+}
+.training-keys {
+    color: #8b98ad;
+    font-size: 10.5px;
+    line-height: 1.5;
+    margin-bottom: 6px;
+}
+.training-subtitle {
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10px;
+    color: #8b98ad;
+    margin-bottom: 4px;
+}
+#training-input-log {
+    max-height: 120px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 1.5;
+}
+.tlog-frame {
+    color: #00f0ff;
+}
+
+/* Sim/render performance overlay (Phase 0, item 4) */
+#perf-overlay {
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.72);
+    color: #7dff9a;
+    border: 1px solid rgba(125, 255, 154, 0.35);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre;
+    pointer-events: none;
+}
