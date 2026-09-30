@@ -9,6 +9,11 @@ import Peer from 'peerjs';
 import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, startCombatDash, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
 import { getMove, ATTACK_ANIMATION_NAMES } from './combat/frameData.js';
+import { ACTION, ACTION_BY_NAME, HELD_ACTIONS, ATTACK_ACTIONS, ACTION_ATTACK_TYPE, KEYBOARD_BINDINGS, keyCodeToAction, createActionState, pressAction, releaseAction, setActionHeld, isActionHeld, clearActionState, drainPressedActions, heldActionBitmask, applyActionBitmask, bitmaskToActionNames } from './input/actions.js';
+import { reseedSim, getSimSeed, simRandom, simPick } from './simulation/rng.js';
+import { COMBAT_EVENT, onCombatEvent, emitCombatEvent } from './simulation/events.js';
+import { fnv1a, hashSimFrame, createReplayRecorder, firstDivergentFrame } from './simulation/replay.js';
+import { perfBeginSim, perfEndSim, perfNoteHitboxCheck, perfNoteRender, formatPerfStats } from './debug/perf.js';
 
 // --- 1. SAMPLE-BASED AUDIO ---
 const AudioSynth = {
@@ -630,12 +635,7 @@ function setupConnection() {
             showCharacterSelect();
         } else if (data.type === 'input' && gameActive) {
             const remotePlayerId = isHost ? 2 : 1;
-            if (data.action === 'keydown') {
-                keys[data.key] = true;
-                if (data.buffer) bufferAttackInput(remotePlayerId, data.buffer);
-            } else if (data.action === 'keyup') {
-                keys[data.key] = false;
-            }
+            applyRemoteActionInput(remotePlayerId, data.action, data.key, data.buffer);
         } else if (data.type === 'select') {
             selectCharacter(data.player, data.charId, true);
         } else if (data.type === 'lockIn') {
@@ -658,9 +658,27 @@ function setupConnection() {
     }
 }
 
-function sendNetworkInput(action, key, buffer = null) {
+// Sends an action-based input over the wire. `key` carries an action name on
+// current clients; the receiver also accepts legacy raw key codes.
+function sendNetworkInput(type, actionName, bufferAttack = null) {
     if ((isOnlineVersusMode() || isStoryCoopMode()) && conn && conn.open) {
-        conn.send({ type: 'input', action, key, buffer });
+        conn.send({ type: 'input', action: type, key: actionName, buffer: bufferAttack });
+    }
+}
+
+// Applies a network input to the remote player's action state. Accepts both
+// the current action-name format and the legacy key-code format.
+function applyRemoteActionInput(remotePlayerId, netAction, keyOrAction, bufferAttack) {
+    let actionName = ACTION_BY_NAME[keyOrAction] || null;
+    if (!actionName) actionName = keyCodeToAction(remotePlayerId, keyOrAction);
+    if (!actionName) return;
+    const state = playerActionState(remotePlayerId);
+    if (netAction === 'keydown') {
+        pressAction(state, actionName);
+        const attackType = bufferAttack || ACTION_ATTACK_TYPE[actionName] || null;
+        if (attackType) bufferAttackInput(remotePlayerId, attackType);
+    } else if (netAction === 'keyup') {
+        releaseAction(state, actionName);
     }
 }
 
@@ -725,7 +743,62 @@ function quitToMainMenu() {
 }
 
 const DOUBLE_TAP_WINDOW = 250;
-const lastTaps = { KeyA: 0, KeyD: 0, ArrowLeft: 0, ArrowRight: 0 };
+const lastActionTaps = {};
+
+function resolveKeyBinding(code) {
+    for (const playerId of [1, 2]) {
+        const action = keyCodeToAction(playerId, code);
+        if (action) return { playerId, action };
+    }
+    return null;
+}
+
+function triggerDash(player, dir) {
+    if (!player || !player.combat || player.isDead) return false;
+    if (player.combat.state === FIGHTER_STATE.DASH || player.isJumping) return false;
+    player.dashDir = dir;
+    if (!startCombatDash(player, dir)) return false;
+    const anim = (dir === player.direction) ? 'stepForwardLong' : 'stepBackward';
+    player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
+    spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
+    return true;
+}
+
+// Edge effects for a pressed action. `fromReplay` replays a recorded stream:
+// discrete actions (attacks, recorded dashes) are dispatched, but live-only
+// derivations such as double-tap detection are skipped.
+function handleActionPress(playerId, action, fromReplay = false, data = null) {
+    const player = players[playerId - 1];
+    let bufferAttack = null;
+    if ((action === ACTION.MOVE_LEFT || action === ACTION.MOVE_RIGHT) && gameActive && !fromReplay) {
+        const now = performance.now();
+        const tapKey = playerId + ':' + action;
+        if (now - (lastActionTaps[tapKey] || 0) < DOUBLE_TAP_WINDOW) {
+            const dir = action === ACTION.MOVE_LEFT ? -1 : 1;
+            if (triggerDash(player, dir)) {
+                pressAction(playerActionState(playerId), ACTION.DASH, { dir });
+            }
+        }
+        lastActionTaps[tapKey] = now;
+    } else if (action === ACTION.DASH && fromReplay) {
+        const dir = (data && typeof data.dir === 'number') ? data.dir : (player ? player.direction : 1) || 1;
+        triggerDash(player, dir);
+    }
+    const attackType = ACTION_ATTACK_TYPE[action];
+    if (attackType) {
+        bufferAttackInput(playerId, attackType);
+        bufferAttack = attackType;
+    }
+    if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
+}
+
+// Each peer only transmits its own fighter's inputs (host: player 1, guest: player 2).
+function sendActionNetworkInput(playerId, type, action, bufferAttack = null) {
+    if (!(isOnlineVersusMode() || isStoryCoopMode())) return;
+    if (isHost && playerId !== 1) return;
+    if (!isHost && playerId !== 2) return;
+    sendNetworkInput(type, action, bufferAttack);
+}
 
 window.addEventListener('keydown', (e) => {
     if (isZoomShortcut(e)) {
@@ -733,54 +806,38 @@ window.addEventListener('keydown', (e) => {
         return;
     }
 
-    if (e.code === 'Escape' && (gameActive || gamePaused)) {
-        togglePause();
-    }
-
-    if (e.code) keys[e.code] = true;
-
     if (!e.repeat && e.code === 'KeyH') {
         showCombatHitboxes = !showCombatHitboxes;
         [...players, ...activeEnemies].forEach((fighter) => !showCombatHitboxes && hideCombatHelpers(fighter));
         return;
     }
 
-    // --- DOUBLE-TAP DASH LOGIC ---
-    if (!e.repeat && gameActive) {
-        const now = performance.now();
-        if (['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-            if (now - lastTaps[e.code] < DOUBLE_TAP_WINDOW) {
-                const player = (e.code === 'KeyA' || e.code === 'KeyD') ? players[0] : players[1];
-                if (player && player.combat && !player.isDead && player.combat.state !== FIGHTER_STATE.DASH && !player.isJumping) {
-                    player.dashDir = (e.code === 'KeyA' || e.code === 'ArrowLeft') ? -1 : 1;
-                    startCombatDash(player, player.dashDir);
-                    const anim = (player.dashDir === player.direction) ? 'stepForwardLong' : 'stepBackward';
-                    player.fadeTo(anim, 0.05, 2.0); // Play dash animation at 2x speed
-                    spawnParticles(player.mesh.position, 'dash'); // Minor dash burst
-                }
-            }
-            lastTaps[e.code] = now;
-        }
+    if (!e.repeat && e.code === 'Backquote') {
+        togglePerfOverlay();
+        return;
     }
 
-    let bufferHit = null;
+    const binding = resolveKeyBinding(e.code);
+    if (!binding) {
+        // Prevent scrolling
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+            e.preventDefault();
+        }
+        return;
+    }
+
+    const { playerId, action } = binding;
+    if (action === ACTION.PAUSE) {
+        if (!e.repeat && (gameActive || gamePaused)) togglePause();
+        return;
+    }
+
     if (!e.repeat) {
-        if (e.code === 'Space') { bufferAttackInput(1, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'ShiftLeft') { bufferAttackInput(1, 'kick'); bufferHit = 'kick'; }
-        if (e.code === 'KeyC') { bufferAttackInput(1, 'special'); bufferHit = 'special'; }
-        if (e.code === 'KeyE') { bufferAttackInput(1, 'throw'); bufferHit = 'throw'; }
-        if (e.code === 'KeyP') { bufferAttackInput(2, 'punch'); bufferHit = 'punch'; }
-        if (e.code === 'KeyO') { bufferAttackInput(2, 'kick'); bufferHit = 'kick'; }
-        if (e.code === 'KeyI') { bufferAttackInput(2, 'special'); bufferHit = 'special'; }
-        if (e.code === 'KeyU') { bufferAttackInput(2, 'throw'); bufferHit = 'throw'; }
-    }
-
-    if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
-            sendNetworkInput('keydown', e.code, bufferHit);
-        }
+        pressAction(playerActionState(playerId), action);
+        handleActionPress(playerId, action, false);
+    } else {
+        // Key repeat: refresh the remote peer's held state, no new press.
+        sendActionNetworkInput(playerId, 'keydown', action);
     }
 
     // Prevent scrolling
@@ -790,15 +847,10 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.code) keys[e.code] = false;
-
-    if (isOnlineVersusMode() || isStoryCoopMode()) {
-        if (isHost && (e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyS' || e.code === 'KeyW' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'KeyE')) {
-            sendNetworkInput('keyup', e.code);
-        } else if (!isHost && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyP' || e.code === 'KeyO' || e.code === 'KeyI' || e.code === 'KeyU')) {
-            sendNetworkInput('keyup', e.code);
-        }
-    }
+    const binding = resolveKeyBinding(e.code);
+    if (!binding || binding.action === ACTION.PAUSE) return;
+    releaseAction(playerActionState(binding.playerId), binding.action);
+    sendActionNetworkInput(binding.playerId, 'keyup', binding.action);
 });
 
 function isZoomShortcut(event) {
@@ -2120,6 +2172,7 @@ function initTouchControls() {
 
     const touchButtons = document.querySelectorAll('#touch-controls .touch-btn');
     touchButtons.forEach((button) => {
+        const actionName = button.dataset.action || null;
         const keyCode = button.dataset.key;
         const bufferedAttack = button.dataset.buffer;
         const playerId = Number(button.dataset.player || 0);
@@ -2127,14 +2180,31 @@ function initTouchControls() {
         const press = (event) => {
             event.preventDefault();
             if (event.pointerId !== undefined) button.setPointerCapture?.(event.pointerId);
-            if (keyCode) keys[keyCode] = true;
-            if (bufferedAttack && playerId) bufferAttackInput(playerId, bufferedAttack);
+            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
+                const state = playerActionState(playerId);
+                pressAction(state, actionName);
+                handleActionPress(playerId, actionName, false);
+            } else {
+                // Legacy fallback: key-code bindings.
+                const legacy = keyCode ? resolveKeyBinding(keyCode) : null;
+                if (legacy) {
+                    pressAction(playerActionState(legacy.playerId), legacy.action);
+                    handleActionPress(legacy.playerId, legacy.action, false);
+                } else if (bufferedAttack && playerId) {
+                    bufferAttackInput(playerId, bufferedAttack);
+                }
+            }
             button.classList.add('pressed');
         };
 
         const release = (event) => {
             event.preventDefault();
-            if (keyCode) keys[keyCode] = false;
+            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
+                releaseAction(playerActionState(playerId), actionName);
+            } else if (keyCode) {
+                const legacy = resolveKeyBinding(keyCode);
+                if (legacy) releaseAction(playerActionState(legacy.playerId), legacy.action);
+            }
             button.classList.remove('pressed');
         };
 
@@ -2765,8 +2835,13 @@ class StoryEnemyManager {
 
 const storyEnemyManager = new StoryEnemyManager();
 
-// --- 9. DYNAMIC CONTROL SYSTEM ---
-const keys = {};
+// --- 9. ACTION-BASED INPUT SYSTEM ---
+// Every device feeds named actions (see src/input/actions.js). Combat reads
+// these per-player action states, never raw key codes.
+const playerActionStates = { 1: createActionState(), 2: createActionState() };
+function playerActionState(playerId) {
+    return playerActionStates[playerId] || playerActionStates[1];
+}
 function bufferAttackInput(playerId, attackType) {
     const fighter = [...players, ...activeEnemies].find((actor) => actor?.id === playerId) || (storyEnemy?.id === playerId ? storyEnemy : null);
     if (fighter?.combat) queueCombatInput(fighter, attackType);
@@ -4035,19 +4110,18 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     updateCombatHitboxes(p, showCombatHitboxes);
 }
 
-function updateHumanControl(player, controlBindings, opponent, frameDt) {
+function updateHumanControl(player, playerId, opponent, frameDt) {
     if (!player) return;
-    const { left, right, up, down } = controlBindings;
+    const actions = playerActionState(playerId);
     const combat = player.combat;
 
     player.velocity = 0;
 
     if (combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state) && !player.isDead) {
-        const currentUpPressed = keys[up];
-        const upLatchKey = up === 'KeyW' ? 'wWasPressed' : 'upWasPressed';
-        if (currentUpPressed && !player[upLatchKey] && player.jumps < 2) {
+        const jumpHeld = isActionHeld(actions, ACTION.JUMP);
+        if (jumpHeld && !player.jumpWasHeld && player.jumps < 2) {
             player.isJumping = true;
-            player.velocityY = up === 'KeyW' ? 5.0 : 4.0;
+            player.velocityY = playerId === 1 ? 5.0 : 4.0;
             player.jumps++;
             changeCombatState(player, FIGHTER_STATE.JUMP);
             if (player.jumps > 1) {
@@ -4058,15 +4132,15 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
                 player.fadeTo('jumpUp', 0.1);
             }
         }
-        player[upLatchKey] = currentUpPressed;
+        player.jumpWasHeld = jumpHeld;
 
         if (!player.isJumping && combat.state !== FIGHTER_STATE.DASH) {
-            if (keys[down]) {
+            if (isActionHeld(actions, ACTION.BLOCK)) {
                 resetCombo(player);
                 player.fadeTo('block', 0.1);
             } else {
-            if (keys[left]) player.velocity = -2.5;
-            if (keys[right]) player.velocity = 2.5;
+            if (isActionHeld(actions, ACTION.MOVE_LEFT)) player.velocity = -2.5;
+            if (isActionHeld(actions, ACTION.MOVE_RIGHT)) player.velocity = 2.5;
 
                 if (player.velocity !== 0) {
                     player.fadeTo(getLocomotionAnimation(player, opponent), 0.12);
@@ -4076,7 +4150,7 @@ function updateHumanControl(player, controlBindings, opponent, frameDt) {
             }
         }
     }
-    syncCombatIntent(player, keys[down]);
+    syncCombatIntent(player, isActionHeld(actions, ACTION.BLOCK));
 }
 
 function syncCombatIntent(player, blockHeld = false) {
@@ -4177,8 +4251,8 @@ function updateStoryModeFrame(frameDt) {
     const hero1 = players[0];
     const hero2 = players[1];
 
-    updateHumanControl(hero1, touchMovementBindings[1], enemy, frameDt);
-    if (hero2) updateHumanControl(hero2, touchMovementBindings[2], enemy, frameDt);
+    updateHumanControl(hero1, 1, enemy, frameDt);
+    if (hero2) updateHumanControl(hero2, 2, enemy, frameDt);
     updateStoryEnemyControl(frameDt);
 
     const targetForEnemy = resolveStoryEnemyTarget();
@@ -4215,7 +4289,7 @@ function updateVersusModeFrame(frameDt) {
     const p2 = players[1];
     if (!p1 || !p2) return;
 
-    updateHumanControl(p1, { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' }, p2, frameDt);
+    updateHumanControl(p1, 1, p2, frameDt);
 
     p2.velocity = 0;
     const p2Combat = p2.combat;
@@ -4245,7 +4319,7 @@ function updateVersusModeFrame(frameDt) {
         if (p2Combat.state === FIGHTER_STATE.BLOCK) p2.fadeTo('block', 0.1);
         if (p2Combat.state === FIGHTER_STATE.IDLE) p2.fadeTo('idle', 0.15);
     } else {
-        updateHumanControl(p2, { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' }, p1, frameDt);
+        updateHumanControl(p2, 2, p1, frameDt);
     }
 
     if (p1.mesh.position.x < p2.mesh.position.x) {
