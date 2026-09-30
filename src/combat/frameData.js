@@ -40,3 +40,10 @@ export function getMove(type, chain = 0) {
   if (!moves) return null;
   return moves[Math.min(chain, moves.length - 1)];
 }
+
+// Animation names owned by the live move data. The presentation layer uses
+// this to mark one-shot attack clips (LoopOnce, clamp when finished).
+// This is the single source of truth; the old ATTACKS table is gone.
+export const ATTACK_ANIMATION_NAMES = Object.freeze(new Set(
+  Object.values(MOVE_DATA).flatMap((moves) => moves.map((move) => move.animation))
+));
