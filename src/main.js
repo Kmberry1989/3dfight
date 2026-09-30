@@ -288,7 +288,8 @@ const MODE = {
     LOCAL_VERSUS: 'local_versus',
     ONLINE_VERSUS: 'online_versus',
     STORY_SOLO: 'story_solo',
-    STORY_COOP_ONLINE: 'story_coop_online'
+    STORY_COOP_ONLINE: 'story_coop_online',
+    TRAINING: 'training'
 };
 
 const COMBO_SEQUENCE = ['light', 'medium', 'heavy'];
@@ -364,6 +365,7 @@ function normalizeGameMode(mode) {
     if (mode === 'single') return MODE.ARCADE_SINGLE;
     if (mode === 'local') return MODE.LOCAL_VERSUS;
     if (mode === 'online') return MODE.ONLINE_VERSUS;
+    if (mode === 'training') return MODE.TRAINING;
     return mode || MODE.LOCAL_VERSUS;
 }
 
@@ -381,6 +383,10 @@ function isStoryMode() {
 
 function isStoryCoopMode() {
     return gameMode === MODE.STORY_COOP_ONLINE;
+}
+
+function isTrainingMode() {
+    return gameMode === MODE.TRAINING;
 }
 
 let gameMode = MODE.LOCAL_VERSUS;
@@ -733,6 +739,7 @@ function quitToMainMenu() {
     clearInterval(timerInterval);
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
+    setTrainingHudVisible(false);
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('ladder-screen').classList.add('hidden');
     if (comboUI) comboUI.classList.remove('show');
@@ -788,6 +795,10 @@ function handleActionPress(playerId, action, fromReplay = false, data = null) {
     if (attackType) {
         bufferAttackInput(playerId, attackType);
         bufferAttack = attackType;
+        // Live-only: also drop the press into the action queue so the
+        // per-step drain (beginSimFrame) captures it for recordings. The
+        // replay path re-buffers at the same simFrame, so expiry matches.
+        if (!fromReplay) pressAction(playerActionState(playerId), action);
     }
     if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
 }
@@ -815,6 +826,14 @@ window.addEventListener('keydown', (e) => {
     if (!e.repeat && e.code === 'Backquote') {
         togglePerfOverlay();
         return;
+    }
+
+    // Training Lab shortcuts.
+    if (!e.repeat && isTrainingMode()) {
+        if (e.code === 'KeyF') { toggleTrainingFreeze(); return; }
+        if (e.code === 'KeyN') { stepTrainingFrame(); return; }
+        if (e.code === 'KeyB') { toggleTrainingDummy(); return; }
+        if (e.code === 'KeyR') { resetTrainingScenario(); return; }
     }
 
     const binding = resolveKeyBinding(e.code);
@@ -1546,6 +1565,10 @@ function showCharacterSelect() {
     clearScheduledEvents();
     clearInterval(timerInterval);
     gameActive = false;
+    simSuspended = false;
+    stopReplayPlayback();
+    stopReplayRecording();
+    setTrainingHudVisible(false);
     resetAllTouchMovementStates();
     p1Locked = false;
     p2Locked = false;
@@ -1560,34 +1583,42 @@ function showCharacterSelect() {
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
-    document.getElementById('select-mode-kicker').textContent = isArcadeMode()
-        ? 'Arcade Tournament Ladder'
-        : isStoryMode()
-            ? (isStoryCoopMode() ? 'Online Co-op Story' : 'Solo Story')
+    document.getElementById('select-mode-kicker').textContent = isTrainingMode()
+        ? 'Training Lab'
+        : isArcadeMode()
+            ? 'Arcade Tournament Ladder'
+            : isStoryMode()
+                ? (isStoryCoopMode() ? 'Online Co-op Story' : 'Solo Story')
+                : isOnlineVersusMode()
+                    ? 'Online Match Setup'
+                    : 'Local Exhibition';
+    document.getElementById('select-rules-title').textContent = isTrainingMode()
+        ? 'Training Lab'
+        : isArcadeMode()
+            ? 'Arcade'
+            : isStoryMode()
+                ? 'Story Mode'
+                : isOnlineVersusMode()
+                    ? 'Online Multiplayer'
+                    : 'Local Multiplayer';
+    document.getElementById('select-rules-desc').textContent = isTrainingMode()
+        ? 'Practice against a configurable dummy. B toggles block, F freezes, N steps a frame, R resets, H shows hitboxes.'
+        : isArcadeMode()
+            ? 'Choose one fighter and climb the full tournament ladder.'
+            : isStoryMode()
+                ? (isStoryCoopMode()
+                    ? 'Both players lock in heroes, then fight through sequential thug encounters online.'
+                    : 'Choose one fighter and clear each chapter of the thug campaign.')
             : isOnlineVersusMode()
-                ? 'Online Match Setup'
-                : 'Local Exhibition';
-    document.getElementById('select-rules-title').textContent = isArcadeMode()
-        ? 'Arcade'
-        : isStoryMode()
-            ? 'Story Mode'
-            : isOnlineVersusMode()
-                ? 'Online Multiplayer'
-                : 'Local Multiplayer';
-    document.getElementById('select-rules-desc').textContent = isArcadeMode()
-        ? 'Choose one fighter and climb the full tournament ladder.'
-        : isStoryMode()
-            ? (isStoryCoopMode()
-                ? 'Both players lock in heroes, then fight through sequential thug encounters online.'
-                : 'Choose one fighter and clear each chapter of the thug campaign.')
-        : isOnlineVersusMode()
-            ? 'Each player locks in a fighter before the match starts.'
-            : 'Pick a fighter and jump straight into a local exhibition.';
-    document.getElementById('select-player-state').textContent = isArcadeMode()
-        ? 'Choose your tournament fighter'
-        : isStoryMode()
-            ? 'Choose your story fighter'
-            : (isOnlineVersusMode() ? '' : 'Choose your fighter');
+                ? 'Each player locks in a fighter before the match starts.'
+                : 'Pick a fighter and jump straight into a local exhibition.';
+    document.getElementById('select-player-state').textContent = isTrainingMode()
+        ? 'Choose your fighter (Player 2 is the dummy)'
+        : isArcadeMode()
+            ? 'Choose your tournament fighter'
+            : isStoryMode()
+                ? 'Choose your story fighter'
+                : (isOnlineVersusMode() ? '' : 'Choose your fighter');
 
     selectSpotlightP1.visible = true;
     selectSpotlightP2.visible = true;
@@ -2291,7 +2322,7 @@ function getRandomDeathAction(actor) {
     if (!actor || !actor.actions) return null;
     const available = Array.from(DEATH_ACTION_KEYS).filter((actionName) => actor.actions[actionName]);
     if (available.length === 0) return null;
-    return available[Math.floor(Math.random() * available.length)];
+    return available[Math.floor(simRandom() * available.length)];
 }
 
 function isRootMotionNode(nodeName = '') {
@@ -3195,7 +3226,8 @@ function getLimbWorldPos(player, keywords) {
 }
 
 // --- 11. COMBAT COLLISION CHECKS ---
-let hitStopTime = 0;
+// Hitstop is frame-indexed (not wall-clock) so replays stay deterministic.
+let hitStopFrames = 0;
 let globalHitComboCount = 0;
 let comboResetTimeout = null;
 
@@ -3241,6 +3273,7 @@ function checkHits(attacker, defender) {
     if (defender.combat?.dashIFrames > 0 || (move.throw && defender.combat?.state === FIGHTER_STATE.ACTIVE)) return;
     updateCombatHitboxes(attacker, showCombatHitboxes);
     updateCombatHitboxes(defender, showCombatHitboxes);
+    perfNoteHitboxCheck();
     if (!attackIntersects(attacker, defender)) return;
 
     attacker.combat.hitIds.add(defender.id);
@@ -3250,41 +3283,74 @@ function checkHits(attacker, defender) {
     const blocked = defender.combat?.state === FIGHTER_STATE.BLOCK && !move.throw;
     const armored = !blocked && defender.combat?.state === FIGHTER_STATE.STARTUP && defender.combat.armor > 0 && !move.throw;
     const scale = attacker.damageMultiplier || 1;
+    const frame = defender.combat.simFrame;
     if (blocked) {
         defender.guardHealth = Math.max(0, defender.guardHealth - move.damage * 4.5 * scale);
         defender.health = Math.max(0, defender.health - move.blockDamage * scale);
         attacker.meter = Math.min(100, attacker.meter + Math.max(3, move.meterGain / 2));
         applyCombatHit(defender, attacker, move, true);
-        spawnParticles(hitPoint, defender.guardHealth <= 0 ? 'guardbreak' : 'guard');
-        AudioSynth.playBlock();
-        if (defender.guardHealth <= 0) { changeCombatState(defender, FIGHTER_STATE.GUARD_BREAK); defender.fadeTo('dizzy', .1); }
+        if (defender.guardHealth <= 0) {
+            changeCombatState(defender, FIGHTER_STATE.GUARD_BREAK);
+            emitCombatEvent({ type: COMBAT_EVENT.GUARD_BREAK, attacker, defender, move, point: hitPoint.clone(), frame });
+        } else {
+            emitCombatEvent({ type: COMBAT_EVENT.BLOCK, attacker, defender, move, point: hitPoint.clone(), frame });
+        }
     } else {
         defender.health = Math.max(0, defender.health - move.damage * scale);
         defender.meter = Math.min(100, defender.meter + 4);
         attacker.meter = Math.min(100, attacker.meter + move.meterGain);
         if (armored) defender.combat.armor--;
-        else {
-            applyCombatHit(defender, attacker, move, false);
+        else applyCombatHit(defender, attacker, move, false);
+        emitCombatEvent({
+            type: move.throw ? COMBAT_EVENT.THROW : COMBAT_EVENT.HIT,
+            attacker, defender, move, armored,
+            point: hitPoint.clone(), frame,
+        });
+    }
+    hitStopFrames = move.hitstop;
+    if (defender.health <= 0) triggerDeath(defender);
+}
+
+// Presentation subscriber for combat events (item 3). The simulation above
+// only mutates gameplay state and emits events; everything here is visual /
+// audio feedback and must never feed back into the simulation.
+function handleCombatEvent(event) {
+    const { type, attacker, defender, move, point } = event;
+    updateHealthBars();
+    if (move) triggerScreenShake(move.damage * .02, .12);
+    if (type === COMBAT_EVENT.BLOCK) {
+        spawnParticles(point, 'guard');
+        AudioSynth.playBlock();
+    } else if (type === COMBAT_EVENT.GUARD_BREAK) {
+        defender.fadeTo('dizzy', .1);
+        spawnParticles(point, 'guardbreak');
+        AudioSynth.playBlock();
+    } else if (type === COMBAT_EVENT.HIT || type === COMBAT_EVENT.THROW) {
+        if (!event.armored) {
             defender.fadeTo(move.damage >= 11 || move.throw ? 'knockdown' : move.damage >= 7 ? 'hitMidMedium' : 'hitMidLight', move.throw ? .12 : HIT_FADE_DURATION);
         }
         flashFighter(defender);
         globalHitComboCount++; updateComboUI();
-        spawnParticles(hitPoint, move.damage >= 11 ? 'super' : 'hit');
-        spawnHitRing(hitPoint, move.damage);
+        spawnParticles(point, move.damage >= 11 ? 'super' : 'hit');
+        spawnHitRing(point, move.damage);
         AudioSynth.playHit();
+    } else if (type === COMBAT_EVENT.KO) {
+        event.player.fadeTo(event.deathAction || 'deathFall', 0.1);
+        triggerScreenShake(0.4, 0.3);
     }
-    hitStopTime = move.hitstop / FRAME_RATE;
-    triggerScreenShake(move.damage * .02, .12);
-    updateHealthBars();
-    if (defender.health <= 0) triggerDeath(defender);
 }
+
+onCombatEvent(handleCombatEvent);
 
 function triggerDeath(player) {
     player.isDead = true;
     resetCombo(player);
     changeCombatState(player, FIGHTER_STATE.DEAD);
     reconcileGroundedState(player, 'death');
-    player.fadeTo(getRandomDeathAction(player) || 'deathFall', 0.1);
+    // The death-animation draw is part of the seeded sim stream; the fadeTo
+    // itself runs in the KO presentation subscriber.
+    const deathAction = getRandomDeathAction(player) || 'deathFall';
+    emitCombatEvent({ type: COMBAT_EVENT.KO, player, deathAction, frame: player.combat?.simFrame ?? 0 });
     if (isStoryMode()) {
         if (player.role === 'enemy') {
             // Remove defeated enemies from the active update set immediately.
@@ -3294,6 +3360,9 @@ function triggerDeath(player) {
         } else if (getLivingHeroes().length === 0) {
             endRound('enemy');
         }
+    } else if (isTrainingMode()) {
+        // Lab rule: the round never ends — reset the scenario shortly after the KO.
+        scheduleEvent(() => { if (isTrainingMode() && gameActive) resetTrainingScenario(); }, 1500);
     } else {
         endRound(player.id === 1 ? 2 : 1);
     }
@@ -3525,7 +3594,8 @@ function startCountdownSequence() {
                 setCameraMode('fight', { shotDurationMs: 2600 });
                 gameActive = true;
                 updateViewportState();
-                startTimer();
+                // Training Lab: the round timer stays frozen.
+                if (!isTrainingMode()) startTimer();
             }, 1000);
         }
     };
@@ -3767,6 +3837,9 @@ window.startFight = function (isNetworkCommand = false) {
         if (conn && conn.open) conn.send({ type: 'fight' });
     }
 
+    // Item 2: reseed the deterministic sim stream every fight.
+    reseedSim((((Date.now() ^ (++fightSeedCounter * 0x9E3779B9)) >>> 0) || 1));
+
     if (isArcadeMode()) {
         if (!tournamentRun.playerCharId || tournamentRun.status === 'idle') {
             startSinglePlayerRun(selections[1]);
@@ -3795,6 +3868,7 @@ window.startFight = function (isNetworkCommand = false) {
     document.getElementById('ladder-screen').classList.add('hidden');
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('hud').style.display = 'flex';
+    setTrainingHudVisible(isTrainingMode());
     updateViewportState();
 
     removeFighterList(previewFighters);
@@ -4205,17 +4279,17 @@ function updateStoryEnemyControl(frameDt) {
 
                 if (dist > 2.2) {
                     nextState = 'forward';
-                    nextDelay = 320 + Math.random() * 300;
+                    nextDelay = 320 + simRandom() * 300;
                 } else if (dist < 1.0) {
                     nextState = 'backward';
-                    nextDelay = 260 + Math.random() * 220;
-                } else if (Math.random() < 0.8) {
-                    buffer = Math.random() < 0.5 ? 'punch' : 'kick';
+                    nextDelay = 260 + simRandom() * 220;
+                } else if (simRandom() < 0.8) {
+                    buffer = simRandom() < 0.5 ? 'punch' : 'kick';
                     nextState = 'idle';
-                    nextDelay = 540 + Math.random() * 480;
+                    nextDelay = 540 + simRandom() * 480;
                 } else {
                     nextState = 'block';
-                    nextDelay = 420 + Math.random() * 260;
+                    nextDelay = 420 + simRandom() * 260;
                 }
 
                 storyEnemy.aiState = nextState;
@@ -4293,23 +4367,25 @@ function updateVersusModeFrame(frameDt) {
 
     p2.velocity = 0;
     const p2Combat = p2.combat;
-    if (isArcadeMode() && p2Combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(p2Combat.state) && !p2.isDead) {
+    if (isTrainingMode()) {
+        updateTrainingDummy(p2, p1, frameDt);
+    } else if (isArcadeMode() && p2Combat && [FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(p2Combat.state) && !p2.isDead) {
         if (performance.now() > aiNextActionTime && !p2.isJumping && p2Combat.state !== FIGHTER_STATE.DASH) {
             const dist = Math.abs(p2.mesh.position.x - p1.mesh.position.x);
-            if (aiHitCount >= 3 && Math.random() < 0.5) {
+            if (aiHitCount >= 3 && simRandom() < 0.5) {
                 aiHitCount = 0;
                 aiCurrentAction = 'backward';
                 aiNextActionTime = performance.now() + 800;
             } else if (dist > 1.8) {
                 aiCurrentAction = 'forward';
-                aiNextActionTime = performance.now() + 300 + Math.random() * 400;
-            } else if (Math.random() < 0.85) {
-                bufferAttackInput(2, Math.random() < 0.5 ? 'punch' : 'kick');
+                aiNextActionTime = performance.now() + 300 + simRandom() * 400;
+            } else if (simRandom() < 0.85) {
+                bufferAttackInput(2, simRandom() < 0.5 ? 'punch' : 'kick');
                 aiCurrentAction = 'idle';
-                aiNextActionTime = performance.now() + 600 + Math.random() * 600;
+                aiNextActionTime = performance.now() + 600 + simRandom() * 600;
             } else {
                 aiCurrentAction = 'block';
-                aiNextActionTime = performance.now() + 500 + Math.random() * 500;
+                aiNextActionTime = performance.now() + 500 + simRandom() * 500;
             }
         }
         if (aiCurrentAction === 'forward') p2.velocity = p2.direction * 2.5;
@@ -4335,26 +4411,284 @@ function updateVersusModeFrame(frameDt) {
     }
 }
 
+// --- Performance overlay (item 4) ---
+let perfOverlayVisible = false;
+
+function togglePerfOverlay() {
+    perfOverlayVisible = !perfOverlayVisible;
+    const el = document.getElementById('perf-overlay');
+    if (el) {
+        el.style.display = perfOverlayVisible ? 'block' : 'none';
+        if (perfOverlayVisible) el.textContent = formatPerfStats();
+    }
+}
+
+// --- 13B. DETERMINISTIC REPLAY (item 2) ---
+// The simulation draws randomness from a seeded stream (reseeded every
+// fight in startFight). A recording captures, per sim step, each fighter's
+// held-action bitmask plus the discrete presses that landed during that
+// step, alongside a hash of the resulting sim state. Playing a recording
+// back re-injects those inputs at the top of each step; the exit gate is
+// digest equality across two playbacks of the same recording.
+let fightSeedCounter = 0;
+let replayRecorder = createReplayRecorder();
+let replayPlayback = null; // { frames, index } while a recording plays back
+let simSuspended = false;  // training frame-step: freeze the sim loop
+let replayStepIndex = 0;
+let pendingHeld = { 1: 0, 2: 0 };
+let pendingPressed = { 1: [], 2: [] };
+
+function simFighters() {
+    const list = [...players];
+    if (Array.isArray(activeEnemies)) list.push(...activeEnemies);
+    if (storyEnemy) list.push(storyEnemy);
+    return list.filter(Boolean);
+}
+
+function beginSimFrame() {
+    const s1 = playerActionState(1);
+    const s2 = playerActionState(2);
+    if (replayPlayback) {
+        const rec = replayPlayback.frames[replayPlayback.index];
+        if (!rec) { stopReplayPlayback(); return; }
+        applyActionBitmask(s1, rec.held[1]);
+        applyActionBitmask(s2, rec.held[2]);
+        // Discrete presses, dispatched as replay: attacks buffer and recorded
+        // dashes fire, but live-only derivations (double-tap detection,
+        // network send) are skipped inside handleActionPress.
+        for (const entry of rec.pressed[1]) handleActionPress(1, entry.action, true, entry.data);
+        for (const entry of rec.pressed[2]) handleActionPress(2, entry.action, true, entry.data);
+        replayPlayback.index++;
+        pendingHeld = { 1: rec.held[1], 2: rec.held[2] };
+        pendingPressed = { 1: [], 2: [] };
+    } else {
+        pendingHeld = { 1: heldActionBitmask(s1), 2: heldActionBitmask(s2) };
+        pendingPressed = { 1: drainPressedActions(s1), 2: drainPressedActions(s2) };
+        if (isTrainingMode()) {
+            for (const entry of pendingPressed[1]) logTrainingInput(replayStepIndex, 1, entry.action);
+            for (const entry of pendingPressed[2]) logTrainingInput(replayStepIndex, 2, entry.action);
+        }
+    }
+}
+
+function endSimFrame() {
+    if (!replayRecorder.active) return;
+    replayRecorder.recordFrame(replayStepIndex++, pendingHeld, pendingPressed, hashSimFrame(simFighters()));
+}
+
+function startReplayRecording() {
+    replayPlayback = null;
+    replayStepIndex = 0;
+    replayRecorder.start(getSimSeed());
+}
+
+function stopReplayRecording() {
+    replayRecorder.stop();
+}
+
+function startReplayPlayback(recording) {
+    replayRecorder.stop();
+    reseedSim(recording.seed);
+    replayPlayback = { frames: recording.frames, index: 0 };
+}
+
+function stopReplayPlayback() {
+    replayPlayback = null;
+}
+
+function isReplayPlaying() {
+    return !!replayPlayback;
+}
+
+// --- 13C. TRAINING LAB (item 6) ---
+// Versus rules with a configurable dummy, frame-step control, an input
+// history panel, and record/verify wiring for the deterministic replay
+// harness above. The round timer stays frozen and KOs reset the scenario
+// instead of ending the round.
+let trainingDummyMode = 'idle'; // 'idle' | 'block'
+let trainingStatusMessage = '';
+const trainingInputLog = [];
+const TRAINING_INPUT_LOG_MAX = 24;
+
+function updateTrainingDummy(dummy, player, frameDt) {
+    dummy.velocity = 0;
+    const combat = dummy.combat;
+    if (!combat || dummy.isDead) { syncCombatIntent(dummy, false); return; }
+    if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(combat.state)) {
+        if (trainingDummyMode === 'block') {
+            syncCombatIntent(dummy, true);
+        } else {
+            syncCombatIntent(dummy, false);
+            dummy.fadeTo('idle', 0.15);
+        }
+    } else {
+        syncCombatIntent(dummy, false);
+    }
+}
+
+function resetTrainingScenario() {
+    if (!isTrainingMode()) return;
+    stopReplayPlayback();
+    stopReplayRecording();
+    clearScheduledEvents();
+    simSuspended = false;
+    hitStopFrames = 0;
+    combatAccumulator = 0;
+    removeFighterList(players);
+    const p1 = spawnFighter(selections[1], -3.4, true);
+    const p2 = spawnFighter(selections[2], 3.4, false);
+    players.push(p1, p2);
+    clearActionState(playerActionState(1));
+    clearActionState(playerActionState(2));
+    globalHitComboCount = 0;
+    updateComboUI();
+    // Same seed as the current fight, so a re-run of the scenario is identical.
+    reseedSim(getSimSeed());
+    replayStepIndex = 0;
+    trainingInputLog.length = 0;
+    gameActive = true;
+    document.getElementById('gameover-screen').style.display = 'none';
+    updateHealthBars();
+    setTrainingStatus('Scenario reset.');
+    updateTrainingHud();
+}
+
+function toggleTrainingDummy() {
+    if (!isTrainingMode() || !gameActive) return;
+    trainingDummyMode = trainingDummyMode === 'block' ? 'idle' : 'block';
+    setTrainingStatus(`Dummy: ${trainingDummyMode}.`);
+    updateTrainingHud();
+}
+
+function toggleTrainingFreeze() {
+    if (!isTrainingMode() || !gameActive || isReplayPlaying()) return;
+    simSuspended = !simSuspended;
+    setTrainingStatus(simSuspended ? 'Frozen — N steps one frame.' : 'Running.');
+    updateTrainingHud();
+}
+
+function stepTrainingFrame() {
+    if (!isTrainingMode() || !gameActive || !simSuspended || isReplayPlaying()) return;
+    simSuspended = false;
+    advanceCombatSimulation(COMBAT_STEP);
+    simSuspended = true;
+    updateTrainingHud();
+}
+
+function toggleTrainingRecording() {
+    if (!isTrainingMode() || !gameActive || isReplayPlaying()) return;
+    if (replayRecorder.active) {
+        stopReplayRecording();
+        setTrainingStatus(`Recording stopped — ${replayRecorder.frameCount()} frames. Press Verify to check determinism.`);
+    } else {
+        resetTrainingScenario();
+        startReplayRecording();
+        setTrainingStatus('Recording… fight, then press Record again to stop.');
+    }
+    updateTrainingHud();
+}
+
+// Exit gate: reset the scenario, play the recording back twice through the
+// real fixed-step path, and compare per-frame digests (and against the
+// original recording). Runs synchronously; the rAF loop cannot interleave.
+function verifyTrainingRecording() {
+    if (!isTrainingMode()) return;
+    const frames = replayRecorder.frames;
+    if (!frames || frames.length === 0) {
+        setTrainingStatus('Nothing recorded yet — press Record, fight, stop, then Verify.');
+        updateTrainingHud();
+        return;
+    }
+    if (!gameActive) {
+        setTrainingStatus('Start or reset the scenario (R) before verifying.');
+        updateTrainingHud();
+        return;
+    }
+    const seed = replayRecorder.seed;
+    const passes = [];
+    try {
+        for (let pass = 0; pass < 2; pass++) {
+            resetTrainingScenario();
+            reseedSim(seed);
+            startReplayPlayback({ seed, frames });
+            const hashes = [];
+            for (let i = 0; i < frames.length && gameActive; i++) {
+                advanceCombatSimulation(COMBAT_STEP);
+                hashes.push(hashSimFrame(simFighters()));
+            }
+            stopReplayPlayback();
+            passes.push(hashes);
+        }
+    } finally {
+        stopReplayPlayback();
+    }
+    const asFrames = (hashes) => hashes.map((hash) => ({ hash }));
+    const divAB = firstDivergentFrame(asFrames(passes[0]), asFrames(passes[1]));
+    const divRec = firstDivergentFrame(frames, asFrames(passes[0]));
+    if (passes[0].length !== frames.length || passes[1].length !== frames.length) {
+        setTrainingStatus(`INCOMPLETE — the round ended early (KO?). Verify needs a KO-free recording of ${frames.length} frames.`);
+    } else if (divAB !== -1) {
+        setTrainingStatus(`FAIL — playbacks diverged at frame ${divAB}.`);
+    } else if (divRec !== -1) {
+        setTrainingStatus(`FAIL — playback diverged from the recording at frame ${divRec}.`);
+    } else {
+        setTrainingStatus(`PASS — ${frames.length} frames, two playbacks identical (digest ${fnv1a(passes[0].join(','))}).`);
+    }
+    resetTrainingScenario();
+    updateTrainingHud();
+}
+
+function setTrainingStatus(msg) {
+    trainingStatusMessage = msg;
+    const el = document.getElementById('training-status');
+    if (el) el.textContent = msg;
+}
+
+function logTrainingInput(frameIndex, playerId, action) {
+    trainingInputLog.push({ frame: frameIndex, playerId, action });
+    if (trainingInputLog.length > TRAINING_INPUT_LOG_MAX) trainingInputLog.splice(0, trainingInputLog.length - TRAINING_INPUT_LOG_MAX);
+    const el = document.getElementById('training-input-log');
+    if (el) {
+        el.innerHTML = trainingInputLog.map((e) => `<div><span class="tlog-frame">f${e.frame}</span> P${e.playerId} ${e.action}</div>`).join('');
+        el.scrollTop = el.scrollHeight;
+    }
+}
+
+function updateTrainingHud() {
+    if (!isTrainingMode()) return;
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('training-dummy-mode', `Dummy: ${trainingDummyMode}`);
+    set('training-freeze-state', simSuspended ? 'Frozen (N = step)' : 'Running');
+    set('training-rec-state', replayRecorder.active ? `Recording… ${replayRecorder.frameCount()}f` : (isReplayPlaying() ? 'Playing back…' : 'Idle'));
+    setTrainingStatus(trainingStatusMessage);
+}
+
+function setTrainingHudVisible(visible) {
+    const el = document.getElementById('training-hud');
+    if (el) el.style.display = visible ? 'block' : 'none';
+    if (visible) updateTrainingHud();
+}
+
 // --- 14. TICK RUNTIME ENGINE LOOP ---
 const clock = new THREE.Clock();
 const COMBAT_STEP = 1 / FRAME_RATE;
 let combatAccumulator = 0;
 
 function advanceCombatSimulation(step = COMBAT_STEP) {
-    if (!gameActive) return;
+    if (!gameActive || simSuspended) return;
+    beginSimFrame();
     if (isStoryMode()) {
         const enemy = storyEnemy;
         const heroes = players.filter(Boolean);
         updateStoryModeFrame(step);
         heroes.forEach((hero) => advanceCombatFighterStep(hero, enemy, step));
         if (enemy) advanceCombatFighterStep(enemy, resolveStoryEnemyTarget(), step);
-        return;
-    }
-    if (players.length === 2) {
+    } else if (players.length === 2) {
         updateVersusModeFrame(step);
         advanceCombatFighterStep(players[0], players[1], step);
         advanceCombatFighterStep(players[1], players[0], step);
     }
+    endSimFrame();
 }
 
 function animate() {
@@ -4364,13 +4698,6 @@ function animate() {
 
     const rawDt = clock.getDelta();
     const realDt = Math.min(rawDt, 0.1);
-
-    if (hitStopTime > 0) {
-        hitStopTime -= realDt;
-        updateCameraShake(realDt);
-        renderer.render(scene, camera);
-        return;
-    }
 
     if (slowMoTimer > 0) {
         slowMoTimer -= realDt;
@@ -4382,10 +4709,20 @@ function animate() {
     const frameDt = realDt * globalTimeScale;
 
     combatAccumulator = Math.min(combatAccumulator + frameDt, COMBAT_STEP * 4);
+    const simStart = perfBeginSim();
+    let simSteps = 0;
     while (combatAccumulator >= COMBAT_STEP) {
-        advanceCombatSimulation(COMBAT_STEP);
+        // Frame-indexed hitstop: freeze the simulation for exactly
+        // move.hitstop sim steps while presentation keeps running.
+        if (hitStopFrames > 0) {
+            hitStopFrames--;
+        } else {
+            advanceCombatSimulation(COMBAT_STEP);
+            simSteps++;
+        }
         combatAccumulator -= COMBAT_STEP;
     }
+    perfEndSim(simStart, simSteps);
 
     updateParticles(frameDt);
 
@@ -4422,7 +4759,13 @@ function animate() {
     updateCameraDirector();
     updateCameraShake(realDt);
 
+    const renderStart = performance.now();
     renderer.render(scene, camera);
+    perfNoteRender(performance.now() - renderStart, particles.length);
+    if (perfOverlayVisible) {
+        const perfEl = document.getElementById('perf-overlay');
+        if (perfEl) perfEl.textContent = formatPerfStats();
+    }
 }
 
 function resizeRendererToViewport() {
@@ -4452,6 +4795,12 @@ window.updateAudioOptions = updateAudioOptions;
 window.selectCharacter = selectCharacter;
 window.quitToMainMenu = quitToMainMenu;
 window.togglePause = togglePause;
+window.toggleTrainingDummy = toggleTrainingDummy;
+window.toggleTrainingFreeze = toggleTrainingFreeze;
+window.stepTrainingFrame = stepTrainingFrame;
+window.resetTrainingScenario = resetTrainingScenario;
+window.toggleTrainingRecording = toggleTrainingRecording;
+window.verifyTrainingRecording = verifyTrainingRecording;
 window.advanceTime = (ms) => {
     const steps = Math.max(1, Math.round(ms / (1000 / FRAME_RATE)));
     for (let index = 0; index < steps; index++) advanceCombatSimulation(COMBAT_STEP);

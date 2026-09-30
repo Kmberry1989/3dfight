@@ -25,6 +25,7 @@
             <button id="menu-single-btn" class="menu-btn" onclick="startGameMode('arcade_single')">Arcade</button>
             <button id="menu-local-btn" class="menu-btn" onclick="startGameMode('local')" style="display:none">Local Multiplayer</button>
             <button id="menu-online-btn" class="menu-btn" onclick="openLobby('online_versus')">Online Multiplayer</button>
+            <button id="menu-training-btn" class="menu-btn" onclick="startGameMode('training')">Training Lab</button>
             <button id="menu-options-btn" class="menu-btn" onclick="openOptions()">Options</button>
         </div>
     </div>
@@ -256,6 +257,30 @@
             </div>
         </div>
     </div>
+
+    <!-- Training Lab overlay (Phase 0, item 6) -->
+    <div id="training-hud" style="display: none;">
+        <div class="training-panel">
+            <div class="training-title">Training Lab</div>
+            <div class="training-row"><span id="training-dummy-mode">Dummy: idle</span><span id="training-freeze-state">Running</span></div>
+            <div class="training-row"><span id="training-rec-state">Idle</span></div>
+            <div id="training-status" class="training-status"></div>
+            <div class="training-buttons">
+                <button onclick="toggleTrainingDummy()">Dummy: Block (B)</button>
+                <button onclick="toggleTrainingFreeze()">Freeze (F)</button>
+                <button onclick="stepTrainingFrame()">Step (N)</button>
+                <button onclick="resetTrainingScenario()">Reset (R)</button>
+                <button onclick="toggleTrainingRecording()">Record</button>
+                <button onclick="verifyTrainingRecording()">Verify</button>
+            </div>
+            <div class="training-keys">WASD move · J/K/L/U/I/O attacks · Space jump · Shift block · H hitboxes · ` perf</div>
+            <div class="training-subtitle">Input history</div>
+            <div id="training-input-log"></div>
+        </div>
+    </div>
+
+    <!-- Sim/render performance overlay (Phase 0, item 4) -->
+    <div id="perf-overlay" style="display: none;"></div>
 
 
     <div id="touch-controls">
