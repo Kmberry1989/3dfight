@@ -1,0 +1,23 @@
+{
+    "id": "scrapyard_dusk",
+    "name": "Scrapyard Dusk",
+    "scene": "procedural",
+    "collision": "none",
+    "music": null,
+    "spawnP1": [
+        -3.5,
+        0,
+        0
+    ],
+    "spawnP2": [
+        3.5,
+        0,
+        0
+    ],
+    "cameraFocus": [
+        0,
+        1.2,
+        0
+    ],
+    "notes": "PLACEHOLDER: procedurally built industrial scrapyard (src/stages/placeholderStages.js). No model files \u2014 orange haze, crates, barrels, tire stacks, pulsing stack light."
+}
