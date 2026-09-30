@@ -486,6 +486,44 @@ canvas {
     align-items: flex-end;
 }
 
+/* Stage picker (character-select footer) */
+.stage-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    max-width: 460px;
+    justify-content: center;
+}
+
+.stage-btn {
+    padding: 8px 12px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.45);
+    color: #cfefff;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.2s;
+}
+
+.stage-btn:hover {
+    background: rgba(0, 240, 255, 0.25);
+    color: #fff;
+}
+
+.stage-btn.selected {
+    background: rgba(255, 0, 127, 0.22);
+    border-color: var(--neon-red);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255, 0, 127, 0.45);
+}
+
 #fight-btn {
     padding: 15px 38px;
     font-size: 24px;
