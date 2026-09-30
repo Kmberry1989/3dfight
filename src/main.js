@@ -9,6 +9,7 @@ import Peer from 'peerjs';
 import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, startCombatDash, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
 import { getMove } from './combat/frameData.js';
+import { getStageEntry } from './stages/stageRegistry.js';
 
 // --- 1. SAMPLE-BASED AUDIO ---
 const AudioSynth = {
@@ -878,7 +879,7 @@ function setupConnection() {
         } else if (data.type === 'lockIn') {
             lockInPlayer(data.player, true);
         } else if (data.type === 'fight') {
-            startFight(true);
+            startFight(true, data.stage || null);
         } else if (data.type === 'storyEnemyState') {
             applyRemoteStoryEnemyState(data);
         } else if (data.type === 'storyProgress') {
@@ -1103,9 +1104,21 @@ let carouselRig = null;  // The spinning carousel_rig.glb object
 let stageSceneRoot = null; // The stage environment (scene.glb)
 let selectSceneRoot = null;
 
+// --- PLACEHOLDER STAGE STATE (additive; combat simulation untouched) ---
+let currentStageId = 'the_carousel';
+let selectedStageId = 'the_carousel';
+let placeholderStageGroup = null;
+let placeholderStageDisposables = [];
+let activeStageUpdate = null;
+let stageElapsedTime = 0;
+let defaultStageBackground = null;
+let defaultStageFog = null;
+
 function setFightEnvironmentVisible(visible) {
-    if (stageSceneRoot) stageSceneRoot.visible = visible;
-    if (carouselRig) carouselRig.visible = visible;
+    const showingRealStage = visible && currentStageId === 'the_carousel';
+    if (stageSceneRoot) stageSceneRoot.visible = showingRealStage;
+    if (carouselRig) carouselRig.visible = showingRealStage;
+    if (placeholderStageGroup) placeholderStageGroup.visible = visible && currentStageId !== 'the_carousel';
     if (typeof gridHelper !== 'undefined') gridHelper.visible = false;
     if (typeof floor !== 'undefined') floor.visible = false;
 }
@@ -1113,6 +1126,56 @@ function setFightEnvironmentVisible(visible) {
 function setSelectEnvironmentVisible(visible) {
     if (selectSceneRoot) selectSceneRoot.visible = visible;
 }
+
+// --- PLACEHOLDER STAGE LOADER (visuals only; combat lane is identical) ---
+function captureDefaultStageEnvironment() {
+    if (defaultStageBackground || typeof scene === 'undefined' || !scene) return;
+    defaultStageBackground = scene.background ? scene.background.clone() : new THREE.Color(0x0c0b1f);
+    defaultStageFog = scene.fog ? scene.fog.clone() : null;
+}
+
+function disposePlaceholderStage() {
+    if (placeholderStageGroup && typeof scene !== 'undefined' && scene) {
+        scene.remove(placeholderStageGroup);
+        placeholderStageGroup = null;
+    }
+    placeholderStageDisposables.forEach((d) => { try { d.dispose(); } catch (e) { /* already gone */ } });
+    placeholderStageDisposables = [];
+    activeStageUpdate = null;
+}
+
+// Loads a stage by registry id. Real GLB stages reuse the boot-loaded
+// carousel assets; placeholder ids build a procedural scene on the spot.
+function loadStageById(id) {
+    captureDefaultStageEnvironment();
+    const entry = getStageEntry(id);
+    disposePlaceholderStage();
+    currentStageId = entry.id;
+    if (entry.kind === 'placeholder' && typeof entry.build === 'function') {
+        const built = entry.build(THREE);
+        placeholderStageGroup = built.group;
+        placeholderStageDisposables = built.disposables || [];
+        activeStageUpdate = built.update || null;
+        stageElapsedTime = 0;
+        scene.add(placeholderStageGroup);
+        if (built.background) scene.background = built.background;
+        scene.fog = built.fog || null;
+    } else {
+        if (defaultStageBackground) scene.background = defaultStageBackground;
+        scene.fog = defaultStageFog;
+    }
+    setFightEnvironmentVisible(true);
+}
+
+// Stage picker on the character-select screen. Purely visual.
+window.selectStage = function (id) {
+    const entry = getStageEntry(id);
+    selectedStageId = entry.id;
+    document.querySelectorAll('.stage-btn').forEach((btn) => {
+        btn.classList.toggle('selected', btn.dataset.stage === selectedStageId);
+    });
+    AudioSynth.playSelect();
+};
 
 // --- 3. ASSET LOAD PIPELINE ---
 async function loadAssets() {
@@ -3924,10 +3987,13 @@ function spawnStoryEncounter() {
     storyEnemy.direction = -1;
 }
 
-window.startFight = function (isNetworkCommand = false) {
+window.startFight = function (isNetworkCommand = false, networkStageId = null) {
     if ((isOnlineVersusMode() || isStoryCoopMode()) && !isNetworkCommand) {
-        if (conn && conn.open) conn.send({ type: 'fight' });
+        if (conn && conn.open) conn.send({ type: 'fight', stage: selectedStageId });
     }
+
+    // Stage visuals only — the combat lane is identical on every stage.
+    loadStageById(isNetworkCommand && networkStageId ? networkStageId : selectedStageId);
 
     if (isArcadeMode()) {
         if (!tournamentRun.playerCharId || tournamentRun.status === 'idle') {
@@ -4875,6 +4941,12 @@ function animate() {
     // Slowly spin the carousel rig in the background
     if (carouselRig) {
         carouselRig.rotation.y += 0.24 * realDt; // faster ambient spin for the select backdrop
+    }
+
+    // Placeholder stage ambient animation (visuals only, no allocations)
+    if (activeStageUpdate) {
+        stageElapsedTime += realDt;
+        activeStageUpdate(realDt, stageElapsedTime);
     }
 
     updateCameraDirector();
