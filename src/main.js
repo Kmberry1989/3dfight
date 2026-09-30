@@ -4472,8 +4472,9 @@ function beginSimFrame() {
 }
 
 function endSimFrame() {
+    const frameIndex = replayStepIndex++;
     if (!replayRecorder.active) return;
-    replayRecorder.recordFrame(replayStepIndex++, pendingHeld, pendingPressed, hashSimFrame(simFighters()));
+    replayRecorder.recordFrame(frameIndex, pendingHeld, pendingPressed, hashSimFrame(simFighters()));
 }
 
 function startReplayRecording() {
@@ -4489,6 +4490,10 @@ function stopReplayRecording() {
 function startReplayPlayback(recording) {
     replayRecorder.stop();
     reseedSim(recording.seed);
+    // Drop any live presses queued during the hiatus so they can't leak
+    // into the scenario after playback ends.
+    drainPressedActions(playerActionState(1));
+    drainPressedActions(playerActionState(2));
     replayPlayback = { frames: recording.frames, index: 0 };
 }
 
@@ -4538,6 +4543,14 @@ function resetTrainingScenario() {
     const p1 = spawnFighter(selections[1], -3.4, true);
     const p2 = spawnFighter(selections[2], 3.4, false);
     players.push(p1, p2);
+    // The intro choreography mutates mesh.position (covered by the replay
+    // hash), so the lab scenario explicitly runs without it: same spawn
+    // pose every reset keeps recordings and verify passes comparable.
+    for (const [fighter, x] of [[p1, -3.4], [p2, 3.4]]) {
+        fighter.introMotion = null;
+        fighter.introPhase = null;
+        fighter.mesh.position.set(x, 0, 0);
+    }
     clearActionState(playerActionState(1));
     clearActionState(playerActionState(2));
     globalHitComboCount = 0;
@@ -4625,16 +4638,18 @@ function verifyTrainingRecording() {
     const asFrames = (hashes) => hashes.map((hash) => ({ hash }));
     const divAB = firstDivergentFrame(asFrames(passes[0]), asFrames(passes[1]));
     const divRec = firstDivergentFrame(frames, asFrames(passes[0]));
+    let result;
     if (passes[0].length !== frames.length || passes[1].length !== frames.length) {
-        setTrainingStatus(`INCOMPLETE — the round ended early (KO?). Verify needs a KO-free recording of ${frames.length} frames.`);
+        result = `INCOMPLETE — the round ended early (KO?). Verify needs a KO-free recording of ${frames.length} frames.`;
     } else if (divAB !== -1) {
-        setTrainingStatus(`FAIL — playbacks diverged at frame ${divAB}.`);
+        result = `FAIL — playbacks diverged at frame ${divAB}.`;
     } else if (divRec !== -1) {
-        setTrainingStatus(`FAIL — playback diverged from the recording at frame ${divRec}.`);
+        result = `FAIL — playback diverged from the recording at frame ${divRec}.`;
     } else {
-        setTrainingStatus(`PASS — ${frames.length} frames, two playbacks identical (digest ${fnv1a(passes[0].join(','))}).`);
+        result = `PASS — ${frames.length} frames, two playbacks identical (digest ${fnv1a(passes[0].join(','))}).`;
     }
     resetTrainingScenario();
+    setTrainingStatus(result);
     updateTrainingHud();
 }
 
