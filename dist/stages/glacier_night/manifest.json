@@ -1,0 +1,23 @@
+{
+    "id": "glacier_night",
+    "name": "Glacier Night",
+    "scene": "procedural",
+    "collision": "none",
+    "music": null,
+    "spawnP1": [
+        -3.5,
+        0,
+        0
+    ],
+    "spawnP2": [
+        3.5,
+        0,
+        0
+    ],
+    "cameraFocus": [
+        0,
+        1.2,
+        0
+    ],
+    "notes": "PLACEHOLDER: procedurally built arctic night (src/stages/placeholderStages.js). No model files \u2014 vertex-colored aurora, ice shards, drifting snow sparkles."
+}

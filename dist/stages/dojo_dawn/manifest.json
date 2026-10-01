@@ -1,0 +1,23 @@
+{
+    "id": "dojo_dawn",
+    "name": "Dojo Dawn",
+    "scene": "procedural",
+    "collision": "none",
+    "music": null,
+    "spawnP1": [
+        -3.5,
+        0,
+        0
+    ],
+    "spawnP2": [
+        3.5,
+        0,
+        0
+    ],
+    "cameraFocus": [
+        0,
+        1.2,
+        0
+    ],
+    "notes": "PLACEHOLDER: procedurally built sunrise dojo (src/stages/placeholderStages.js). No model files \u2014 wooden plank floor, glowing shoji walls, swaying paper lanterns."
+}

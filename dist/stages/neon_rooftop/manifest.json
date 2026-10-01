@@ -1,0 +1,23 @@
+{
+    "id": "neon_rooftop",
+    "name": "Neon Rooftop",
+    "scene": "procedural",
+    "collision": "none",
+    "music": null,
+    "spawnP1": [
+        -3.5,
+        0,
+        0
+    ],
+    "spawnP2": [
+        3.5,
+        0,
+        0
+    ],
+    "cameraFocus": [
+        0,
+        1.2,
+        0
+    ],
+    "notes": "PLACEHOLDER: procedurally built night-city rooftop (src/stages/placeholderStages.js). No model files \u2014 cyan/magenta rim glow, building silhouettes, blinking antenna beacon."
+}
