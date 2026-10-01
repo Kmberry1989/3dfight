@@ -16,6 +16,7 @@ export const ACTION = Object.freeze({
     KICK: 'Kick',
     SPECIAL: 'Special',
     THROW: 'Throw',
+    TAUNT: 'Taunt',
     DASH: 'Dash',
     PAUSE: 'Pause',
 });
@@ -50,6 +51,7 @@ export const KEYBOARD_BINDINGS = Object.freeze({
         ShiftLeft: ACTION.KICK,
         KeyC: ACTION.SPECIAL,
         KeyE: ACTION.THROW,
+        KeyT: ACTION.TAUNT,
         Escape: ACTION.PAUSE,
     }),
     2: Object.freeze({
@@ -61,6 +63,7 @@ export const KEYBOARD_BINDINGS = Object.freeze({
         KeyO: ACTION.KICK,
         KeyI: ACTION.SPECIAL,
         KeyU: ACTION.THROW,
+        KeyY: ACTION.TAUNT,
         Escape: ACTION.PAUSE,
     }),
 });
@@ -95,6 +98,9 @@ export const ACTION_BIT_INDEX = Object.freeze({
     [ACTION.THROW]: 7,
     [ACTION.DASH]: 8,
     [ACTION.PAUSE]: 9,
+    // Taunt sits at bit 10: old peers simply ignore the unknown bit, and the
+    // action-name wire path resolves it by name, so this stays compatible.
+    [ACTION.TAUNT]: 10,
 });
 
 // Per-player action state: currently held actions plus the discrete actions

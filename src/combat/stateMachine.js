@@ -51,7 +51,7 @@ export function startCombatDash(fighter, direction) {
 export function startCombatMove(fighter, type) {
   const c = fighter.combat; if (!c) return false;
   const chain = ['punch', 'kick'].includes(type) ? Math.min(c.chain + (c.state === FIGHTER_STATE.RECOVERY ? 1 : 0), 2) : 0;
-  const move = getMove(type, chain);
+  const move = getMove(type, chain, fighter.charId);
   if (!move || (move.meterCost && fighter.meter < move.meterCost)) return false;
   if (move.meterCost) fighter.meter -= move.meterCost;
   c.chain = chain;
@@ -61,6 +61,9 @@ export function startCombatMove(fighter, type) {
 
 export function canAcceptMove(fighter, type) {
   const c = fighter.combat; if (!c || fighter.isDead) return false;
+  // Taunts are only legal from a neutral idle stance: safe context, never a
+  // cancel, never accidental. Everything else follows the standard gates.
+  if (type === 'taunt') return c.state === FIGHTER_STATE.IDLE;
   if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(c.state)) return true;
   if (c.state === FIGHTER_STATE.BLOCKSTUN) return c.stateFrame <= 5;
   if (c.state === FIGHTER_STATE.RECOVERY && c.move) {
@@ -89,7 +92,13 @@ export function advanceCombatState(fighter) {
   if (c.state === FIGHTER_STATE.ACTIVE && c.stateFrame >= move.active) { changeCombatState(fighter, FIGHTER_STATE.RECOVERY, { move }); }
   if (c.state === FIGHTER_STATE.RECOVERY) {
     const recovery = move.recovery + (c.whiff ? (move.whiffRecovery || 0) : 0);
-    if (c.stateFrame >= recovery) { c.chain = c.whiff || move.throw || move.meterCost ? 0 : Math.min(c.chain + 1, 2); changeCombatState(fighter, FIGHTER_STATE.IDLE); }
+    if (c.stateFrame >= recovery) {
+      c.chain = c.whiff || move.throw || move.meterCost ? 0 : Math.min(c.chain + 1, 2);
+      // Completing a taunt performance grants its meter reward (sim-side, so
+      // replays and peers agree). Getting hit out of it forfeits the reward.
+      if (move.taunt && move.tauntMeter) fighter.meter = Math.min(100, fighter.meter + move.tauntMeter);
+      changeCombatState(fighter, FIGHTER_STATE.IDLE);
+    }
   }
   return { startedActive: false };
 }

@@ -7,6 +7,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import Peer from 'peerjs';
 import { FIGHTER_STATE, FRAME_RATE, initializeCombatFighter, queueCombatInput, canAcceptMove, startCombatMove, startCombatDash, changeCombatState, advanceCombatState, applyCombatHit, tickStunState } from './combat/stateMachine.js';
+import { FIGHTER_IDENTITY, ROSTER_IDS, validateFighterIdentity } from './combat/fighterIdentity.js';
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
 import { getMove, ATTACK_ANIMATION_NAMES } from './combat/frameData.js';
 import { getStageEntry } from './stages/stageRegistry.js';
@@ -80,6 +81,14 @@ const SHARED_ANIMATIONS = {
     specialLight: '/animations/Spin Flip Kick.fbx',
     specialMedium: '/animations/Leg Sweep.fbx',
     specialHeavy: '/animations/Big Body Blow.fbx',
+    // Per-fighter unique special animations (Phase 2 character identity).
+    spinFlipKick: '/animations/Spin Flip Kick.fbx',
+    sweepKick: '/animations/Leg Sweep.fbx',
+    overheadSmash: '/animations/Big Body Blow.fbx',
+    flipKick: '/animations/Flip Kick.fbx',
+    dropKick: '/animations/Drop Kick.fbx',
+    shoulderBarge: '/animations/Flying Shoulder Throw.fbx',
+    haymaker: '/animations/Right Hook.fbx',
     grabSlam: '/animations/Grab And Slam.fbx',
     block: '/animations/Blocking.fbx',
     hitHighLight: '/animations/Reaction highlight.fbx',
@@ -201,6 +210,16 @@ const CHARACTERS = {
         }
     }
 };
+
+// Phase 2 content gate: a fighter does not enter the selectable roster until
+// the three mandatory unique elements (special, idle stance, taunt) are
+// complete. Loud in dev so a regression can never slip through silently.
+const identityIssues = validateFighterIdentity(CHARACTERS);
+if (identityIssues.length > 0) {
+    console.warn('[fighterIdentity] roster gate FAILED:\n' + identityIssues.map((issue) => '  - ' + issue).join('\n'));
+} else {
+    console.info(`[fighterIdentity] roster gate passed for ${ROSTER_IDS.length} fighters.`);
+}
 
 const ENEMIES = {
     thug1: {
@@ -800,6 +819,12 @@ function handleActionPress(playerId, action, fromReplay = false, data = null) {
         // per-step drain (beginSimFrame) captures it for recordings. The
         // replay path re-buffers at the same simFrame, so expiry matches.
         if (!fromReplay) pressAction(playerActionState(playerId), action);
+    } else if (action === ACTION.TAUNT && gameActive) {
+        // Taunts dispatch immediately and are never buffered: they are only
+        // legal from a neutral idle stance, so a mid-action press whiffs.
+        // The caller's pressAction already recorded this for replay, and the
+        // replay path re-dispatches it here deterministically.
+        requestAttack(player, 'taunt');
     }
     if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
 }
@@ -2491,10 +2516,13 @@ function resetTouchMovementState(playerSide) {
     const bindings = touchMovementBindings[playerSide];
     if (!bindings) return;
 
-    keys[bindings.left] = false;
-    keys[bindings.right] = false;
-    keys[bindings.down] = false;
-    keys[bindings.up] = false;
+    // The touch stick drives the same action state as the keyboard: each
+    // mapped key code resolves to its action and is marked held/released.
+    // (The old `keys` map these functions wrote to no longer exists.)
+    setStickKeyHeld(playerSide, bindings.left, false);
+    setStickKeyHeld(playerSide, bindings.right, false);
+    setStickKeyHeld(playerSide, bindings.down, false);
+    setStickKeyHeld(playerSide, bindings.up, false);
 
     const state = touchStickStates[playerSide];
     if (!state) return;
@@ -2514,13 +2542,13 @@ function applyStickIntent(playerSide, intent) {
     const state = touchStickStates[playerSide];
     if (!bindings || !state) return;
 
-    keys[bindings.left] = !!intent.left;
-    keys[bindings.right] = !!intent.right;
-    keys[bindings.down] = !!intent.down;
+    setStickKeyHeld(playerSide, bindings.left, !!intent.left);
+    setStickKeyHeld(playerSide, bindings.right, !!intent.right);
+    setStickKeyHeld(playerSide, bindings.down, !!intent.down);
 
     const now = performance.now();
     if (intent.jump && !state.jumpLatched) {
-        keys[bindings.up] = true;
+        setStickKeyHeld(playerSide, bindings.up, true);
         state.upReleaseAt = now + 70;
         state.jumpLatched = true;
     }
@@ -2528,9 +2556,17 @@ function applyStickIntent(playerSide, intent) {
         state.jumpLatched = false;
     }
     if (state.upReleaseAt && now >= state.upReleaseAt) {
-        keys[bindings.up] = false;
+        setStickKeyHeld(playerSide, bindings.up, false);
         state.upReleaseAt = 0;
     }
+}
+
+// Helper for the touch stick: resolve a mapped key code to its action for
+// the given player side and mark it held or released in the action state.
+function setStickKeyHeld(playerSide, code, held) {
+    const action = keyCodeToAction(playerSide, code);
+    if (!action) return;
+    setActionHeld(playerActionState(playerSide), action, held);
 }
 
 function updateVirtualStick(playerSide, pointerX, pointerY) {
@@ -2771,6 +2807,9 @@ function spawnFighter(charId, startX, isPlayer1, options = {}) {
         id: options.id ?? (isPlayer1 ? 1 : 2),
         charId: charId,
         name: options.displayName || profile?.name || charId,
+        // Per-fighter idle identity (null for story enemies: they keep the
+        // default shared idle presentation).
+        idleStyle: FIGHTER_IDENTITY[charId]?.idle || null,
         mesh: setup.model,
         mixer: setup.mixer,
         actions: setup.actions,
@@ -3003,9 +3042,9 @@ function resetCombo(player) {
     if (player.combat) player.combat.chain = 0;
 }
 
-function getAttackDefinition(type, comboIndex) {
-    const index = type === 'special' || type === 'throw' ? 0 : Math.min(comboIndex, COMBO_SEQUENCE.length - 1);
-    const attack = getMove(type, index);
+function getAttackDefinition(type, comboIndex, charId = null) {
+    const index = type === 'special' || type === 'throw' || type === 'taunt' ? 0 : Math.min(comboIndex, COMBO_SEQUENCE.length - 1);
+    const attack = getMove(type, index, charId);
     if (!attack) return null;
     const strength = COMBO_SEQUENCE[Math.min(index, COMBO_SEQUENCE.length - 1)];
     return {
@@ -3248,7 +3287,7 @@ function startAttack(player, attackDef) {
 
 function requestAttack(player, type) {
     if (!player?.combat || !canAcceptMove(player, type)) return false;
-    return startAttack(player, getAttackDefinition(type, player.combat.chain));
+    return startAttack(player, getAttackDefinition(type, player.combat.chain, player.charId));
 }
 
 function processBufferedAttack(player) {
@@ -3332,7 +3371,8 @@ function updateComboUI() {
 
 function checkHits(attacker, defender) {
     const move = attacker?.combat?.move;
-    if (!move || attacker.combat.state !== FIGHTER_STATE.ACTIVE || defender.isDead || attacker.combat.hitIds.has(defender.id)) return;
+    // Taunts are performances, not attacks: they can never connect.
+    if (!move || move.taunt || attacker.combat.state !== FIGHTER_STATE.ACTIVE || defender.isDead || attacker.combat.hitIds.has(defender.id)) return;
     if (defender.combat?.dashIFrames > 0 || (move.throw && defender.combat?.state === FIGHTER_STATE.ACTIVE)) return;
     updateCombatHitboxes(attacker, showCombatHitboxes);
     updateCombatHitboxes(defender, showCombatHitboxes);
@@ -4240,7 +4280,18 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     }
 
     if (c.state === FIGHTER_STATE.ACTIVE && opp) checkHits(p, opp);
-    if (c.state === FIGHTER_STATE.IDLE) p.fadeTo('idle', .12);
+    if (c.state === FIGHTER_STATE.IDLE) {
+        p.fadeTo('idle', .12);
+        // Per-fighter idle identity: motion rhythm (clip timeScale) plus a
+        // subtle stance sway. Presentation-only; the sim never reads it.
+        const idleStyle = p.idleStyle;
+        if (idleStyle) {
+            if (p.actions.idle) p.actions.idle.setEffectiveTimeScale(idleStyle.timeScale);
+            p.mesh.rotation.z = Math.sin(performance.now() / 1000 * idleStyle.swayFreq) * idleStyle.swayAmp;
+        }
+    } else if (p.mesh.rotation.z !== 0) {
+        p.mesh.rotation.z = 0;
+    }
     if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN) processBufferedAttack(p);
     if (c.state !== FIGHTER_STATE.BLOCK && c.state !== FIGHTER_STATE.BLOCKSTUN && c.state !== FIGHTER_STATE.GUARD_BREAK && p.guardHealth < 100) {
         p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);

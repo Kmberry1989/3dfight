@@ -30,6 +30,7 @@ export function attachCombatHitboxes(fighter, scene) {
   fighter.combat.hitboxes.attackAnchors = {
     hand: findBone(root, ['righthand', 'hand']) || root,
     foot: findBone(root, ['rightfoot', 'foot', 'leg']) || root,
+    torso: findBone(root, ['chest', 'spine', 'hips']) || root,
     throw: root
   };
   fighter.combat.hitboxScene = scene;
