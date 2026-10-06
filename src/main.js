@@ -3578,6 +3578,9 @@ function startAttack(player, attackDef) {
     attackDef = player.combat.move;
     player.hasDealtDamage = false;
     player.attackLimbKeywords = attackDef.limbKeywords;
+    // Dive kicks latch their travel direction at launch so a mid-dive
+    // cross-over (which flips facing) can't boomerang the dive.
+    player.combat.diveDir = attackDef.dive ? player.direction : undefined;
 
     const actionDuration = getClipDuration(player, attackDef.animation);
     const moveDuration = (attackDef.startup + attackDef.active + attackDef.recovery) / FRAME_RATE;
@@ -4594,17 +4597,31 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.pushVelocity * frameDt, -9.5, 9.5);
 
     // Air physics: gravity applies for the whole airborne arc, including
-    // mid-air attacks and air stuns (juggles fall). Landing cancels an air
-    // attack; stun states ride out on the ground.
+    // mid-air attacks and air stuns (juggles fall). A dive kick overrides
+    // gravity with its fixed down-forward velocity during its active
+    // window. Landing cancels an air attack into IDLE — except a dive,
+    // which lands straight into its recovery.
     if (p.isJumping && !p.isDead) {
-        p.velocityY -= 20.0 * frameDt;
+        const dive = c.move?.dive;
+        if (dive && c.state === FIGHTER_STATE.ACTIVE) {
+            p.velocityY = dive.vy;
+            const diveDir = c.diveDir ?? p.direction;
+            p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + dive.vx * diveDir * frameDt, -9.5, 9.5);
+        } else {
+            p.velocityY -= 20.0 * frameDt;
+        }
         p.mesh.position.y += p.velocityY * frameDt;
         if (p.velocityY < 0 && p.mesh.position.y > GROUND_Y && c.state === FIGHTER_STATE.JUMP && p.currentState !== 'jumpDown') p.fadeTo('jumpDown', 0.2);
         if (p.mesh.position.y <= GROUND_Y) {
             const inAirAttack = c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY;
+            const diveMove = inAirAttack ? c.move : null;
             sanitizeGroundedState(p);
             if (c.state === FIGHTER_STATE.JUMP || inAirAttack) {
-                changeCombatState(p, FIGHTER_STATE.IDLE);
+                if (diveMove?.dive) {
+                    changeCombatState(p, FIGHTER_STATE.RECOVERY, { move: diveMove });
+                } else {
+                    changeCombatState(p, FIGHTER_STATE.IDLE);
+                }
                 p.fadeTo('idle', 0.1);
             }
             spawnParticles(p.mesh.position, 'landing');
@@ -4771,6 +4788,31 @@ function updateStoryEnemyControl(frameDt) {
     }
 }
 
+// Auto-facing: a pair of opponents always ends up facing each other.
+// Everyday maneuvering turns smoothly, but an actual cross-over (their
+// x-order flips past a small hysteresis band) snaps instantly so nobody
+// is left fighting backwards after someone jumps or dives over.
+function updateFacing(a, b) {
+    if (!a?.mesh || !b?.mesh || a.isDead || b.isDead) return;
+    const dx = a.mesh.position.x - b.mesh.position.x;
+    if (Math.abs(dx) < 0.12) return; // too close to call: hold current facing
+    const order = dx < 0 ? 1 : -1;
+    const crossed = a._faceOrder !== undefined && a._faceOrder !== order;
+    a._faceOrder = order;
+    b._faceOrder = order;
+    const aTarget = order === 1 ? Math.PI / 2 : -Math.PI / 2;
+    const bTarget = order === 1 ? -Math.PI / 2 : Math.PI / 2;
+    if (crossed) {
+        a.mesh.rotation.y = aTarget;
+        b.mesh.rotation.y = bTarget;
+    } else {
+        a.mesh.rotation.y = THREE.MathUtils.lerp(a.mesh.rotation.y, aTarget, 0.15);
+        b.mesh.rotation.y = THREE.MathUtils.lerp(b.mesh.rotation.y, bTarget, 0.15);
+    }
+    a.direction = order;
+    b.direction = -order;
+}
+
 function updateStoryModeFrame(frameDt) {
     const enemy = storyEnemy;
     const hero1 = players[0];
@@ -4796,15 +4838,11 @@ function updateStoryModeFrame(frameDt) {
 
     [hero1, hero2].filter(Boolean).forEach((hero) => {
         if (!enemy) return;
-        const shouldFaceRight = hero.mesh.position.x < enemy.mesh.position.x;
-        hero.mesh.rotation.y = THREE.MathUtils.lerp(hero.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
-        hero.direction = shouldFaceRight ? 1 : -1;
+        updateFacing(hero, enemy);
     });
 
     if (enemy && targetForEnemy) {
-        const shouldFaceRight = enemy.mesh.position.x < targetForEnemy.mesh.position.x;
-        enemy.mesh.rotation.y = THREE.MathUtils.lerp(enemy.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
-        enemy.direction = shouldFaceRight ? 1 : -1;
+        updateFacing(enemy, targetForEnemy);
     }
 
 }
@@ -4849,17 +4887,7 @@ function updateVersusModeFrame(frameDt) {
         updateHumanControl(p2, 2, p1, frameDt);
     }
 
-    if (p1.mesh.position.x < p2.mesh.position.x) {
-        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, Math.PI / 2, 0.15);
-        p1.direction = 1;
-        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, -Math.PI / 2, 0.15);
-        p2.direction = -1;
-    } else {
-        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, -Math.PI / 2, 0.15);
-        p1.direction = -1;
-        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, Math.PI / 2, 0.15);
-        p2.direction = 1;
-    }
+    updateFacing(p1, p2);
 }
 
 // --- Performance overlay (item 4) ---

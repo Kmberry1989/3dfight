@@ -10,7 +10,7 @@
 // startCombatMove -> checkHits.
 
 export const FOCUS_MOVE_TYPES = Object.freeze([
-  'focusRush', 'focusSky', 'focusEarth', 'focusCharge1', 'focusCharge2',
+  'focusRush', 'focusSky', 'focusEarth', 'focusCharge1', 'focusCharge2', 'focusDive',
 ]);
 
 export const FOCUS_TYPE_TO_KIND = Object.freeze({
@@ -19,6 +19,7 @@ export const FOCUS_TYPE_TO_KIND = Object.freeze({
   focusEarth: 'earth',
   focusCharge1: 'charge1',
   focusCharge2: 'charge2',
+  focusDive: 'dive',
 });
 
 // Timing constants (60 fps frames).
@@ -57,6 +58,8 @@ export const FOCUS_KITS = Object.freeze({
       { damage: 16, hitstun: 32, blockstun: 16, hitstop: 12, pushback: 1.0, lunge: .3, armor: 1, meterGain: 10, hitbox: { width: .5, height: .45, depth: .5 } })),
     charge2: entry('Titan Blow', defineFocusMove('focus-kyle-charge2', 'lungePunchHeavy', 'hand', 18, 5, 34,
       { damage: 22, hitstun: 40, blockstun: 20, hitstop: 16, pushback: 1.2, blockPushback: .7, lunge: .34, armor: 2, meterGain: 12, hitbox: { width: .56, height: .5, depth: .56 } })),
+    dive: entry('Comet Drop', defineFocusMove('focus-kyle-dive', 'dropKick', 'foot', 7, 14, 16,
+      { timeScale: 1.2, damage: 13, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -7, vx: 2.3 } })),
   }),
   // Jonah — armored brawler. Magenta shockwave.
   jonah: Object.freeze({
@@ -71,6 +74,8 @@ export const FOCUS_KITS = Object.freeze({
       { timeScale: 1.1, damage: 16, hitstun: 32, blockstun: 16, hitstop: 12, pushback: 1.0, lunge: .3, armor: 1, meterGain: 10 })),
     charge2: entry('Wrecking Ball', defineFocusMove('focus-jonah-charge2', 'spinFlipKick', 'foot', 18, 6, 34,
       { damage: 22, hitstun: 40, blockstun: 20, hitstop: 16, pushback: 1.25, blockPushback: .7, lunge: .3, armor: 2, meterGain: 12, hitbox: { width: .6, height: .55, depth: .6 } })),
+    dive: entry('Avalanche Drop', defineFocusMove('focus-jonah-dive', 'dropKick', 'foot', 8, 14, 18,
+      { damage: 15, hitstun: 26, blockstun: 13, hitstop: 8, pushback: .7, blockPushback: .4, lunge: 0, meterGain: 10, hitbox: { width: .52, height: .58, depth: .52 }, dive: { vy: -6, vx: 2.0 } })),
   }),
   // Rochelle — spacing specialist. Green arcs.
   rochelle: Object.freeze({
@@ -85,6 +90,8 @@ export const FOCUS_KITS = Object.freeze({
       { damage: 15, hitstun: 30, blockstun: 15, hitstop: 12, pushback: .95, lunge: .38, armor: 1, meterGain: 10 })),
     charge2: entry('Tsunami Kick', defineFocusMove('focus-rochelle-charge2', 'dropKick', 'foot', 17, 6, 32,
       { timeScale: 0.9, damage: 21, hitstun: 38, blockstun: 18, hitstop: 16, pushback: 1.2, blockPushback: .7, lunge: .34, armor: 2, meterGain: 12, hitbox: { width: .6, height: .45, depth: .55 } })),
+    dive: entry('Tide Plunge', defineFocusMove('focus-rochelle-dive', 'dropKick', 'foot', 7, 14, 16,
+      { timeScale: 1.3, damage: 12, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -7.5, vx: 2.4 } })),
   }),
   // Vickie — guard cracker. Violet impact rings.
   vickie: Object.freeze({
@@ -99,6 +106,8 @@ export const FOCUS_KITS = Object.freeze({
       { timeScale: 0.95, damage: 17, hitstun: 34, blockstun: 17, hitstop: 14, pushback: 1.05, lunge: .2, armor: 1, meterGain: 10, hitbox: { width: .5, height: .45, depth: .5 } })),
     charge2: entry('Extinction', defineFocusMove('focus-vickie-charge2', 'lungePunchHeavy', 'hand', 19, 5, 36,
       { timeScale: 0.9, damage: 23, hitstun: 42, blockstun: 20, hitstop: 16, pushback: 1.3, blockPushback: .75, lunge: .3, armor: 2, meterGain: 12 })),
+    dive: entry('Death From Above', defineFocusMove('focus-vickie-dive', 'dropKick', 'foot', 7, 14, 16,
+      { timeScale: 1.25, damage: 13, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -7.5, vx: 2.3 } })),
   }),
   // Donald — whiff punisher. Gold flash.
   donald: Object.freeze({
@@ -113,6 +122,8 @@ export const FOCUS_KITS = Object.freeze({
       { timeScale: 1.05, damage: 16, hitstun: 32, blockstun: 16, hitstop: 12, pushback: 1.0, lunge: .3, armor: 1, meterGain: 10 })),
     charge2: entry('Standing Ovation', defineFocusMove('focus-donald-charge2', 'spinFlipKick', 'foot', 17, 6, 32,
       { timeScale: 0.95, damage: 22, hitstun: 40, blockstun: 20, hitstop: 16, pushback: 1.25, blockPushback: .7, lunge: .32, armor: 2, meterGain: 12, hitbox: { width: .6, height: .55, depth: .6 } })),
+    dive: entry('Showstopper Dive', defineFocusMove('focus-donald-dive', 'frontTwistFlip', 'foot', 7, 14, 16,
+      { timeScale: 1.1, damage: 13, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -7, vx: 2.3 } })),
   }),
   // Eric — pressure fighter. Ember sparks.
   eric: Object.freeze({
@@ -127,6 +138,8 @@ export const FOCUS_KITS = Object.freeze({
       { damage: 16, hitstun: 32, blockstun: 16, hitstop: 12, pushback: 1.0, lunge: .22, armor: 1, meterGain: 10 })),
     charge2: entry('Inferno Rush', defineFocusMove('focus-eric-charge2', 'lungePunchHeavy', 'hand', 16, 5, 32,
       { timeScale: 0.95, damage: 21, hitstun: 38, blockstun: 18, hitstop: 16, pushback: 1.2, blockPushback: .7, lunge: .34, armor: 2, meterGain: 12 })),
+    dive: entry('Ember Fall', defineFocusMove('focus-eric-dive', 'dropKick', 'foot', 6, 14, 15,
+      { timeScale: 1.35, damage: 12, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -8, vx: 2.5 } })),
   }),
   // Kristen — anti-air specialist. Teal ribbons.
   kristen: Object.freeze({
@@ -141,6 +154,8 @@ export const FOCUS_KITS = Object.freeze({
       { damage: 16, hitstun: 32, blockstun: 16, hitstop: 12, pushback: 1.0, lunge: .26, armor: 1, meterGain: 10, hitbox: { width: .6, height: .45, depth: .55 } })),
     charge2: entry('Supernova', defineFocusMove('focus-kristen-charge2', 'spinFlipKick', 'foot', 17, 6, 32,
       { timeScale: 0.9, damage: 22, hitstun: 40, blockstun: 20, hitstop: 16, pushback: 1.25, blockPushback: .7, lunge: .3, armor: 2, meterGain: 12, hitbox: { width: .6, height: .55, depth: .6 } })),
+    dive: entry('Moonfall', defineFocusMove('focus-kristen-dive', 'dropKick', 'foot', 7, 14, 16,
+      { timeScale: 1.3, damage: 12, hitstun: 24, blockstun: 12, hitstop: 8, pushback: .6, blockPushback: .35, lunge: 0, meterGain: 10, hitbox: { width: .5, height: .55, depth: .5 }, dive: { vy: -7.5, vx: 2.4 } })),
   }),
 });
 
@@ -172,7 +187,7 @@ export function getFocusMotif(fighterId) {
 // Pure function of sim state so live play, replays, and peers agree.
 export function resolveFocusStrike({ distance, towardHeld, airborne }) {
   if (!airborne && distance <= FOCUS_THROW_RANGE) return { type: 'throw', chain: 0 };
-  if (airborne) return { type: 'kick', chain: 1 };
+  if (airborne) return { type: 'focusDive', chain: 0 };
   if (towardHeld) return { type: 'kick', chain: 2 };
   return { type: 'punch', chain: -1 }; // -1: use the fighter's own focus chain cycle
 }
