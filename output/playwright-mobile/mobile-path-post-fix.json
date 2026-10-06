@@ -1,0 +1,605 @@
+{
+  "portraitReady": {
+    "label": "portrait-ready",
+    "inner": [
+      390,
+      844
+    ],
+    "orientation": "portrait",
+    "lock": false,
+    "controls": "none",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844,
+      "top": 0,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.4,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -3.11,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.35,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": 3.3,
+          "velocity": -1.97,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              2.25,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              3.01,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "portraitGesture": false,
+  "portraitPressed": {
+    "stick": false,
+    "punch": false,
+    "kick": false
+  },
+  "portraitMoving": {
+    "stick": false,
+    "punch": false,
+    "kick": false
+  },
+  "portraitInput": {
+    "label": "portrait-after-stick-plus-two-attacks",
+    "inner": [
+      390,
+      844
+    ],
+    "orientation": "portrait",
+    "lock": false,
+    "controls": "none",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844,
+      "top": 0,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.4,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -3.11,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.35,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": 0.99,
+          "velocity": -2.5,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -0.07,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              0.69,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "portraitEvents": [
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "pointermove",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchmove",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": ""
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": ""
+    }
+  ],
+  "landscapeReady": {
+    "label": "landscape-ready",
+    "inner": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.4,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -3.11,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.35,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": -0.39,
+          "velocity": -2.5,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -1.44,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              -0.68,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "landscapeGesture": true,
+  "landscapePressed": {
+    "stick": true,
+    "punch": true,
+    "kick": true
+  },
+  "landscapeMoving": {
+    "stick": true,
+    "punch": true,
+    "kick": true
+  },
+  "landscapeInput": {
+    "label": "landscape-after-stick-plus-two-attacks",
+    "inner": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 8,
+          "position": -3.19,
+          "velocity": 0,
+          "state": "RECOVERY",
+          "frame": 21,
+          "stateFrame": 10,
+          "move": "kick-medium",
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.89,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.13,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 96,
+          "meter": 4,
+          "position": -0.27,
+          "velocity": -2.45,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -1.32,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              -0.56,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "landscapeEvents": [
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "pointermove",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchmove",
+      "prevented": true,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    }
+  ],
+  "paused": {
+    "label": "paused",
+    "inner": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": false,
+    "controls": "none",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 8,
+          "position": -3.19,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 25,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.89,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.13,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 96,
+          "meter": 4,
+          "position": -1.58,
+          "velocity": 0,
+          "state": "STARTUP",
+          "frame": 3,
+          "stateFrame": 3,
+          "move": "punch-light",
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.63,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              -1.87,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "pausedGesture": false,
+  "menu": {
+    "label": "menu-after-quit",
+    "inner": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": false,
+    "controls": "none",
+    "hud": "none",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": false,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [],
+      "activeEnemies": []
+    }
+  },
+  "menuGesture": false,
+  "errors": []
+}

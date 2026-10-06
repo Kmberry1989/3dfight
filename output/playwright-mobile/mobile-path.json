@@ -1,0 +1,800 @@
+{
+  "portraitReady": {
+    "label": "portrait-ready",
+    "inner": [
+      390,
+      844
+    ],
+    "visual": [
+      390,
+      844
+    ],
+    "orientation": "portrait",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844,
+      "top": 0,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "stick": {
+      "x": 14,
+      "y": 700,
+      "width": 128,
+      "height": 128,
+      "top": 700,
+      "right": 142,
+      "bottom": 828,
+      "left": 14
+    },
+    "punch": {
+      "x": 229.359375,
+      "y": 740.953125,
+      "width": 64,
+      "height": 64,
+      "top": 740.953125,
+      "right": 293.359375,
+      "bottom": 804.953125,
+      "left": 229.359375
+    },
+    "kick": {
+      "x": 279.265625,
+      "y": 700.15625,
+      "width": 64,
+      "height": 64,
+      "top": 700.15625,
+      "right": 343.265625,
+      "bottom": 764.15625,
+      "left": 279.265625
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.4,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -3.11,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.35,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": 3.3,
+          "velocity": -1.97,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              2.25,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              3.01,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "portraitInput": {
+    "label": "portrait-after-stick-plus-two-attacks",
+    "inner": [
+      390,
+      844
+    ],
+    "visual": [
+      390,
+      844
+    ],
+    "orientation": "portrait",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844,
+      "top": 0,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "stick": {
+      "x": 14,
+      "y": 700,
+      "width": 128,
+      "height": 128,
+      "top": 700,
+      "right": 142,
+      "bottom": 828,
+      "left": 14
+    },
+    "punch": {
+      "x": 229.359375,
+      "y": 740.953125,
+      "width": 64,
+      "height": 64,
+      "top": 740.953125,
+      "right": 293.359375,
+      "bottom": 804.953125,
+      "left": 229.359375
+    },
+    "kick": {
+      "x": 279.265625,
+      "y": 700.15625,
+      "width": 64,
+      "height": 64,
+      "top": 700.15625,
+      "right": 343.265625,
+      "bottom": 764.15625,
+      "left": 279.265625
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.19,
+          "velocity": 0,
+          "state": "RECOVERY",
+          "frame": 24,
+          "stateFrame": 13,
+          "move": "kick-medium",
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.89,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.13,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": 1.66,
+          "velocity": -2.5,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              0.6,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              1.36,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "landscapeReady": {
+    "label": "landscape-ready",
+    "inner": [
+      844,
+      390
+    ],
+    "visual": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "stick": {
+      "x": 14,
+      "y": 202,
+      "width": 172,
+      "height": 172,
+      "top": 202,
+      "right": 186,
+      "bottom": 374,
+      "left": 14
+    },
+    "punch": {
+      "x": 623.1875,
+      "y": 254.953125,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 254.953125,
+      "right": 707.578125,
+      "bottom": 339.34375,
+      "left": 623.1875
+    },
+    "kick": {
+      "x": 693.59375,
+      "y": 199.15625,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 199.15625,
+      "right": 777.984375,
+      "bottom": 283.546875,
+      "left": 693.59375
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -3.19,
+          "velocity": 0,
+          "state": "IDLE",
+          "frame": 25,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.89,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.13,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": 0.49,
+          "velocity": -2.5,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -0.57,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              0.19,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "landscapeInput": {
+    "label": "landscape-after-stick-plus-two-attacks",
+    "inner": [
+      844,
+      390
+    ],
+    "visual": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "stick": {
+      "x": 14,
+      "y": 202,
+      "width": 172,
+      "height": 172,
+      "top": 202,
+      "right": 186,
+      "bottom": 374,
+      "left": 14
+    },
+    "punch": {
+      "x": 623.1875,
+      "y": 254.953125,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 254.953125,
+      "right": 707.578125,
+      "bottom": 339.34375,
+      "left": 623.1875
+    },
+    "kick": {
+      "x": 693.59375,
+      "y": 199.15625,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 199.15625,
+      "right": 777.984375,
+      "bottom": 283.546875,
+      "left": 693.59375
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 100,
+          "meter": 0,
+          "position": -2.97,
+          "velocity": 0,
+          "state": "RECOVERY",
+          "frame": 20,
+          "stateFrame": 9,
+          "move": "kick-medium",
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.68,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -1.92,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 0,
+          "position": -0.72,
+          "velocity": -2.5,
+          "state": "WALK",
+          "frame": 0,
+          "stateFrame": 0,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -1.78,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              -1.02,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "paused": {
+    "label": "paused",
+    "inner": [
+      844,
+      390
+    ],
+    "visual": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": true,
+    "controls": "block",
+    "hud": "flex",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "stick": {
+      "x": 14,
+      "y": 202,
+      "width": 172,
+      "height": 172,
+      "top": 202,
+      "right": 186,
+      "bottom": 374,
+      "left": 14
+    },
+    "punch": {
+      "x": 623.1875,
+      "y": 254.953125,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 254.953125,
+      "right": 707.578125,
+      "bottom": 339.34375,
+      "left": 623.1875
+    },
+    "kick": {
+      "x": 693.59375,
+      "y": 199.15625,
+      "width": 84.390625,
+      "height": 84.390625,
+      "top": 199.15625,
+      "right": 777.984375,
+      "bottom": 283.546875,
+      "left": 693.59375
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": true,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [
+        {
+          "id": 1,
+          "health": 96,
+          "meter": 4,
+          "position": -3.83,
+          "velocity": 0,
+          "state": "HITSTUN",
+          "frame": 25,
+          "stateFrame": 8,
+          "move": null,
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -3.54,
+              0.11,
+              -0.28
+            ],
+            "max": [
+              -2.78,
+              1.21,
+              0.28
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "health": 100,
+          "meter": 8,
+          "position": -1.32,
+          "velocity": 0,
+          "state": "RECOVERY",
+          "frame": 12,
+          "stateFrame": 5,
+          "move": "punch-light",
+          "armor": 0,
+          "buffered": [],
+          "hitboxActive": false,
+          "attackBox": null,
+          "hurtBox": {
+            "min": [
+              -2.37,
+              -0.05,
+              -0.28
+            ],
+            "max": [
+              -1.61,
+              1.05,
+              0.28
+            ]
+          }
+        }
+      ],
+      "activeEnemies": []
+    }
+  },
+  "menu": {
+    "label": "menu-after-quit",
+    "inner": [
+      844,
+      390
+    ],
+    "visual": [
+      844,
+      390
+    ],
+    "orientation": "landscape",
+    "lock": false,
+    "controls": "none",
+    "hud": "none",
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 844,
+      "height": 390,
+      "top": 0,
+      "right": 844,
+      "bottom": 390,
+      "left": 0
+    },
+    "stick": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "left": 0
+    },
+    "punch": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "left": 0
+    },
+    "kick": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "left": 0
+    },
+    "state": {
+      "mode": "arcade_single",
+      "active": false,
+      "story": null,
+      "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+      "heroes": [],
+      "activeEnemies": []
+    }
+  },
+  "portraitEvents": [
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "pointermove",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchmove",
+      "prevented": true,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    }
+  ],
+  "landscapeEvents": [
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "pointerdown",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    },
+    {
+      "type": "touchstart",
+      "prevented": true,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "pointermove",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchmove",
+      "prevented": true,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-stick active"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-stick"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-punch"
+    },
+    {
+      "type": "pointerup",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick pressed"
+    },
+    {
+      "type": "touchend",
+      "prevented": false,
+      "target": "touch-btn p1 touch-icon-kick"
+    }
+  ],
+  "errors": []
+}

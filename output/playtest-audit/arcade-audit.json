@@ -1,0 +1,1322 @@
+{
+  "samples": [
+    {
+      "label": "active-initial",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": -3.4,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 0,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                -3.11,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                -2.35,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 3.3,
+            "velocity": -1.97,
+            "state": "WALK",
+            "frame": 0,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                2.24,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                3,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722212
+    },
+    {
+      "label": "p1-walked-right-1s",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": -0.91,
+            "velocity": 0.67,
+            "state": "WALK",
+            "frame": 0,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                -0.62,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                0.14,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 0.66,
+            "velocity": -2.5,
+            "state": "WALK",
+            "frame": 0,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                -0.4,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                0.36,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722322
+    },
+    {
+      "label": "p1-walked-right-2s",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.8,
+            "velocity": 1.8,
+            "state": "WALK",
+            "frame": 0,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.75,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.51,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.4,
+            "velocity": 0,
+            "state": "ACTIVE",
+            "frame": 4,
+            "stateFrame": 0,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": true,
+            "attackBox": {
+              "min": [
+                1.73,
+                0.31,
+                -0.33
+              ],
+              "max": [
+                2.57,
+                1.01,
+                0.51
+              ]
+            },
+            "hurtBox": {
+              "min": [
+                1.7,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.46,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722897
+    },
+    {
+      "label": "punch-frame-3",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.79,
+            "velocity": 0,
+            "state": "STARTUP",
+            "frame": 3,
+            "stateFrame": 3,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.73,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.49,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 8,
+            "stateFrame": 1,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722903
+    },
+    {
+      "label": "punch-frame-4",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.77,
+            "velocity": 0,
+            "state": "ACTIVE",
+            "frame": 4,
+            "stateFrame": 0,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": true,
+            "attackBox": {
+              "min": [
+                0.39,
+                0.74,
+                -0.2
+              ],
+              "max": [
+                1.07,
+                1.34,
+                0.48
+              ]
+            },
+            "hurtBox": {
+              "min": [
+                0.72,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.48,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 9,
+            "stateFrame": 2,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722905
+    },
+    {
+      "label": "punch-frame-5",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.76,
+            "velocity": 0,
+            "state": "ACTIVE",
+            "frame": 5,
+            "stateFrame": 1,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": true,
+            "attackBox": {
+              "min": [
+                0.38,
+                0.74,
+                -0.2
+              ],
+              "max": [
+                1.06,
+                1.34,
+                0.48
+              ]
+            },
+            "hurtBox": {
+              "min": [
+                0.71,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.47,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 10,
+            "stateFrame": 3,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722907
+    },
+    {
+      "label": "punch-frame-6",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "ACTIVE",
+            "frame": 6,
+            "stateFrame": 2,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": true,
+            "attackBox": {
+              "min": [
+                0.37,
+                0.74,
+                -0.2
+              ],
+              "max": [
+                1.05,
+                1.34,
+                0.48
+              ]
+            },
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 11,
+            "stateFrame": 4,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722908
+    },
+    {
+      "label": "punch-frame-7",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 7,
+            "stateFrame": 0,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 12,
+            "stateFrame": 5,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722911
+    },
+    {
+      "label": "punch-frame-8",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 8,
+            "stateFrame": 1,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 13,
+            "stateFrame": 6,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722912
+    },
+    {
+      "label": "punch-frame-9",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 9,
+            "stateFrame": 2,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 14,
+            "stateFrame": 7,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722915
+    },
+    {
+      "label": "punch-frame-10",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 10,
+            "stateFrame": 3,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 15,
+            "stateFrame": 8,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722916
+    },
+    {
+      "label": "punch-frame-11",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 11,
+            "stateFrame": 4,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 16,
+            "stateFrame": 9,
+            "move": "kick-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722918
+    },
+    {
+      "label": "punch-frame-12",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 12,
+            "stateFrame": 5,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722919
+    },
+    {
+      "label": "punch-frame-13",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 13,
+            "stateFrame": 6,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722920
+    },
+    {
+      "label": "punch-frame-14",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 14,
+            "stateFrame": 7,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722922
+    },
+    {
+      "label": "punch-frame-15",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 15,
+            "stateFrame": 8,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722923
+    },
+    {
+      "label": "punch-frame-16",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "RECOVERY",
+            "frame": 16,
+            "stateFrame": 9,
+            "move": "punch-light",
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722924
+    },
+    {
+      "label": "punch-frame-17",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": 1.75,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.7,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                1.46,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                1.73,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                2.49,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838722926
+    },
+    {
+      "label": "p1-walked-left-after-overlap",
+      "state": {
+        "mode": "arcade_single",
+        "active": true,
+        "story": null,
+        "coordinateSystem": "x increases right; y increases upward; z is stage depth",
+        "heroes": [
+          {
+            "id": 1,
+            "health": 100,
+            "meter": 0,
+            "position": -1.26,
+            "velocity": -0.18,
+            "state": "WALK",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                -0.97,
+                0.11,
+                -0.28
+              ],
+              "max": [
+                -0.21,
+                1.21,
+                0.28
+              ]
+            }
+          },
+          {
+            "id": 2,
+            "health": 100,
+            "meter": 0,
+            "position": 1.43,
+            "velocity": 0,
+            "state": "IDLE",
+            "frame": 17,
+            "stateFrame": 0,
+            "move": null,
+            "armor": 0,
+            "buffered": [],
+            "hitboxActive": false,
+            "attackBox": null,
+            "hurtBox": {
+              "min": [
+                0.37,
+                0.17,
+                -0.28
+              ],
+              "max": [
+                1.13,
+                1.27,
+                0.28
+              ]
+            }
+          }
+        ],
+        "activeEnemies": []
+      },
+      "time": 1788838723036
+    }
+  ],
+  "errors": []
+}
