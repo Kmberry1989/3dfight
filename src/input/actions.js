@@ -19,6 +19,18 @@ export const ACTION = Object.freeze({
     TAUNT: 'Taunt',
     DASH: 'Dash',
     PAUSE: 'Pause',
+    // Focus controls: one contextual strike button (tap = strike, hold =
+    // charge). Never maps directly to a combat move; the game resolves it
+    // from range, direction, tempo, and hold time.
+    STRIKE: 'Strike',
+});
+
+// Control schemes. Classic is the original six-button layout; focus is the
+// stick + three-button layout (Strike / Special / Guard) with tempo combos
+// and charged strikes.
+export const CONTROL_SCHEME = Object.freeze({
+    CLASSIC: 'classic',
+    FOCUS: 'focus',
 });
 
 export const ACTION_BY_NAME = Object.freeze(
@@ -26,7 +38,7 @@ export const ACTION_BY_NAME = Object.freeze(
 );
 
 // Actions that stay active while the control is held.
-export const HELD_ACTIONS = new Set([ACTION.MOVE_LEFT, ACTION.MOVE_RIGHT, ACTION.JUMP, ACTION.BLOCK]);
+export const HELD_ACTIONS = new Set([ACTION.MOVE_LEFT, ACTION.MOVE_RIGHT, ACTION.JUMP, ACTION.BLOCK, ACTION.STRIKE]);
 
 // Actions that fire once per press and resolve into a combat move.
 export const ATTACK_ACTIONS = new Set([ACTION.PUNCH, ACTION.KICK, ACTION.SPECIAL, ACTION.THROW]);
@@ -68,8 +80,37 @@ export const KEYBOARD_BINDINGS = Object.freeze({
     }),
 });
 
-export function keyCodeToAction(playerId, code) {
-    const bindings = KEYBOARD_BINDINGS[playerId];
+// Focus-scheme keyboard bindings: same movement, one contextual Strike,
+// Special, Guard, Taunt. Throw lives inside Strike (point-blank); Dash
+// stays double-tap direction.
+export const FOCUS_KEYBOARD_BINDINGS = Object.freeze({
+    1: Object.freeze({
+        KeyA: ACTION.MOVE_LEFT,
+        KeyD: ACTION.MOVE_RIGHT,
+        KeyW: ACTION.JUMP,
+        KeyS: ACTION.BLOCK,
+        Space: ACTION.STRIKE,
+        ShiftLeft: ACTION.SPECIAL,
+        KeyC: ACTION.SPECIAL,
+        KeyT: ACTION.TAUNT,
+        Escape: ACTION.PAUSE,
+    }),
+    2: Object.freeze({
+        ArrowLeft: ACTION.MOVE_LEFT,
+        ArrowRight: ACTION.MOVE_RIGHT,
+        ArrowUp: ACTION.JUMP,
+        ArrowDown: ACTION.BLOCK,
+        KeyP: ACTION.STRIKE,
+        KeyO: ACTION.SPECIAL,
+        KeyI: ACTION.SPECIAL,
+        KeyY: ACTION.TAUNT,
+        Escape: ACTION.PAUSE,
+    }),
+});
+
+export function keyCodeToAction(playerId, code, scheme = CONTROL_SCHEME.CLASSIC) {
+    const table = scheme === CONTROL_SCHEME.FOCUS ? FOCUS_KEYBOARD_BINDINGS : KEYBOARD_BINDINGS;
+    const bindings = table[playerId];
     return bindings ? bindings[code] || null : null;
 }
 
@@ -101,6 +142,10 @@ export const ACTION_BIT_INDEX = Object.freeze({
     // Taunt sits at bit 10: old peers simply ignore the unknown bit, and the
     // action-name wire path resolves it by name, so this stays compatible.
     [ACTION.TAUNT]: 10,
+    // Strike sits at bit 11 with the same compatibility story. Remote peers
+    // never need the hold state: the presser resolves Strike into a concrete
+    // attack type and transmits that.
+    [ACTION.STRIKE]: 11,
 });
 
 // Per-player action state: currently held actions plus the discrete actions
