@@ -983,15 +983,17 @@ function updateFocusFighter(p, opp) {
     const strikeHeld = isActionHeld(actions, ACTION.STRIKE);
     const grounded = !p.isJumping && c.state !== FIGHTER_STATE.JUMP;
     const neutral = c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK;
+    // Air attacks are tap-only: no charging mid-air.
+    const canStrike = neutral || c.state === FIGHTER_STATE.JUMP;
 
-    // Release edge: a tap becomes the contextual strike; a hold becomes the
-    // charged heavy (or falls back to the tap strike below level 1). The
-    // focusPressArmed arm covers taps that press and release between two
-    // sim frames.
+    // Release edge: a tap becomes the contextual strike; a grounded hold
+    // becomes the charged heavy (or falls back to the tap strike below
+    // level 1). The focusPressArmed arm covers taps that press and release
+    // between two sim frames.
     const released = (c.strikeWasHeld || c.focusPressArmed) && !strikeHeld;
     if (released) {
-        if (neutral && grounded) {
-            if (c.focusCharging) {
+        if (canStrike) {
+            if (grounded && c.focusCharging) {
                 const frames = c.focusChargeFrames || 0;
                 const chargeType = frames >= CHARGE_LEVEL_2 ? 'focusCharge2' : frames >= CHARGE_LEVEL_1 ? 'focusCharge1' : null;
                 if (chargeType) fireFocusAttack(p, chargeType);
@@ -1008,13 +1010,19 @@ function updateFocusFighter(p, opp) {
     c.focusPressArmed = false;
 
     // Tap-vs-hold decision and charging, while the fighter stays neutral and
-    // grounded. Guard cancels the charge with no phantom attack.
+    // grounded. Guard cancels the charge with no phantom attack. An airborne
+    // hold simply keeps the tap window armed until release.
     if ((c.focusPending || 0) > 0 || c.focusCharging) {
         if (isActionHeld(actions, ACTION.BLOCK)) {
             c.focusPending = 0;
             c.focusCharging = false;
             c.focusChargeFrames = 0;
-        } else if (strikeHeld && neutral && grounded) {
+        } else if (!canStrike) {
+            // Hit, dashed, or caught mid-move: the strike fizzles.
+            c.focusPending = 0;
+            c.focusCharging = false;
+            c.focusChargeFrames = 0;
+        } else if (strikeHeld && grounded) {
             if ((c.focusPending || 0) > 0) {
                 c.focusPending--;
                 if (c.focusPending === 0) { c.focusCharging = true; c.focusChargeFrames = 0; }
@@ -3570,6 +3578,9 @@ function startAttack(player, attackDef) {
     attackDef = player.combat.move;
     player.hasDealtDamage = false;
     player.attackLimbKeywords = attackDef.limbKeywords;
+    // Dive kicks latch their travel direction at launch so a mid-dive
+    // cross-over (which flips facing) can't boomerang the dive.
+    player.combat.diveDir = attackDef.dive ? player.direction : undefined;
 
     const actionDuration = getClipDuration(player, attackDef.animation);
     const moveDuration = (attackDef.startup + attackDef.active + attackDef.recovery) / FRAME_RATE;
@@ -4560,12 +4571,18 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     if (c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN || c.state === FIGHTER_STATE.KNOCKDOWN || c.state === FIGHTER_STATE.GETUP || c.state === FIGHTER_STATE.GUARD_BREAK) {
         tickStunState(p);
     } else if (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) {
+        const prevAttackState = c.state;
         const phase = advanceCombatState(p);
         const move = c.move;
         if (phase.startedActive) AudioSynth.playSwing();
         if (move && (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE)) {
             const lungeStep = (move.lunge || 0) / Math.max(1, move.startup + move.active);
             p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + lungeStep * p.direction, -9.5, 9.5);
+        }
+        // An air attack that ends before landing hands the pose back to the
+        // jump/fall animation instead of freezing on the clamped end frame.
+        if (prevAttackState === FIGHTER_STATE.RECOVERY && c.state === FIGHTER_STATE.JUMP) {
+            p.fadeTo(p.velocityY >= 0 ? 'jumpUp' : 'jumpDown', 0.15);
         }
     } else if (c.state === FIGHTER_STATE.DASH) {
         c.stateFrame++;
@@ -4579,14 +4596,32 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     }
     p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + c.pushVelocity * frameDt, -9.5, 9.5);
 
-    if (c.state === FIGHTER_STATE.JUMP && p.isJumping) {
-        p.velocityY -= 20.0 * frameDt;
+    // Air physics: gravity applies for the whole airborne arc, including
+    // mid-air attacks and air stuns (juggles fall). A dive kick overrides
+    // gravity with its fixed down-forward velocity during its active
+    // window. Landing cancels an air attack into IDLE — except a dive,
+    // which lands straight into its recovery.
+    if (p.isJumping && !p.isDead) {
+        const dive = c.move?.dive;
+        if (dive && c.state === FIGHTER_STATE.ACTIVE) {
+            p.velocityY = dive.vy;
+            const diveDir = c.diveDir ?? p.direction;
+            p.mesh.position.x = THREE.MathUtils.clamp(p.mesh.position.x + dive.vx * diveDir * frameDt, -9.5, 9.5);
+        } else {
+            p.velocityY -= 20.0 * frameDt;
+        }
         p.mesh.position.y += p.velocityY * frameDt;
-        if (p.velocityY < 0 && p.currentState !== 'jumpDown') p.fadeTo('jumpDown', 0.2);
+        if (p.velocityY < 0 && p.mesh.position.y > GROUND_Y && c.state === FIGHTER_STATE.JUMP && p.currentState !== 'jumpDown') p.fadeTo('jumpDown', 0.2);
         if (p.mesh.position.y <= GROUND_Y) {
+            const inAirAttack = c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY;
+            const diveMove = inAirAttack ? c.move : null;
             sanitizeGroundedState(p);
-            if (!p.isDead) {
-                changeCombatState(p, FIGHTER_STATE.IDLE);
+            if (c.state === FIGHTER_STATE.JUMP || inAirAttack) {
+                if (diveMove?.dive) {
+                    changeCombatState(p, FIGHTER_STATE.RECOVERY, { move: diveMove });
+                } else {
+                    changeCombatState(p, FIGHTER_STATE.IDLE);
+                }
                 p.fadeTo('idle', 0.1);
             }
             spawnParticles(p.mesh.position, 'landing');
@@ -4606,7 +4641,7 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     } else if (p.mesh.rotation.z !== 0) {
         p.mesh.rotation.z = 0;
     }
-    if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN) processBufferedAttack(p);
+    if (c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK || c.state === FIGHTER_STATE.RECOVERY || c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.JUMP) processBufferedAttack(p);
     if (c.state !== FIGHTER_STATE.BLOCK && c.state !== FIGHTER_STATE.BLOCKSTUN && c.state !== FIGHTER_STATE.GUARD_BREAK && p.guardHealth < 100) {
         p.guardHealth = Math.min(100, p.guardHealth + 15 * frameDt);
     }
@@ -4661,7 +4696,10 @@ function syncCombatIntent(player, blockHeld = false) {
     if (!player?.combat) return;
     const c = player.combat;
     if (player.isJumping) {
-        if (c.state !== FIGHTER_STATE.JUMP) changeCombatState(player, FIGHTER_STATE.JUMP);
+        // Airborne: the JUMP state owns neutral air time, but an in-flight
+        // air attack keeps its state until it lands or finishes.
+        const inAirAttack = c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY;
+        if (c.state !== FIGHTER_STATE.JUMP && !inAirAttack) changeCombatState(player, FIGHTER_STATE.JUMP);
         c.motionVelocity = 0;
         player.velocity = 0;
         return;
@@ -4750,6 +4788,31 @@ function updateStoryEnemyControl(frameDt) {
     }
 }
 
+// Auto-facing: a pair of opponents always ends up facing each other.
+// Everyday maneuvering turns smoothly, but an actual cross-over (their
+// x-order flips past a small hysteresis band) snaps instantly so nobody
+// is left fighting backwards after someone jumps or dives over.
+function updateFacing(a, b) {
+    if (!a?.mesh || !b?.mesh || a.isDead || b.isDead) return;
+    const dx = a.mesh.position.x - b.mesh.position.x;
+    if (Math.abs(dx) < 0.12) return; // too close to call: hold current facing
+    const order = dx < 0 ? 1 : -1;
+    const crossed = a._faceOrder !== undefined && a._faceOrder !== order;
+    a._faceOrder = order;
+    b._faceOrder = order;
+    const aTarget = order === 1 ? Math.PI / 2 : -Math.PI / 2;
+    const bTarget = order === 1 ? -Math.PI / 2 : Math.PI / 2;
+    if (crossed) {
+        a.mesh.rotation.y = aTarget;
+        b.mesh.rotation.y = bTarget;
+    } else {
+        a.mesh.rotation.y = THREE.MathUtils.lerp(a.mesh.rotation.y, aTarget, 0.15);
+        b.mesh.rotation.y = THREE.MathUtils.lerp(b.mesh.rotation.y, bTarget, 0.15);
+    }
+    a.direction = order;
+    b.direction = -order;
+}
+
 function updateStoryModeFrame(frameDt) {
     const enemy = storyEnemy;
     const hero1 = players[0];
@@ -4775,15 +4838,11 @@ function updateStoryModeFrame(frameDt) {
 
     [hero1, hero2].filter(Boolean).forEach((hero) => {
         if (!enemy) return;
-        const shouldFaceRight = hero.mesh.position.x < enemy.mesh.position.x;
-        hero.mesh.rotation.y = THREE.MathUtils.lerp(hero.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
-        hero.direction = shouldFaceRight ? 1 : -1;
+        updateFacing(hero, enemy);
     });
 
     if (enemy && targetForEnemy) {
-        const shouldFaceRight = enemy.mesh.position.x < targetForEnemy.mesh.position.x;
-        enemy.mesh.rotation.y = THREE.MathUtils.lerp(enemy.mesh.rotation.y, shouldFaceRight ? Math.PI / 2 : -Math.PI / 2, 0.15);
-        enemy.direction = shouldFaceRight ? 1 : -1;
+        updateFacing(enemy, targetForEnemy);
     }
 
 }
@@ -4828,17 +4887,7 @@ function updateVersusModeFrame(frameDt) {
         updateHumanControl(p2, 2, p1, frameDt);
     }
 
-    if (p1.mesh.position.x < p2.mesh.position.x) {
-        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, Math.PI / 2, 0.15);
-        p1.direction = 1;
-        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, -Math.PI / 2, 0.15);
-        p2.direction = -1;
-    } else {
-        p1.mesh.rotation.y = THREE.MathUtils.lerp(p1.mesh.rotation.y, -Math.PI / 2, 0.15);
-        p1.direction = -1;
-        p2.mesh.rotation.y = THREE.MathUtils.lerp(p2.mesh.rotation.y, Math.PI / 2, 0.15);
-        p2.direction = 1;
-    }
+    updateFacing(p1, p2);
 }
 
 // --- Performance overlay (item 4) ---
