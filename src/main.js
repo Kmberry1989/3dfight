@@ -11,7 +11,8 @@ import { FIGHTER_IDENTITY, ROSTER_IDS, validateFighterIdentity } from './combat/
 import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIntersects } from './combat/hitboxes.js';
 import { getMove, ATTACK_ANIMATION_NAMES } from './combat/frameData.js';
 import { getStageEntry } from './stages/stageRegistry.js';
-import { ACTION, ACTION_BY_NAME, HELD_ACTIONS, ATTACK_ACTIONS, ACTION_ATTACK_TYPE, KEYBOARD_BINDINGS, keyCodeToAction, createActionState, pressAction, releaseAction, setActionHeld, isActionHeld, clearActionState, drainPressedActions, heldActionBitmask, applyActionBitmask, bitmaskToActionNames } from './input/actions.js';
+import { ACTION, ACTION_BY_NAME, HELD_ACTIONS, ATTACK_ACTIONS, ACTION_ATTACK_TYPE, CONTROL_SCHEME, KEYBOARD_BINDINGS, keyCodeToAction, createActionState, pressAction, releaseAction, setActionHeld, isActionHeld, clearActionState, drainPressedActions, heldActionBitmask, applyActionBitmask, bitmaskToActionNames } from './input/actions.js';
+import { FOCUS_MOVE_TYPES, TEMPO_WINDOW, TEMPO_PERFECT_LO, TEMPO_PERFECT_HI, STRIKE_TAP_FRAMES, CHARGE_LEVEL_1, CHARGE_LEVEL_2, FOCUS_THROW_RANGE, getFocusMoveName, getFocusMotif, resolveFocusStrike, selectTempoRoute } from './combat/focusMoves.js';
 import { reseedSim, getSimSeed, simRandom, simPick } from './simulation/rng.js';
 import { COMBAT_EVENT, onCombatEvent, emitCombatEvent } from './simulation/events.js';
 import { fnv1a, hashSimFrame, createReplayRecorder, firstDivergentFrame } from './simulation/replay.js';
@@ -89,6 +90,11 @@ const SHARED_ANIMATIONS = {
     dropKick: '/animations/Drop Kick.fbx',
     shoulderBarge: '/animations/Flying Shoulder Throw.fbx',
     haymaker: '/animations/Right Hook.fbx',
+    // Extra animations wired for the Focus Controls finishers (tempo routes
+    // and charged strikes). Loaded once and shared across the roster.
+    lungePunchHeavy: '/animations/Lunge Punch heavy.fbx',
+    frontTwistFlip: '/animations/Front Twist Flip.fbx',
+    backflip: '/animations/Backflip.fbx',
     grabSlam: '/animations/Grab And Slam.fbx',
     block: '/animations/Blocking.fbx',
     hitHighLight: '/animations/Reaction highlight.fbx',
@@ -407,6 +413,28 @@ function isStoryCoopMode() {
 
 function isTrainingMode() {
     return gameMode === MODE.TRAINING;
+}
+
+// True when this fighter is driven by a human player (not AI, not a dummy).
+function isHumanFighter(fighter) {
+    if (!fighter || (fighter.id !== 1 && fighter.id !== 2)) return false;
+    if (fighter.id === 1) return true;
+    return gameMode === MODE.LOCAL_VERSUS || isOnlineVersusMode() || isTrainingMode() || isStoryCoopMode();
+}
+
+// True when this machine should run the Focus Controls simulation for this
+// fighter: locally-controlled humans, plus both sides during replay
+// playback (the replay re-simulates the recorded input stream). Remote
+// fighters in online play are excluded: the owning peer resolves Strike
+// locally and transmits the concrete attack type, so running it here too
+// would double-fire.
+function isFocusSimFighter(fighter) {
+    if (!isFocusScheme() || !isHumanFighter(fighter)) return false;
+    if (typeof replayPlayback !== 'undefined' && replayPlayback) return true;
+    if (isOnlineVersusMode() || isStoryCoopMode()) {
+        return (isHost && fighter.id === 1) || (!isHost && fighter.id === 2);
+    }
+    return true;
 }
 
 let gameMode = MODE.LOCAL_VERSUS;
@@ -729,6 +757,56 @@ function closeOptions() {
     playScreenMusic('menu');
 }
 
+// --- Control scheme (Classic vs Focus) ---
+// Focus Controls: stick + Strike / Special / Guard with contextual strikes,
+// tempo combos, and charged strikes. Classic is the original six-button
+// layout. The choice persists across sessions.
+let controlScheme = CONTROL_SCHEME.CLASSIC;
+try {
+    const savedScheme = localStorage.getItem('ff-control-scheme');
+    if (savedScheme === CONTROL_SCHEME.FOCUS) controlScheme = CONTROL_SCHEME.FOCUS;
+} catch (err) { /* storage unavailable: stay classic */ }
+
+function isFocusScheme() {
+    return controlScheme === CONTROL_SCHEME.FOCUS;
+}
+
+function setControlScheme(scheme) {
+    controlScheme = scheme === CONTROL_SCHEME.FOCUS ? CONTROL_SCHEME.FOCUS : CONTROL_SCHEME.CLASSIC;
+    try { localStorage.setItem('ff-control-scheme', controlScheme); } catch (err) { /* ignore */ }
+    const touchControls = document.getElementById('touch-controls');
+    if (touchControls) touchControls.classList.toggle('focus-mode', isFocusScheme());
+    const schemeBtn = document.getElementById('controls-scheme-btn');
+    if (schemeBtn) schemeBtn.textContent = isFocusScheme() ? 'Focus' : 'Classic';
+    const schemeHint = document.getElementById('controls-scheme-hint');
+    if (schemeHint) {
+        schemeHint.textContent = isFocusScheme()
+            ? 'Stick + Strike / Special / Guard. Tap Strike to hit, hold to charge, tap on the gold ring for a tempo combo.'
+            : 'WASD/arrows + Punch / Kick / Special / Throw / Taunt.';
+    }
+    // A mid-fight switch must not leave a half-armed strike behind.
+    for (const fighter of players) {
+        const c = fighter?.combat;
+        if (!c) continue;
+        c.tempoFrames = 0;
+        c.focusPending = 0;
+        c.focusPressArmed = false;
+        c.focusCharging = false;
+        c.focusChargeFrames = 0;
+        c.strikeWasHeld = false;
+        setTempoRingVisible(fighter, false);
+    }
+    if (focusHintEl) {
+        focusHintEl.textContent = '';
+        focusHintEl.style.display = 'none';
+    }
+}
+
+function toggleControlScheme() {
+    setControlScheme(isFocusScheme() ? CONTROL_SCHEME.CLASSIC : CONTROL_SCHEME.FOCUS);
+}
+window.toggleControlScheme = toggleControlScheme;
+
 function updateAudioOptions() {
     sfxVolume = parseFloat(document.getElementById('sfx-vol').value);
     musicVolume = parseFloat(document.getElementById('music-vol').value);
@@ -774,7 +852,7 @@ const lastActionTaps = {};
 
 function resolveKeyBinding(code) {
     for (const playerId of [1, 2]) {
-        const action = keyCodeToAction(playerId, code);
+        const action = keyCodeToAction(playerId, code, controlScheme);
         if (action) return { playerId, action };
     }
     return null;
@@ -815,10 +893,16 @@ function handleActionPress(playerId, action, fromReplay = false, data = null) {
     if (attackType) {
         bufferAttackInput(playerId, attackType);
         bufferAttack = attackType;
-        // Live-only: also drop the press into the action queue so the
-        // per-step drain (beginSimFrame) captures it for recordings. The
-        // replay path re-buffers at the same simFrame, so expiry matches.
-        if (!fromReplay) pressAction(playerActionState(playerId), action);
+        // NOTE: no pressAction here — the caller (keyboard / touch / legacy
+        // handlers) already recorded this press for replay. Recording it a
+        // second time would double-buffer the attack in replays and fire a
+        // phantom chained hit from the duplicate's 12-frame buffer entry.
+    } else if (action === ACTION.STRIKE && gameActive) {
+        // Focus Controls: a perfect-beat press resolves into a tempo route
+        // immediately; taps and holds arm the release-resolved strike.
+        // Same single-record rule as above: the caller's pressAction is the
+        // one the recorder captures.
+        bufferAttack = handleFocusStrikePress(player, playerId);
     } else if (action === ACTION.TAUNT && gameActive) {
         // Taunts dispatch immediately and are never buffered: they are only
         // legal from a neutral idle stance, so a mid-action press whiffs.
@@ -827,6 +911,118 @@ function handleActionPress(playerId, action, fromReplay = false, data = null) {
         requestAttack(player, 'taunt');
     }
     if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
+}
+
+// --- Focus Controls combat ---
+//
+// Strike press: a perfect-beat press inside the tempo window resolves into
+// the fighter's unique tempo route immediately (and is transmitted like any
+// other attack). Anything else arms the tap-vs-hold decision window; the
+// release edge is resolved inside the simulation so live play, replays, and
+// peers agree. Returns a concrete attack type for the network wire when the
+// press resolves immediately, else null.
+function handleFocusStrikePress(player, playerId) {
+    const c = player?.combat;
+    if (!c || player.isDead || !isFocusSimFighter(player)) return null;
+    if (c.tempoFrames >= TEMPO_PERFECT_LO && c.tempoFrames <= TEMPO_PERFECT_HI) {
+        const actions = playerActionState(playerId);
+        const towardHeld = isActionHeld(actions, player.direction === 1 ? ACTION.MOVE_RIGHT : ACTION.MOVE_LEFT);
+        const awayHeld = isActionHeld(actions, player.direction === 1 ? ACTION.MOVE_LEFT : ACTION.MOVE_RIGHT);
+        const routeType = selectTempoRoute({ towardHeld, awayHeld });
+        c.tempoFrames = 0;
+        setTempoRingVisible(player, false);
+        bufferAttackInput(playerId, routeType);
+        return routeType;
+    }
+    c.focusPending = STRIKE_TAP_FRAMES;
+    c.focusPressArmed = true;
+    c.focusCharging = false;
+    c.focusChargeFrames = 0;
+    return null;
+}
+
+// Fire a resolved focus attack through the standard pipeline. The owning
+// peer transmits the concrete type so remote sims play the same attack.
+function fireFocusAttack(player, type) {
+    if (!requestAttack(player, type)) return false;
+    if (!replayPlayback) sendActionNetworkInput(player.id, 'keydown', ACTION.STRIKE, type);
+    return true;
+}
+
+function fireFocusTapStrike(player, opp) {
+    const c = player.combat;
+    const actions = playerActionState(player.id);
+    const distance = opp?.mesh ? Math.abs(opp.mesh.position.x - player.mesh.position.x) : 99;
+    const towardHeld = isActionHeld(actions, player.direction === 1 ? ACTION.MOVE_RIGHT : ACTION.MOVE_LEFT);
+    const airborne = player.isJumping || c.state === FIGHTER_STATE.JUMP;
+    const resolved = resolveFocusStrike({ distance, towardHeld, airborne });
+    let chain = resolved.chain;
+    if (chain < 0) {
+        // Neutral Strike cycles the fighter's own jab string: light, medium,
+        // heavy, then back to light.
+        chain = c.focusChain || 0;
+        c.focusChain = (chain + 1) % 3;
+    } else if (resolved.type === 'kick' && chain === 2) {
+        c.focusChain = 0; // the advancing heavy kick resets the jab cycle
+    }
+    const prevChain = c.chain;
+    c.chain = chain;
+    if (!fireFocusAttack(player, resolved.type)) c.chain = prevChain;
+}
+
+// Per-sim-frame Focus Controls bookkeeping for one fighter: tap-vs-hold
+// decision, charge levels, and release edges. (The tempo window itself ticks
+// in advanceCombatFighterStep so both online sims stay aligned.) Everything
+// here is a pure function of sim state plus the recorded input stream, so
+// live play, replays, and both online peers reproduce it exactly.
+function updateFocusFighter(p, opp) {
+    const c = p.combat;
+    if (!c || p.isDead) return;
+
+    const actions = playerActionState(p.id);
+    const strikeHeld = isActionHeld(actions, ACTION.STRIKE);
+    const grounded = !p.isJumping && c.state !== FIGHTER_STATE.JUMP;
+    const neutral = c.state === FIGHTER_STATE.IDLE || c.state === FIGHTER_STATE.WALK || c.state === FIGHTER_STATE.BLOCK;
+
+    // Release edge: a tap becomes the contextual strike; a hold becomes the
+    // charged heavy (or falls back to the tap strike below level 1). The
+    // focusPressArmed arm covers taps that press and release between two
+    // sim frames.
+    const released = (c.strikeWasHeld || c.focusPressArmed) && !strikeHeld;
+    if (released) {
+        if (neutral && grounded) {
+            if (c.focusCharging) {
+                const frames = c.focusChargeFrames || 0;
+                const chargeType = frames >= CHARGE_LEVEL_2 ? 'focusCharge2' : frames >= CHARGE_LEVEL_1 ? 'focusCharge1' : null;
+                if (chargeType) fireFocusAttack(p, chargeType);
+                else fireFocusTapStrike(p, opp);
+            } else if ((c.focusPending || 0) > 0) {
+                fireFocusTapStrike(p, opp);
+            }
+        }
+        c.focusPending = 0;
+        c.focusCharging = false;
+        c.focusChargeFrames = 0;
+    }
+    c.strikeWasHeld = strikeHeld;
+    c.focusPressArmed = false;
+
+    // Tap-vs-hold decision and charging, while the fighter stays neutral and
+    // grounded. Guard cancels the charge with no phantom attack.
+    if ((c.focusPending || 0) > 0 || c.focusCharging) {
+        if (isActionHeld(actions, ACTION.BLOCK)) {
+            c.focusPending = 0;
+            c.focusCharging = false;
+            c.focusChargeFrames = 0;
+        } else if (strikeHeld && neutral && grounded) {
+            if ((c.focusPending || 0) > 0) {
+                c.focusPending--;
+                if (c.focusPending === 0) { c.focusCharging = true; c.focusChargeFrames = 0; }
+            } else if (c.focusCharging) {
+                c.focusChargeFrames++;
+            }
+        }
+    }
 }
 
 // Each peer only transmits its own fighter's inputs (host: player 1, guest: player 2).
@@ -1210,6 +1406,8 @@ async function loadAssets() {
 window.addEventListener('DOMContentLoaded', () => {
     initTouchControls();
     createComboUI();
+    // Apply the persisted control scheme to the touch layout and options label.
+    setControlScheme(controlScheme);
     loadAssets();
 
     const singleBtn = document.getElementById('menu-single-btn');
@@ -1913,14 +2111,99 @@ function spawnHitRing(position, damage) {
     hitRings.push({ mesh: ring, life: .1, maxLife: .1 });
 }
 
+// --- Focus Controls presentation ---
+// Tempo ring: after a clean hit a ring shrinks over the attacker; it burns
+// gold inside the perfect zone — tap Strike then for the fighter's tempo
+// route. Charge aura: motif-colored sparks gather while holding Strike.
+function getTempoRing(player) {
+    if (!player.tempoRing) {
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.28, 0.36, 32),
+            new THREE.MeshBasicMaterial({ color: 0xffd44d, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+        );
+        ring.visible = false;
+        scene.add(ring);
+        player.tempoRing = ring;
+    }
+    return player.tempoRing;
+}
+
+function setTempoRingVisible(player, visible) {
+    if (player?.tempoRing) {
+        player.tempoRing.visible = visible;
+        if (!visible) player.tempoRing.material.opacity = 0;
+    }
+}
+
+let focusHintEl = null;
+
+function updateFocusPresentation(p) {
+    if (!p?.mesh) return;
+    const c = p.combat;
+    const active = gameActive && isFocusScheme() && c && !p.isDead && (c.tempoFrames || 0) > 0 && isHumanFighter(p);
+    const ring = p.tempoRing || (active ? getTempoRing(p) : null);
+    if (ring) {
+        if (!active) {
+            ring.visible = false;
+        } else {
+            const t = c.tempoFrames;
+            const perfect = t >= TEMPO_PERFECT_LO && t <= TEMPO_PERFECT_HI;
+            ring.visible = true;
+            ring.position.set(p.mesh.position.x, 2.35, p.mesh.position.z);
+            ring.lookAt(camera.position);
+            const progress = 1 - t / TEMPO_WINDOW;
+            ring.scale.setScalar(1.6 - progress * 0.9);
+            ring.material.color.setHex(perfect ? 0xffd44d : 0xffffff);
+            ring.material.opacity = perfect ? 0.95 : 0.35 + 0.2 * Math.sin(performance.now() / 90);
+        }
+    }
+    // Charge aura while holding Strike (presentation-only; sim never reads it).
+    if (gameActive && isFocusScheme() && c && !p.isDead && c.focusCharging && isHumanFighter(p) && (c.simFrame & 3) === 0) {
+        const pos = p.mesh.position.clone();
+        pos.y += 1.1;
+        spawnParticles(pos, 'shield', 3, getFocusMotif(p.charId));
+    }
+    if (p.id === 1) updateFocusHint(p);
+}
+
+function updateFocusHint(p) {
+    if (!focusHintEl) focusHintEl = document.getElementById('focus-hint');
+    if (!focusHintEl) return;
+    const c = p.combat;
+    let text = '';
+    let perfect = false;
+    if (isFocusScheme() && c && !p.isDead && isHumanFighter(p)) {
+        const t = c.tempoFrames || 0;
+        if (t >= TEMPO_PERFECT_LO && t <= TEMPO_PERFECT_HI) {
+            const actions = playerActionState(p.id);
+            const towardHeld = isActionHeld(actions, p.direction === 1 ? ACTION.MOVE_RIGHT : ACTION.MOVE_LEFT);
+            const awayHeld = isActionHeld(actions, p.direction === 1 ? ACTION.MOVE_LEFT : ACTION.MOVE_RIGHT);
+            const kind = selectTempoRoute({ towardHeld, awayHeld }).replace('focus', '').toLowerCase();
+            text = `PERFECT — Strike: ${getFocusMoveName(p.charId, kind)}`;
+            perfect = true;
+        } else if (c.focusCharging) {
+            const frames = c.focusChargeFrames || 0;
+            const maxed = frames >= CHARGE_LEVEL_2;
+            const leveled = frames >= CHARGE_LEVEL_1;
+            text = `Charging ${getFocusMoveName(p.charId, maxed ? 'charge2' : 'charge1')} — ${maxed ? 'MAX' : leveled ? 'Lv1' : '…'}`;
+        } else if (t > 0) {
+            text = 'Tempo… wait for gold';
+        }
+    }
+    focusHintEl.textContent = text;
+    focusHintEl.classList.toggle('perfect', perfect);
+    focusHintEl.style.display = text ? 'block' : 'none';
+}
+
 /**
  * Spawn comic-style hit particles.
  *
  * @param {THREE.Vector3} position   world-space origin
  * @param {'hit'|'guard'|'guardbreak'|'super'|'shield'|'confetti'|'landing'|'dash'} type
  * @param {number} count             number of pieces (default varies by type)
+ * @param {number[]|null} colorOverride  optional palette replacing the type's colors
  */
-function spawnParticles(position, type = 'hit', count = -1) {
+function spawnParticles(position, type = 'hit', count = -1, colorOverride = null) {
     // --- Type definitions ---
     const TYPES = {
         // Direct hit — bright star-burst pieces in punch yellow/orange
@@ -2033,9 +2316,10 @@ function spawnParticles(position, type = 'hit', count = -1) {
     };
 
     const def = TYPES[type] || TYPES.hit;
+    const palette = colorOverride || def.colors;
 
     for (let i = 0; i < def.count; i++) {
-        const colorHex = def.colors[Math.floor(Math.random() * def.colors.length)];
+        const colorHex = palette[Math.floor(Math.random() * palette.length)];
         const s = def.size();
 
         let geo;
@@ -2353,6 +2637,14 @@ function removeFighterList(list) {
     list.forEach((fighter) => {
         if (fighter && fighter.mesh) {
             scene.remove(fighter.mesh);
+        }
+        // Focus Controls: dispose the tempo ring (it lives on the scene,
+        // not on the fighter mesh).
+        if (fighter && fighter.tempoRing) {
+            scene.remove(fighter.tempoRing);
+            fighter.tempoRing.geometry.dispose();
+            fighter.tempoRing.material.dispose();
+            fighter.tempoRing = null;
         }
         if (fighter && fighter._tauntInterval) {
             clearTimeout(fighter._tauntInterval);
@@ -3281,7 +3573,10 @@ function startAttack(player, attackDef) {
 
     const actionDuration = getClipDuration(player, attackDef.animation);
     const moveDuration = (attackDef.startup + attackDef.active + attackDef.recovery) / FRAME_RATE;
-    player.fadeTo(attackDef.animation, player.combat.chain === 0 ? 0.1 : 0.07, actionDuration / moveDuration);
+    // Focus finishers carry their own playback rate (flurries snap, heavies
+    // hang) on top of the automatic clip-to-move retiming.
+    const focusTimeScale = attackDef.timeScale || 1;
+    player.fadeTo(attackDef.animation, player.combat.chain === 0 ? 0.1 : 0.07, (actionDuration / moveDuration) * focusTimeScale);
     return true;
 }
 
@@ -3409,6 +3704,11 @@ function checkHits(attacker, defender) {
             attacker, defender, move, armored,
             point: hitPoint.clone(), frame,
         });
+        // Focus Controls: a clean hit opens the tempo window for the
+        // attacker. Focus finishers never reopen it (move.noTempo).
+        if (isFocusScheme() && !move.noTempo && isHumanFighter(attacker) && attacker.combat && !attacker.isDead) {
+            attacker.combat.tempoFrames = TEMPO_WINDOW;
+        }
     }
     hitStopFrames = move.hitstop;
     if (defender.health <= 0) triggerDeath(defender);
@@ -3434,7 +3734,12 @@ function handleCombatEvent(event) {
         }
         flashFighter(defender);
         globalHitComboCount++; updateComboUI();
-        spawnParticles(point, move.damage >= 11 ? 'super' : 'hit');
+        if (move.id && move.id.startsWith('focus-')) {
+            // Focus finishers burst in the attacker's motif colors.
+            spawnParticles(point, 'super', -1, getFocusMotif(attacker.charId));
+        } else {
+            spawnParticles(point, move.damage >= 11 ? 'super' : 'hit');
+        }
         spawnHitRing(point, move.damage);
         AudioSynth.playHit();
     } else if (type === COMBAT_EVENT.KO) {
@@ -4243,6 +4548,15 @@ function advanceCombatFighterStep(p, opp, frameDt = 1 / FRAME_RATE) {
     c.pushVelocity = THREE.MathUtils.lerp(c.pushVelocity, 0, 0.22);
     c.dashIFrames = Math.max(0, c.dashIFrames - 1);
 
+    // Focus Controls: the tempo window ticks on sim frames for every
+    // fighter on every sim (both online peers agree because checkHits is
+    // deterministic). The rest of the focus bookkeeping runs only for
+    // locally-controlled fighters (see isFocusSimFighter).
+    if (c.tempoFrames > 0) c.tempoFrames--;
+
+    // Focus Controls per-frame bookkeeping (tap-vs-hold, charge).
+    if (isFocusSimFighter(p)) updateFocusFighter(p, opp);
+
     if (c.state === FIGHTER_STATE.BLOCKSTUN || c.state === FIGHTER_STATE.HITSTUN || c.state === FIGHTER_STATE.KNOCKDOWN || c.state === FIGHTER_STATE.GETUP || c.state === FIGHTER_STATE.GUARD_BREAK) {
         tickStunState(p);
     } else if (c.state === FIGHTER_STATE.STARTUP || c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) {
@@ -4875,6 +5189,7 @@ function animate() {
                 reconcileGroundedState(p, 'below-ground');
             }
         }
+        updateFocusPresentation(p);
     });
     storyEnemyManager.update(frameDt);
     previewFighters.forEach((fighter) => {

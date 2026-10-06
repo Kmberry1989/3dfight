@@ -35,6 +35,8 @@ export const MOVE_DATA = Object.freeze({
   ]
 });
 
+import { getFocusMoveType, FOCUS_MOVE_TYPES } from './focusMoves.js';
+
 export function getMove(type, chain = 0, fighterId = null) {
   // Per-fighter specials: each roster fighter owns a unique special move.
   // Unknown ids (story enemies, legacy callers) fall back to the shared table.
@@ -43,6 +45,11 @@ export function getMove(type, chain = 0, fighterId = null) {
   }
   if (type === 'taunt') {
     return getTauntMove(fighterId);
+  }
+  // Focus Controls finishers: tempo routes and charged strikes resolve to
+  // the pressing fighter's unique kit.
+  if (FOCUS_MOVE_TYPES.includes(type)) {
+    return getFocusMoveType(fighterId, type);
   }
   const moves = MOVE_DATA[type];
   if (!moves) return null;
@@ -120,6 +127,10 @@ export function getTauntMove(fighterId = null) {
 const FIGHTER_ATTACK_ANIMATIONS = [
   ...Object.values(FIGHTER_SPECIALS).map((special) => special.animation),
   'taunt',
+  // Focus Controls finishers pull from the shared pool plus these extras.
+  'lungePunchHeavy',
+  'frontTwistFlip',
+  'backflip',
 ];
 export const ATTACK_ANIMATION_NAMES = Object.freeze(new Set(
   [...Object.values(MOVE_DATA).flatMap((moves) => moves.map((move) => move.animation)),

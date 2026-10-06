@@ -19,7 +19,17 @@ export function initializeCombatFighter(fighter) {
     motionVelocity: 0,
     dashDir: 0,
     dashIFrames: 0,
-    activeHitbox: false
+    activeHitbox: false,
+    // Focus Controls bookkeeping: tap-vs-hold decision, charge levels,
+    // tempo window, and the fighter's jab-string cycle. Plain numbers and
+    // booleans so the deterministic sim hash stays stable.
+    tempoFrames: 0,
+    focusPending: 0,
+    focusPressArmed: false,
+    focusCharging: false,
+    focusChargeFrames: 0,
+    focusChain: 0,
+    strikeWasHeld: false
   };
   mirrorLegacyFlags(fighter);
 }
