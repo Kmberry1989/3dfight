@@ -1,4 +1,5 @@
 import { FIGHTER_STATE, FRAME_RATE, getMove } from './frameData.js';
+import { FOCUS_MOVE_TYPES } from './focusMoves.js';
 
 export { FIGHTER_STATE, FRAME_RATE };
 
@@ -75,6 +76,11 @@ export function canAcceptMove(fighter, type) {
   // cancel, never accidental. Everything else follows the standard gates.
   if (type === 'taunt') return c.state === FIGHTER_STATE.IDLE;
   if ([FIGHTER_STATE.IDLE, FIGHTER_STATE.WALK, FIGHTER_STATE.BLOCK].includes(c.state)) return true;
+  // Air attacks: normals and focus finishers work airborne. Specials,
+  // throws, and taunts stay grounded.
+  if (c.state === FIGHTER_STATE.JUMP) {
+    return type === 'punch' || type === 'kick' || FOCUS_MOVE_TYPES.includes(type);
+  }
   if (c.state === FIGHTER_STATE.BLOCKSTUN) return c.stateFrame <= 5;
   if (c.state === FIGHTER_STATE.RECOVERY && c.move) {
     const [from, to] = c.move.cancelWindow;
@@ -107,7 +113,9 @@ export function advanceCombatState(fighter) {
       // Completing a taunt performance grants its meter reward (sim-side, so
       // replays and peers agree). Getting hit out of it forfeits the reward.
       if (move.taunt && move.tauntMeter) fighter.meter = Math.min(100, fighter.meter + move.tauntMeter);
-      changeCombatState(fighter, FIGHTER_STATE.IDLE);
+      // An attack that ends mid-air returns to the airborne state; gravity
+      // (advanceCombatFighterStep) keeps falling until landing.
+      changeCombatState(fighter, fighter.isJumping ? FIGHTER_STATE.JUMP : FIGHTER_STATE.IDLE);
     }
   }
   return { startedActive: false };
