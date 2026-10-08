@@ -941,13 +941,9 @@ function handleActionPress(playerId, action, fromReplay = false, data = null) {
         // Same single-record rule as above: the caller's pressAction is the
         // one the recorder captures.
         bufferAttack = handleFocusStrikePress(player, playerId);
-    } else if (action === ACTION.TAUNT && gameActive) {
-        // Taunts dispatch immediately and are never buffered: they are only
-        // legal from a neutral idle stance, so a mid-action press whiffs.
-        // The caller's pressAction already recorded this for replay, and the
-        // replay path re-dispatches it here deterministically.
-        requestAttack(player, 'taunt');
     }
+    // No TAUNT branch: taunts are cinematic-only (fight intros, pre-fight
+    // sequences, character select) and never fire from player input.
     if (!fromReplay) sendActionNetworkInput(playerId, 'keydown', action, bufferAttack);
 }
 

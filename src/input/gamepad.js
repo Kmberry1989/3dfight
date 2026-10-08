@@ -20,8 +20,8 @@ const DPAD = { up: 12, down: 13, left: 14, right: 15 };
 
 // Button index -> action resolver (some depend on the control scheme).
 // Cross = jump, Square = punch/strike, Triangle = kick/strike,
-// Circle = special, shoulders = block, R2 = throw (classic) / block (focus),
-// Share = taunt.
+// Circle = special, shoulders = block, R2 = throw (classic) / block (focus).
+// (Share is unmapped: taunts are cinematic-only.)
 const BUTTON_ACTIONS = {
     0: () => ACTION.JUMP,
     1: () => ACTION.SPECIAL,
@@ -31,7 +31,6 @@ const BUTTON_ACTIONS = {
     5: () => ACTION.BLOCK,
     6: () => ACTION.BLOCK,
     7: (focus) => (focus ? ACTION.BLOCK : ACTION.THROW),
-    8: () => ACTION.TAUNT,
 };
 
 let prevHeld = new Set();
