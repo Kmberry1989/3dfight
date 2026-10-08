@@ -303,57 +303,12 @@
 
 
     <div id="touch-controls">
-        <div id="touch-side-p1" class="touch-side left">
-            <div class="touch-label">Player 1</div>
-            <div class="touch-move-cluster">
-                <div class="touch-stick" data-player="1" aria-label="Player 1 movement stick">
-                    <div class="touch-stick-base">
-                        <span class="touch-stick-hint touch-stick-hint-up"></span>
-                        <span class="touch-stick-hint touch-stick-hint-left"></span>
-                        <span class="touch-stick-hint touch-stick-hint-right"></span>
-                        <span class="touch-stick-hint touch-stick-hint-down"></span>
-                        <div class="touch-stick-knob"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="touch-action-cluster">
-                <div class="touch-action-fan">
-                    <button class="touch-btn p1 touch-icon-punch classic-only" data-key="Space" data-action="Punch" data-buffer="punch" data-player="1" aria-label="Player 1 punch"><span class="sr-only">Punch</span></button>
-                    <button class="touch-btn p1 touch-icon-kick classic-only" data-key="ShiftLeft" data-action="Kick" data-buffer="kick" data-player="1" aria-label="Player 1 kick"><span class="sr-only">Kick</span></button>
-                    <button class="touch-btn p1 touch-icon-special" data-key="KeyC" data-action="Special" data-buffer="special" data-player="1" aria-label="Player 1 special"><span class="sr-only">Special</span></button>
-                    <button class="touch-btn p1 touch-icon-throw classic-only" data-key="KeyE" data-action="Throw" data-buffer="throw" data-player="1" aria-label="Player 1 throw"><span class="sr-only">Throw</span></button>
-                    <button class="touch-btn p1 touch-icon-taunt classic-only" data-key="KeyT" data-action="Taunt" data-player="1" aria-label="Player 1 taunt"><span class="sr-only">Taunt</span></button>
-                    <button class="touch-btn p1 focus-only touch-icon-strike" data-action="Strike" data-player="1" aria-label="Player 1 strike: tap to hit, hold to charge"><span class="sr-only">Strike</span></button>
-                    <button class="touch-btn p1 focus-only touch-icon-guard" data-action="Block" data-player="1" aria-label="Player 1 guard"><span class="sr-only">Guard</span></button>
-                </div>
-            </div>
-        </div>
-        <div id="touch-side-p2" class="touch-side right">
-            <div class="touch-label">Player 2</div>
-            <div class="touch-move-cluster">
-                <div class="touch-stick" data-player="2" aria-label="Player 2 movement stick">
-                    <div class="touch-stick-base">
-                        <span class="touch-stick-hint touch-stick-hint-up"></span>
-                        <span class="touch-stick-hint touch-stick-hint-left"></span>
-                        <span class="touch-stick-hint touch-stick-hint-right"></span>
-                        <span class="touch-stick-hint touch-stick-hint-down"></span>
-                        <div class="touch-stick-knob"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="touch-action-cluster">
-                <div class="touch-action-fan">
-                    <button class="touch-btn p2 touch-icon-punch classic-only" data-key="KeyP" data-action="Punch" data-buffer="punch" data-player="2" aria-label="Player 2 punch"><span class="sr-only">Punch</span></button>
-                    <button class="touch-btn p2 touch-icon-kick classic-only" data-key="KeyO" data-action="Kick" data-buffer="kick" data-player="2" aria-label="Player 2 kick"><span class="sr-only">Kick</span></button>
-                    <button class="touch-btn p2 touch-icon-special" data-key="KeyI" data-action="Special" data-buffer="special" data-player="2" aria-label="Player 2 special"><span class="sr-only">Special</span></button>
-                    <button class="touch-btn p2 touch-icon-throw classic-only" data-key="KeyU" data-action="Throw" data-buffer="throw" data-player="2" aria-label="Player 2 throw"><span class="sr-only">Throw</span></button>
-                    <button class="touch-btn p2 touch-icon-taunt classic-only" data-key="KeyY" data-action="Taunt" data-player="2" aria-label="Player 2 taunt"><span class="sr-only">Taunt</span></button>
-                    <button class="touch-btn p2 focus-only touch-icon-strike" data-action="Strike" data-player="2" aria-label="Player 2 strike: tap to hit, hold to charge"><span class="sr-only">Strike</span></button>
-                    <button class="touch-btn p2 focus-only touch-icon-guard" data-action="Block" data-player="2" aria-label="Player 2 guard"><span class="sr-only">Guard</span></button>
-                </div>
-            </div>
-        </div>
+        <div id="touch-zones" aria-label="Touch combat zones"></div>
+        <div id="touch-zones-hint" hidden></div>
     </div>
+
+    <!-- Bluetooth controller (PS4 / DualShock) status pill -->
+    <div id="gamepad-pill" hidden><span class="gamepad-dot"></span><span id="gamepad-pill-text">Controller connected</span></div>
 
     <!-- 4.5 SCREEN WIPE TRANSITION OVERLAY -->
     <div id="screen-wipe" aria-hidden="true">

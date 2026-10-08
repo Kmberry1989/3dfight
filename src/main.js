@@ -12,6 +12,7 @@ import { attachCombatHitboxes, updateCombatHitboxes, hideCombatHelpers, attackIn
 import { getMove, ATTACK_ANIMATION_NAMES } from './combat/frameData.js';
 import { getStageEntry } from './stages/stageRegistry.js';
 import { ACTION, ACTION_BY_NAME, HELD_ACTIONS, ATTACK_ACTIONS, ACTION_ATTACK_TYPE, CONTROL_SCHEME, KEYBOARD_BINDINGS, keyCodeToAction, createActionState, pressAction, releaseAction, setActionHeld, isActionHeld, clearActionState, drainPressedActions, heldActionBitmask, applyActionBitmask, bitmaskToActionNames } from './input/actions.js';
+import { initGamepad, pollGamepad } from './input/gamepad.js';
 import { FOCUS_MOVE_TYPES, TEMPO_WINDOW, TEMPO_PERFECT_LO, TEMPO_PERFECT_HI, STRIKE_TAP_FRAMES, CHARGE_LEVEL_1, CHARGE_LEVEL_2, FOCUS_THROW_RANGE, getFocusMoveName, getFocusMotif, resolveFocusStrike, selectTempoRoute } from './combat/focusMoves.js';
 import { reseedSim, getSimSeed, simRandom, simPick } from './simulation/rng.js';
 import { COMBAT_EVENT, onCombatEvent, emitCombatEvent } from './simulation/events.js';
@@ -473,18 +474,6 @@ const musicPlayers = Object.fromEntries(
 );
 let activeMusicKey = null;
 let musicFadeInterval = null;
-const TOUCH_STICK_CONFIG = {
-    deadzone: 0.22,
-    horizontalThreshold: 0.36,
-    jumpThreshold: -0.58,
-    blockThreshold: 0.46,
-    maxTravelRatio: 0.34
-};
-const touchMovementBindings = {
-    1: { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' },
-    2: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' }
-};
-const touchStickStates = {};
 
 function clearMusicFade() {
     if (musicFadeInterval) {
@@ -501,6 +490,24 @@ function setAllMusicVolumes() {
     });
 }
 
+// Pause or resume the music around app inactivity and the pause screen.
+// Only tracks that were actually playing get resumed; a track switch
+// clears the flags so a stale track can never double up with the new one.
+function setMusicPaused(paused) {
+    Object.values(musicPlayers).forEach((player) => {
+        if (!player) return;
+        if (paused) {
+            if (!player.paused) {
+                player.pause();
+                player.dataset.wasPlaying = '1';
+            }
+        } else if (player.dataset.wasPlaying === '1') {
+            player.dataset.wasPlaying = '';
+            player.play().catch(() => {});
+        }
+    });
+}
+
 function crossfadeMusic(nextKey) {
     if (activeMusicKey === nextKey) {
         const current = musicPlayers[nextKey];
@@ -511,6 +518,11 @@ function crossfadeMusic(nextKey) {
     clearMusicFade();
     const incoming = nextKey ? musicPlayers[nextKey] : null;
     const outgoing = activeMusicKey ? musicPlayers[activeMusicKey] : null;
+    // A track switch invalidates paused-for-inactivity flags: the incoming
+    // track is the only one that may play from here.
+    Object.values(musicPlayers).forEach((player) => {
+        if (player) player.dataset.wasPlaying = '';
+    });
     const steps = 12;
     let step = 0;
 
@@ -595,7 +607,7 @@ function injectGuardBars() {
 }
 
 function showMainMenu() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     resetStoryRun();
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.add('hidden');
@@ -612,14 +624,14 @@ function showMainMenu() {
 }
 
 function openStoryMenu() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('story-menu').style.display = 'flex';
     playScreenMusic('menu');
 }
 
 function closeStoryMenu() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('story-menu').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
     playScreenMusic('menu');
@@ -634,7 +646,7 @@ window.startGameMode = function (mode) {
 
 function openLobby(mode = MODE.ONLINE_VERSUS) {
     requestedOnlineMode = normalizeGameMode(mode);
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('story-menu').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'flex';
@@ -737,21 +749,21 @@ function applyRemoteActionInput(remotePlayerId, netAction, keyOrAction, bufferAt
 }
 
 function closeLobby() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
     playScreenMusic('menu');
 }
 
 function openOptions() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('options-menu').style.display = 'flex';
     playScreenMusic('menu');
 }
 
 function closeOptions() {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('options-menu').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
     playScreenMusic('menu');
@@ -774,15 +786,16 @@ function isFocusScheme() {
 function setControlScheme(scheme) {
     controlScheme = scheme === CONTROL_SCHEME.FOCUS ? CONTROL_SCHEME.FOCUS : CONTROL_SCHEME.CLASSIC;
     try { localStorage.setItem('ff-control-scheme', controlScheme); } catch (err) { /* ignore */ }
-    const touchControls = document.getElementById('touch-controls');
-    if (touchControls) touchControls.classList.toggle('focus-mode', isFocusScheme());
+    // The zone layout depends on the scheme, so rebuild it (forced).
+    touchZoneConfigKey = '';
+    if (typeof updateViewportState === 'function') updateViewportState();
     const schemeBtn = document.getElementById('controls-scheme-btn');
     if (schemeBtn) schemeBtn.textContent = isFocusScheme() ? 'Focus' : 'Classic';
     const schemeHint = document.getElementById('controls-scheme-hint');
     if (schemeHint) {
         schemeHint.textContent = isFocusScheme()
-            ? 'Stick + Strike / Special / Guard. Tap Strike to hit, hold to charge, tap on the gold ring for a tempo combo.'
-            : 'WASD/arrows + Punch / Kick / Special / Throw / Taunt.';
+            ? 'Left screen half: move & guard zones. Right half: tap Strike to hit, hold to charge, tap on the gold ring for a tempo combo.'
+            : 'Left screen half: move & guard zones. Right half: Punch / Kick / Special / Throw zones.';
     }
     // A mid-fight switch must not leave a half-armed strike behind.
     for (const fighter of players) {
@@ -819,7 +832,8 @@ function updateAudioOptions() {
 function togglePause() {
     if (!gameActive && !gamePaused) return;
     gamePaused = !gamePaused;
-    if (gamePaused) resetAllTouchMovementStates();
+    if (gamePaused) releaseAllTouchZones();
+    setMusicPaused(gamePaused);
     document.getElementById('pause-screen').style.display = gamePaused ? 'flex' : 'none';
     if (!gamePaused && timerInterval === null && gameActive) {
         startTimer();
@@ -830,10 +844,34 @@ function togglePause() {
     updateViewportState();
 }
 
+// The game and its music never run while the page isn't active: tab
+// hidden, window blurred, app switched away. On return the pause screen
+// waits for the player (manual resume restarts the music); menu music
+// resumes on its own.
+function pauseForInactivity() {
+    if (gameActive && !gamePaused) {
+        togglePause();
+    } else {
+        setMusicPaused(true);
+    }
+}
+
+function resumeAfterInactivity() {
+    if (gamePaused) return;
+    setMusicPaused(false);
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseForInactivity();
+    else resumeAfterInactivity();
+});
+window.addEventListener('blur', pauseForInactivity);
+window.addEventListener('focus', resumeAfterInactivity);
+
 function quitToMainMenu() {
     gamePaused = false;
     gameActive = false;
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     clearInterval(timerInterval);
     document.getElementById('pause-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'none';
@@ -1412,7 +1450,18 @@ async function loadAssets() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    initTouchControls();
+    initTouchZones();
+    initGamepad((pad) => {
+        const pill = document.getElementById('gamepad-pill');
+        if (!pill) return;
+        if (pad) {
+            pill.hidden = false;
+            const label = document.getElementById('gamepad-pill-text');
+            if (label) label.textContent = 'Controller connected' + (pad.id ? ': ' + pad.id.slice(0, 28) : '');
+        } else {
+            pill.hidden = true;
+        }
+    });
     createComboUI();
     // Apply the persisted control scheme to the touch layout and options label.
     setControlScheme(controlScheme);
@@ -1638,7 +1687,7 @@ function renderTournamentLadder(result = 'advance') {
 }
 
 function showTournamentLadderScreen(result = 'advance') {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.remove('hidden');
@@ -1689,7 +1738,7 @@ function renderStoryProgressScreen(result = 'advance') {
 }
 
 function showStoryProgressScreen(result = 'advance') {
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     document.getElementById('gameover-screen').style.display = 'none';
     document.getElementById('selector-screen').classList.add('hidden');
     document.getElementById('ladder-screen').classList.remove('hidden');
@@ -1863,7 +1912,7 @@ function showCharacterSelect() {
     stopReplayPlayback();
     stopReplayRecording();
     setTrainingHudVisible(false);
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     p1Locked = false;
     p2Locked = false;
     globalTimeScale = 1.0;
@@ -2543,31 +2592,11 @@ function updateViewportState() {
     const touchControls = document.getElementById('touch-controls');
     if (touchControls) {
         touchControls.classList.toggle('active', shouldShowTouchControls);
-
-        const isSinglePlayerLayout = (isArcadeMode() || isOnlineVersusMode() || isStoryMode());
-        touchControls.classList.toggle('single-player-mode', isSinglePlayerLayout);
     }
-    if (!shouldShowTouchControls) resetAllTouchMovementStates();
+    if (!shouldShowTouchControls) releaseAllTouchZones();
 
-    const sideP1 = document.getElementById('touch-side-p1');
-    const sideP2 = document.getElementById('touch-side-p2');
-    if (sideP1 && sideP2) {
-        if (isArcadeMode() || gameMode === MODE.STORY_SOLO) {
-            sideP1.style.display = '';
-            sideP2.style.display = 'none';
-        } else if (isOnlineVersusMode() || isStoryCoopMode()) {
-            if (isHost) {
-                sideP1.style.display = '';
-                sideP2.style.display = 'none';
-            } else {
-                sideP1.style.display = 'none';
-                sideP2.style.display = '';
-            }
-        } else {
-            sideP1.style.display = '';
-            sideP2.style.display = '';
-        }
-    }
+    refreshTouchZones();
+    if (shouldShowTouchControls) maybeShowZoneHint();
 
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
@@ -2575,70 +2604,199 @@ function updateViewportState() {
     }
 }
 
-function initTouchControls() {
-    document.querySelectorAll('#touch-controls .touch-stick').forEach((stick) => {
-        const playerSide = Number(stick.dataset.player || 0);
-        initVirtualStick(stick, touchMovementBindings[playerSide]);
-    });
+// --- Touch combat zones ---
+//
+// The touch surface is divided into invisible screen quadrants instead of
+// buttons: the left side owns movement and defense, the right side owns
+// attacks. Tapping a zone presses its action; holding works for block,
+// strike charge, and movement. Touches are tracked by identifier so
+// holding block on the left while striking on the right works.
 
-    const touchButtons = document.querySelectorAll('#touch-controls .touch-btn');
-    touchButtons.forEach((button) => {
-        const actionName = button.dataset.action || null;
-        const keyCode = button.dataset.key;
-        const bufferedAttack = button.dataset.buffer;
-        const playerId = Number(button.dataset.player || 0);
+let touchZoneDefs = []; // { x, y, w, h, action, player, label, el }
+let touchZoneConfigKey = '';
+const touchZoneTouches = new Map(); // touch identifier -> zone def
 
-        const press = (event) => {
-            event.preventDefault();
-            if (event.pointerId !== undefined) button.setPointerCapture?.(event.pointerId);
-            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
-                const state = playerActionState(playerId);
-                pressAction(state, actionName);
-                handleActionPress(playerId, actionName, false);
-            } else {
-                // Legacy fallback: key-code bindings.
-                const legacy = keyCode ? resolveKeyBinding(keyCode) : null;
-                if (legacy) {
-                    pressAction(playerActionState(legacy.playerId), legacy.action);
-                    handleActionPress(legacy.playerId, legacy.action, false);
-                } else if (bufferedAttack && playerId) {
-                    bufferAttackInput(playerId, bufferedAttack);
-                }
-            }
-            button.classList.add('pressed');
-        };
+function localPlayerId() {
+    return (isOnlineVersusMode() || isStoryCoopMode()) ? (isHost ? 1 : 2) : 1;
+}
 
-        const release = (event) => {
-            event.preventDefault();
-            if (actionName && playerId && ACTION_BY_NAME[actionName]) {
-                releaseAction(playerActionState(playerId), actionName);
-            } else if (keyCode) {
-                const legacy = resolveKeyBinding(keyCode);
-                if (legacy) releaseAction(playerActionState(legacy.playerId), legacy.action);
-            }
-            button.classList.remove('pressed');
-        };
+function zoneActionDown(zone) {
+    const state = playerActionState(zone.player);
+    pressAction(state, zone.action);
+    handleActionPress(zone.player, zone.action, false);
+    zone.el.classList.add('fired');
+}
 
-        button.addEventListener('pointerdown', press);
-        button.addEventListener('pointerup', release);
-        button.addEventListener('pointercancel', release);
-        button.addEventListener('pointerleave', release);
-        button.addEventListener('contextmenu', (event) => event.preventDefault());
-    });
+function zoneActionUp(touchId) {
+    const zone = touchZoneTouches.get(touchId);
+    if (!zone) return;
+    releaseAction(playerActionState(zone.player), zone.action);
+    zone.el.classList.remove('fired');
+    touchZoneTouches.delete(touchId);
+}
+
+// Release every zone-held action (pause, mode change, hidden tab, ...).
+function releaseAllTouchZones() {
+    for (const touchId of [...touchZoneTouches.keys()]) zoneActionUp(touchId);
+}
+
+function zoneAt(clientX, clientY) {
+    const w = window.innerWidth || 1;
+    const h = window.innerHeight || 1;
+    return touchZoneDefs.find((z) =>
+        clientX >= z.x * w && clientX < (z.x + z.w) * w &&
+        clientY >= z.y * h && clientY < (z.y + z.h) * h) || null;
+}
+
+function buildTouchZones() {
+    const container = document.getElementById('touch-zones');
+    if (!container) return;
+    releaseAllTouchZones();
+    container.innerHTML = '';
+    touchZoneDefs = [];
+
+    const focus = isFocusScheme();
+    const defs = [];
+    const Z = (x, y, w, h, action, player, label) => defs.push({ x, y, w, h, action, player, label });
+
+    // Movement / defense shapes.
+    const moveQuad = (x0, player) => { // 2x2 inside a half-width block
+        Z(x0, 0, 0.25, 0.5, ACTION.JUMP, player, 'Jump');
+        Z(x0 + 0.25, 0, 0.25, 0.5, ACTION.BLOCK, player, 'Block');
+        Z(x0, 0.5, 0.25, 0.5, ACTION.MOVE_LEFT, player, '\u25C0');
+        Z(x0 + 0.25, 0.5, 0.25, 0.5, ACTION.MOVE_RIGHT, player, '\u25B6');
+    };
+    const moveColumn = (x0, player) => { // 4 stacked inside a quarter-width column
+        Z(x0, 0, 0.25, 0.25, ACTION.JUMP, player, 'Jump');
+        Z(x0, 0.25, 0.25, 0.25, ACTION.MOVE_LEFT, player, '\u25C0');
+        Z(x0, 0.5, 0.25, 0.25, ACTION.MOVE_RIGHT, player, '\u25B6');
+        Z(x0, 0.75, 0.25, 0.25, ACTION.BLOCK, player, 'Block');
+    };
+    // Attack shapes.
+    const attackQuad = (x0, player) => { // classic 2x2 inside a half-width block
+        Z(x0, 0, 0.25, 0.5, ACTION.PUNCH, player, 'Punch');
+        Z(x0 + 0.25, 0, 0.25, 0.5, ACTION.KICK, player, 'Kick');
+        Z(x0, 0.5, 0.25, 0.5, ACTION.SPECIAL, player, 'Special');
+        Z(x0 + 0.25, 0.5, 0.25, 0.5, ACTION.THROW, player, 'Throw');
+    };
+    const attackColumn = (x0, player) => { // classic 4 stacked
+        Z(x0, 0, 0.25, 0.25, ACTION.PUNCH, player, 'Punch');
+        Z(x0, 0.25, 0.25, 0.25, ACTION.KICK, player, 'Kick');
+        Z(x0, 0.5, 0.25, 0.25, ACTION.SPECIAL, player, 'Special');
+        Z(x0, 0.75, 0.25, 0.25, ACTION.THROW, player, 'Throw');
+    };
+    const focusAttacks = (x0, w, player) => { // focus: two tall zones
+        Z(x0, 0, w, 0.5, ACTION.STRIKE, player, 'Strike');
+        Z(x0, 0.5, w, 0.5, ACTION.SPECIAL, player, 'Special');
+    };
+
+    if (gameMode === MODE.LOCAL_VERSUS) {
+        // Each player owns half the screen, mirrored: movement on the
+        // outside column, attacks on the inside column.
+        for (const player of [1, 2]) {
+            const leftSide = player === 1;
+            moveColumn(leftSide ? 0 : 0.75, player);
+            const atkX = leftSide ? 0.25 : 0.5;
+            if (focus) focusAttacks(atkX, 0.25, player);
+            else attackColumn(atkX, player);
+        }
+    } else {
+        const player = localPlayerId();
+        moveQuad(0, player);
+        if (focus) focusAttacks(0.5, 0.5, player);
+        else attackQuad(0.5, player);
+    }
+
+    for (const def of defs) {
+        const el = document.createElement('div');
+        el.className = 'touch-zone';
+        el.style.left = (def.x * 100) + '%';
+        el.style.top = (def.y * 100) + '%';
+        el.style.width = (def.w * 100) + '%';
+        el.style.height = (def.h * 100) + '%';
+        el.dataset.label = def.label;
+        def.el = el;
+        container.appendChild(el);
+    }
+    touchZoneDefs = defs;
+}
+
+// Rebuild the zones when the mode, scheme, or local player changes.
+function refreshTouchZones() {
+    const key = gameMode + '|' + controlScheme + '|' + localPlayerId();
+    const container = document.getElementById('touch-zones');
+    if (key === touchZoneConfigKey && container && container.childElementCount) return;
+    touchZoneConfigKey = key;
+    buildTouchZones();
+}
+
+// First-run coach marks: labeled zones that fade away after a few seconds.
+function maybeShowZoneHint() {
+    const hint = document.getElementById('touch-zones-hint');
+    if (!hint || !hint.hidden || !touchZoneDefs.length) return;
+    let seen = false;
+    try { seen = localStorage.getItem('ff-touch-zones-hint') === '1'; } catch (err) { /* ignore */ }
+    if (seen) return;
+    hint.innerHTML = '';
+    for (const def of touchZoneDefs) {
+        const el = document.createElement('div');
+        el.className = 'touch-zone-hint';
+        el.style.left = (def.x * 100) + '%';
+        el.style.top = (def.y * 100) + '%';
+        el.style.width = (def.w * 100) + '%';
+        el.style.height = (def.h * 100) + '%';
+        el.textContent = def.label;
+        hint.appendChild(el);
+    }
+    hint.hidden = false;
+    hint.classList.remove('fading');
+    clearTimeout(hint._hideTimer);
+    hint._hideTimer = setTimeout(() => {
+        hint.classList.add('fading');
+        setTimeout(() => { hint.hidden = true; }, 650);
+        try { localStorage.setItem('ff-touch-zones-hint', '1'); } catch (err) { /* ignore */ }
+    }, 4000);
+}
+
+function initTouchZones() {
+    const container = document.getElementById('touch-zones');
+    if (!container || container.dataset.bound) {
+        buildTouchZones();
+        return;
+    }
+    container.dataset.bound = '1';
+
+    container.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        for (const touch of event.changedTouches) {
+            if (touchZoneTouches.has(touch.identifier)) continue;
+            const zone = zoneAt(touch.clientX, touch.clientY);
+            if (!zone) continue;
+            touchZoneTouches.set(touch.identifier, zone);
+            zoneActionDown(zone);
+        }
+    }, { passive: false });
+
+    const endTouch = (event) => {
+        event.preventDefault();
+        for (const touch of event.changedTouches) zoneActionUp(touch.identifier);
+    };
+    container.addEventListener('touchend', endTouch, { passive: false });
+    container.addEventListener('touchcancel', endTouch, { passive: false });
+    container.addEventListener('contextmenu', (event) => event.preventDefault());
 
     const refreshTouchViewport = () => {
-        resetAllTouchMovementStates();
+        releaseAllTouchZones();
         updateViewportState();
     };
 
     window.addEventListener('resize', refreshTouchViewport);
     window.addEventListener('orientationchange', refreshTouchViewport);
     window.visualViewport?.addEventListener('resize', refreshTouchViewport);
-    window.visualViewport?.addEventListener('scroll', refreshTouchViewport);
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) resetAllTouchMovementStates();
+        if (document.hidden) releaseAllTouchZones();
     });
-    updateViewportState();
+    buildTouchZones();
 }
 
 function removeFighterList(list) {
@@ -2810,143 +2968,6 @@ function reconcileGroundedState(player, reason = '') {
         ? [FIGHTER_STATE.HITSTUN, FIGHTER_STATE.KNOCKDOWN, FIGHTER_STATE.GETUP].includes(player.combat.state)
         : player.isHit;
     sanitizeGroundedState(player, { preserveHitState });
-}
-
-function resetTouchMovementState(playerSide) {
-    const bindings = touchMovementBindings[playerSide];
-    if (!bindings) return;
-
-    // The touch stick drives the same action state as the keyboard: each
-    // mapped key code resolves to its action and is marked held/released.
-    // (The old `keys` map these functions wrote to no longer exists.)
-    setStickKeyHeld(playerSide, bindings.left, false);
-    setStickKeyHeld(playerSide, bindings.right, false);
-    setStickKeyHeld(playerSide, bindings.down, false);
-    setStickKeyHeld(playerSide, bindings.up, false);
-
-    const state = touchStickStates[playerSide];
-    if (!state) return;
-    state.activePointerId = null;
-    state.jumpLatched = false;
-    state.upReleaseAt = 0;
-    if (state.container) state.container.classList.remove('active');
-    if (state.knob) state.knob.style.transform = 'translate(-50%, -50%)';
-}
-
-function resetAllTouchMovementStates() {
-    Object.keys(touchMovementBindings).forEach((side) => resetTouchMovementState(Number(side)));
-}
-
-function applyStickIntent(playerSide, intent) {
-    const bindings = touchMovementBindings[playerSide];
-    const state = touchStickStates[playerSide];
-    if (!bindings || !state) return;
-
-    setStickKeyHeld(playerSide, bindings.left, !!intent.left);
-    setStickKeyHeld(playerSide, bindings.right, !!intent.right);
-    setStickKeyHeld(playerSide, bindings.down, !!intent.down);
-
-    const now = performance.now();
-    if (intent.jump && !state.jumpLatched) {
-        setStickKeyHeld(playerSide, bindings.up, true);
-        state.upReleaseAt = now + 70;
-        state.jumpLatched = true;
-    }
-    if (!intent.jump) {
-        state.jumpLatched = false;
-    }
-    if (state.upReleaseAt && now >= state.upReleaseAt) {
-        setStickKeyHeld(playerSide, bindings.up, false);
-        state.upReleaseAt = 0;
-    }
-}
-
-// Helper for the touch stick: resolve a mapped key code to its action for
-// the given player side and mark it held or released in the action state.
-function setStickKeyHeld(playerSide, code, held) {
-    const action = keyCodeToAction(playerSide, code);
-    if (!action) return;
-    setActionHeld(playerActionState(playerSide), action, held);
-}
-
-function updateVirtualStick(playerSide, pointerX, pointerY) {
-    const state = touchStickStates[playerSide];
-    if (!state || !state.base || !state.knob) return;
-
-    const rect = state.base.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const radius = rect.width * TOUCH_STICK_CONFIG.maxTravelRatio;
-    const dx = pointerX - centerX;
-    const dy = pointerY - centerY;
-    const distance = Math.hypot(dx, dy);
-    const clampedDistance = Math.min(distance, radius);
-    const angle = Math.atan2(dy, dx);
-    const knobX = Math.cos(angle) * clampedDistance;
-    const knobY = Math.sin(angle) * clampedDistance;
-    const nx = radius > 0 ? knobX / radius : 0;
-    const ny = radius > 0 ? knobY / radius : 0;
-    const magnitude = Math.min(1, distance / Math.max(radius, 1));
-
-    state.container.classList.add('active');
-    state.knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-
-    if (magnitude < TOUCH_STICK_CONFIG.deadzone) {
-        applyStickIntent(playerSide, { left: false, right: false, down: false, jump: false });
-        return;
-    }
-
-    applyStickIntent(playerSide, {
-        left: nx <= -TOUCH_STICK_CONFIG.horizontalThreshold,
-        right: nx >= TOUCH_STICK_CONFIG.horizontalThreshold,
-        down: ny >= TOUCH_STICK_CONFIG.blockThreshold,
-        jump: ny <= TOUCH_STICK_CONFIG.jumpThreshold
-    });
-}
-
-function initVirtualStick(container, keyMap) {
-    if (!container || !keyMap) return;
-    const playerSide = Number(container.dataset.player || 0);
-    const base = container.querySelector('.touch-stick-base');
-    const knob = container.querySelector('.touch-stick-knob');
-
-    touchStickStates[playerSide] = {
-        container,
-        base,
-        knob,
-        keyMap,
-        activePointerId: null,
-        jumpLatched: false,
-        upReleaseAt: 0
-    };
-
-    const begin = (event) => {
-        event.preventDefault();
-        touchStickStates[playerSide].activePointerId = event.pointerId;
-        container.setPointerCapture?.(event.pointerId);
-        updateVirtualStick(playerSide, event.clientX, event.clientY);
-    };
-
-    const move = (event) => {
-        if (touchStickStates[playerSide].activePointerId !== event.pointerId) return;
-        event.preventDefault();
-        updateVirtualStick(playerSide, event.clientX, event.clientY);
-    };
-
-    const end = (event) => {
-        const state = touchStickStates[playerSide];
-        if (!state) return;
-        if (state.activePointerId !== null && state.activePointerId !== event.pointerId) return;
-        event.preventDefault();
-        resetTouchMovementState(playerSide);
-    };
-
-    container.addEventListener('pointerdown', begin);
-    container.addEventListener('pointermove', move);
-    container.addEventListener('pointerup', end);
-    container.addEventListener('pointercancel', end);
-    container.addEventListener('lostpointercapture', end);
-    container.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
 function createPlayerMesh(charId, isPlayer1, options = {}) {
@@ -4303,7 +4324,7 @@ window.startFight = function (isNetworkCommand = false, networkStageId = null) {
         const p2 = spawnFighter(selections[2], 3.4, false);
         players.push(p1, p2);
     }
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
 
     const leftHudActor = isStoryMode()
         ? ((isStoryCoopMode() && !isHost) ? players[1] : players[0])
@@ -4374,7 +4395,7 @@ function endRound(winnerNum) {
     gameActive = false;
     clearInterval(timerInterval);
     clearScheduledEvents();
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
 
     const overlay = document.getElementById('gameover-screen');
     const winnerText = document.getElementById('winner-title');
@@ -4527,7 +4548,7 @@ function endRound(winnerNum) {
 
 function rematch() {
     document.getElementById('gameover-screen').style.display = 'none';
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     if (isStoryMode() && storyRun.status === 'complete') {
         resetStoryRun();
         initializeStoryRun();
@@ -4537,7 +4558,7 @@ function rematch() {
 
 function backToSelect() {
     document.getElementById('gameover-screen').style.display = 'none';
-    resetAllTouchMovementStates();
+    releaseAllTouchZones();
     if (isArcadeMode() && tournamentRun.status === 'between_rounds') {
         showTournamentLadderScreen('advance');
         return;
@@ -5187,6 +5208,23 @@ function advanceCombatSimulation(step = COMBAT_STEP) {
 
 function animate() {
     requestAnimationFrame(animate);
+
+    // Bluetooth controller (PS4 etc.): translate the pad into the same
+    // action vocabulary as keyboard and touch zones. Polled every frame so
+    // edges land before the fixed-step simulation consumes them.
+    pollGamepad({
+        playerId: localPlayerId(),
+        isFocusScheme: isFocusScheme(),
+        combatActive: gameActive && !gamePaused,
+        pauseToggleActive: gameActive,
+        press: (pid, action) => {
+            const st = playerActionState(pid);
+            pressAction(st, action);
+            handleActionPress(pid, action, false);
+        },
+        release: (pid, action) => releaseAction(playerActionState(pid), action),
+        togglePause: () => togglePause(),
+    });
 
     if (gamePaused) return;
 
