@@ -61,7 +61,11 @@ export function startCombatDash(fighter, direction) {
 
 export function startCombatMove(fighter, type) {
   const c = fighter.combat; if (!c) return false;
-  const chain = ['punch', 'kick'].includes(type) ? Math.min(c.chain + (c.state === FIGHTER_STATE.RECOVERY ? 1 : 0), 2) : 0;
+  // Chain cancels (from ACTIVE or RECOVERY) escalate the jab string:
+  // light -> medium -> heavy. Fresh neutral presses reuse the standing
+  // chain step so a completed string flows into the next one.
+  const canceling = c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY;
+  const chain = ['punch', 'kick'].includes(type) ? Math.min(c.chain + (canceling ? 1 : 0), 2) : 0;
   const move = getMove(type, chain, fighter.charId);
   if (!move || (move.meterCost && fighter.meter < move.meterCost)) return false;
   if (move.meterCost) fighter.meter -= move.meterCost;
@@ -82,9 +86,15 @@ export function canAcceptMove(fighter, type) {
     return type === 'punch' || type === 'kick' || FOCUS_MOVE_TYPES.includes(type);
   }
   if (c.state === FIGHTER_STATE.BLOCKSTUN) return c.stateFrame <= 5;
-  if (c.state === FIGHTER_STATE.RECOVERY && c.move) {
+  // Chain cancels: a normal (punch/kick) cancels into another normal or a
+  // special from its first active frame deep into recovery. Throws, focus
+  // finishers, and specials-as-source stay out, so tempo routes, dives, and
+  // big meter moves keep their commitment.
+  if ((c.state === FIGHTER_STATE.ACTIVE || c.state === FIGHTER_STATE.RECOVERY) && c.move) {
     const [from, to] = c.move.cancelWindow;
-    return c.frame >= from && c.frame <= to && !c.move.throw;
+    const chainSource = /^(punch|kick)-/.test(c.move.id);
+    const chainTarget = type === 'punch' || type === 'kick' || type === 'special';
+    return chainSource && chainTarget && c.frame >= from && c.frame <= to;
   }
   return false;
 }
@@ -109,7 +119,10 @@ export function advanceCombatState(fighter) {
   if (c.state === FIGHTER_STATE.RECOVERY) {
     const recovery = move.recovery + (c.whiff ? (move.whiffRecovery || 0) : 0);
     if (c.stateFrame >= recovery) {
-      c.chain = c.whiff || move.throw || move.meterCost ? 0 : Math.min(c.chain + 1, 2);
+      // Chain bookkeeping: a completed string ends after its heavy (chain
+      // resets so the next string starts light again); whiffs, throws, and
+      // meter moves never carry the chain forward.
+      c.chain = (c.whiff || move.throw || move.meterCost || c.chain >= 2) ? 0 : c.chain + 1;
       // Completing a taunt performance grants its meter reward (sim-side, so
       // replays and peers agree). Getting hit out of it forfeits the reward.
       if (move.taunt && move.tauntMeter) fighter.meter = Math.min(100, fighter.meter + move.tauntMeter);

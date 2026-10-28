@@ -9,7 +9,9 @@ export const FIGHTER_STATE = Object.freeze({
 
 const move = (id, animation, limb, startup, active, recovery, values = {}) => ({
   id, animation, limb, startup, active, recovery,
-  cancelWindow: [Math.max(1, startup + active - 1), startup + active + Math.max(1, Math.floor(recovery * 0.45))],
+  // Chain-fighter cancel windows: open on the first active frame and run
+  // deep into recovery so normals flow into each other magic-series style.
+  cancelWindow: [Math.max(1, startup + 1), startup + active + Math.max(1, Math.floor(recovery * 0.75))],
   damage: 5, blockDamage: 1, hitstun: 14, blockstun: 8, hitstop: 4,
   pushback: 0.24, blockPushback: 0.16, lunge: 0.05, meterGain: 8,
   hitbox: { width: 0.34, height: 0.30, depth: 0.34 },
